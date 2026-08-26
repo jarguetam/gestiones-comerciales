@@ -1,0 +1,1 @@
+$(cat /workspace/gestiones-comerciales/spec/db/SPEC.md)
