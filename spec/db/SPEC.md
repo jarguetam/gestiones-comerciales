@@ -21,7 +21,7 @@ farmacéuticas, microfinanzas, servicios). Solo cambia el vocabulario y los dato
 |---|-------|-----------|
 | G-1 | **Multi-tenant estricto** | `tenant_id` en toda tabla de negocio + RLS por JWT. Un rubro = un tenant (o N tenants del mismo rubro). |
 | G-2 | **Núcleo + módulos optativos** | El núcleo (personas, visitas, formularios, rastreo, notificaciones) es rubro-agnóstico. Lo específico del rubro vive en módulos que se activan por tenant (`tenant_modulo`). |
-| G-3 | **Configuración sobre código** | Catálogos, estados, horarios de rastreo, ventanas de jobs y formularios son **datos**, no constantes compiladas. Cero hardcodeo (lea §8 Mapeo legado). |
+| G-3 | **Configuración sobre código** | Catálogos, estados, horarios de rastreo, ventanas de jobs y formularios son **datos**, no constantes compiladas. Cero hardcodeos (lea §8 Mapeo legado). |
 
 ### 1.1 Núcleo vs. módulos
 
@@ -135,7 +135,7 @@ create table public.tenant (
   branding       jsonb not null default '{}',       -- {logo_url, color_primario, color_secundario, nombre_comercial, idioma}
   configuracion  jsonb not null default '{}',       -- zona horaria, moneda, formato documento, dominios_cors[]
   activo         boolean not null default true,
-  creado_en      timestamptz not null default now(),
+  creado_en       timestamptz not null default now(),
   actualizado_en timestamptz not null default now()
 );
 
@@ -669,7 +669,7 @@ create table public.kilometraje (
 | `estructura_comercial()` → `jsonb` | Árbol jerárquico listo para UI (gerente → supervisores → asesores) con KPIs resumidos por nodo. | — |
 | `visitas_del_dia(p_fecha date)` | Agenda del asesor autenticado con persona, actividad y estado. | `GET /api/Visits/ByUser...` |
 | `visita_checkin(id, ubicacion)` / `visita_checkout(id, ...)` | Transición de estado con validación de ventana y geocerca. | lógica embebida en la app |
-| `dashboard_asesor(p_fecha)` / `dashboard_supervisor(p_fecha)` | Agregados para el home (visitas totales/completadas, depósitos pendientes, km, cuentas en mora si el módulo está activo). | servicios de reporto .NET |
+| `dashboard_asesor(p_fecha)` / `dashboard_supervisor(p_fecha)` | Agregados para el home (visitas totales/completadas, depósitos pendientes, km, cuentas en mora si el módulo está activo). | servicios de reporte .NET |
 | `dashboard_gerente(p_fecha, p_supervisor_id default null)` | Consolidado del subárbol del gerente con drill-down opcional por supervisor (comparativa de equipos). | — |
 | `formulario_enviar(respuesta jsonb)` | Valida contra `plantilla.esquema`, calcula `resultado` y persiste. | `Prequal` service |
 | `deposito_confirmar(id)` | Transición validada (solo supervisor/admin). | endpoint .NET |
