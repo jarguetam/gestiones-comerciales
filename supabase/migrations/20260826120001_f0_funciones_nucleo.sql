@@ -165,7 +165,6 @@ set search_path = public
 as $$
 declare
   v_user uuid;
-  v_tenant_codigo text;
 begin
   if not (public.es_superadmin() or public.plataforma_puede_operar(p_tenant_id))
      and not ((auth.jwt() ->> 'rol') = 'admin' and (auth.jwt() ->> 'tenant_id')::uuid = p_tenant_id) then
