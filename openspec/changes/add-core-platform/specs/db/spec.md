@@ -57,3 +57,7 @@ El sistema SHALL soportar usuarios de plataforma (`usuario_plataforma`, con alca
 #### Scenario: Usuario de plataforma sin membresía intenta operar
 - **WHEN** un usuario de plataforma sin asignación al tenant X (y sin `es_superadmin`) invoca `admin_tenant_actualizar(X, ...)`
 - **THEN** la RPC rechaza la operación y queda auditada
+
+#### Scenario: Alta de empresa completa
+- **WHEN** la plataforma invoca `admin_tenant_crear` con nombre, rubro, plan y branding
+- **THEN** se crean tenant, tenant_modulo y seeds iniciales en una sola transacción
