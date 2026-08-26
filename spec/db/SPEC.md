@@ -135,7 +135,7 @@ create table public.tenant (
   branding       jsonb not null default '{}',       -- {logo_url, color_primario, color_secundario, nombre_comercial, idioma}
   configuracion  jsonb not null default '{}',       -- zona horaria, moneda, formato documento, dominios_cors[]
   activo         boolean not null default true,
-  creado_en       timestamptz not null default now(),
+  creado_en      timestamptz not null default now(),
   actualizado_en timestamptz not null default now()
 );
 
