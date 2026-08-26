@@ -20,7 +20,7 @@
 | F-6 | **Accesibilidad mínima** | WCAG 2.1 AA en web (contraste, focus visible, navegación teclado). |
 | F-7 | **Sin lógica de negocio** | El cliente valida formato, no reglas. Toda regla vive en RPC/Edge (spec backend §5). |
 
-## 2. Aplicación Web (admin/gerente/supervisor)
+## 2. Aplicación Web (admin/supervisor)
 
 Stack: **React 18 + TypeScript + Vite + React Router + TanStack Query + Tailwind + shadcn/ui**,
 `@supabase/supabase-js` como único cliente HTTP.
@@ -65,7 +65,12 @@ Stack: **React 18 + TypeScript + Vite + React Router + TanStack Query + Tailwind
 - **Theming multi-tenant:** `ThemeProvider` aplica `tenant.branding` (colores, logo, nombre comercial) en runtime; variables `VITE_` solo para URL de Supabase.
 - **i18n:** español por defecto; catálogos `locales/{es,en}/errors.json` para códigos `GC-*`.
 
-## 2b. Backoffice de plataforma (apps/backoffice) y límites del admin de empresa
+## 3. Aplicación Móvil (asesor de campo)
+
+Stack: **React Native + Expo + TypeScript**, React Navigation, MMKV/SQLite local, `expo-location`,
+`@supabase/supabase-js`, FCM (notifee) para push.
+
+### 2b. Backoffice de plataforma (apps/backoffice) y límites del admin de empresa
 
 Dos niveles de administración con fronteras claras:
 
@@ -91,11 +96,6 @@ Dos niveles de administración con fronteras claras:
 > El admin de empresa NO necesita el backoffice: todo lo suyo está en W-04 (clientes),
 > W-10 (config), W-11 (usuarios) y W-14 (mapa). La separación de apps evita que la UI de
 > plataforma contamine la experiencia del cliente de empresa.
-
-## 3. Aplicación Móvil (asesor de campo)
-
-Stack: **React Native + Expo + TypeScript**, React Navigation, MMKV/SQLite local, `expo-location`,
-`@supabase/supabase-js`, FCM (notifee) para push.
 
 ### 3.1 Boot y sesión
 
@@ -184,7 +184,7 @@ gestiones-comerciales/
 │   │   │   ├── lib/            # supabase client, i18n, theming, utils
 │   │   │   └── types/          # generados (supabase gen types)
 │   │   └── ...
-│   └── mobile/                 # Expo (asesor de campo)
+│   └── mobile/                 # Expo (agente de campo)
 │       ├── src/
 │       │   ├── app/            # navigation + guards
 │       │   ├── features/       # agenda, visita, formularios, solicitudes...
