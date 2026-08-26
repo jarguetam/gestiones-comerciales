@@ -19,25 +19,24 @@ Tres reglas de diseño:
 |---|-------|-----------|
 | G-1 | Multi-tenant estricto | `tenant_id` + RLS por claims del JWT. Un rubro = un tenant. |
 | G-1b | Jerarquía comercial | `asesor → supervisor → gerente` (`jefe_id` + `subordinados()` recursivo); alcance y drill-down por rol. |
-| G-2 | Núcleo + módulos optativos | Núcleo rubro-agnóstico; módulos (`crm`, `creditos`, `solicitudes`, `depositos`, `kilometraje`) activables por tenant. |
+| G-2 | Núcleo + módulos optativos | Núcleo rubro-agnóstico; módulos (`creditos`, `solicitudes`, `depositos`, `kilometraje`) activables por tenant. |
 | G-3 | Configuración sobre código | Catálogos, estados, ventanas de rastreo, formularios y branding son datos. Cero hardcodeos. |
 
 ## Índice de la especificación
 
-| Documento | Contenido |
-|---|---|---
-| [`spec/db/SPEC.md`](spec/db/SPEC.md) | Modelo de datos completo (DDL núcleo + módulos), RLS, RPCs, jobs pg_cron, mapeo legado, NFRs, migración |
-| [`spec/backend/SPEC.md`](spec/backend/SPEC.md) | Arquitectura (PostgREST+RPC+Edge), auth/MFA, matriz de permisos, contratos API, códigos GC-*, observabilidad, NFRs |
-| [`spec/frontend/SPEC.md`](spec/frontend/SPEC.md) | Web (React+Vite) y móvil (Expo RN), pantallas W-01..W-17 / M-01..M-12, design system multi-tenant, offline-first, testing |
-| [`openspec/changes/add-core-platform/`](openspec/changes/add-core-platform/) | Change OpenSpec: proposal, design (D1–D12), tasks y deltas de requisitos con escenarios |
+| Documento | Contenido | Líneas |
+|---|---|---|
+| [`spec/db/SPEC.md`](spec/db/SPEC.md) | Modelo de datos completo (DDL núcleo + módulos), RLS, RPCs, jobs pg_cron, mapeo legado, NFRs, migración | 635 |
+| [`spec/backend/SPEC.md`](spec/backend/SPEC.md) | Arquitectura (PostgREST+RPC+Edge), auth/MFA, matriz de permisos, contratos API, códigos GC-*, observabilidad, NFRs | 265 |
+| [`spec/frontend/SPEC.md`](spec/frontend/SPEC.md) | Web (React+Vite) y móvil (Expo RN), pantallas W-01..W-14 / M-01..M-10, design system multi-tenant, offline-first, testing | 209 |
+| [`openspec/changes/add-core-platform/`](openspec/changes/add-core-platform/) | Change OpenSpec: proposal, design (D1–D8), tasks y deltas de requisitos con escenarios | — |
 
 ## Mapa del producto
 
 ```
 NUCLEO (siempre activo)
 ├── tenant / modulo / tenant_modulo      → multi-rubro y feature flags
-├── usuario_plataforma (+tenant)         → backoffice global (superadmin/soporte)
-├── usuario / dispositivo                → identidad, jerarquía 4 roles, MFA
+├── usuario / dispositivo                → identidad, jerarquía, MFA
 ├── zona / departamento / municipio      → territorio y geografía
 ├── persona                              → clientes, prospectos, puntos de venta (ex cliente)
 ├── actividad / subactividad / visita    → agenda y gestión de campo
@@ -47,10 +46,10 @@ NUCLEO (siempre activo)
 
 MODULOS OPTATIVOS (por tenant)
 ├── crm          → lead / lead_estado / lead_actividad / lead_origen (embudo comercial)
-├── creditos     → cuenta / cuenta_saldo / movimiento / producto   (ex préstamos SIFCO)
-├── solicitudes  → solicitud / estado / archivo / firma            (ex cotización + firma)
-├── depositos    → deposito                                         (ex depósitos pendientes)
-└── kilometraje  → kilometraje                                      (ex km del mes)
+├── creditos    → cuenta / cuenta_saldo / movimiento / producto   (ex préstamos SIFCO)
+├── solicitudes → solicitud / estado / archivo / firma            (ex cotización + firma)
+├── depositos   → deposito
+└── kilometraje → kilometraje
 ```
 
 ## Cómo leerlo
@@ -59,7 +58,7 @@ MODULOS OPTATIVOS (por tenant)
 2. **Backend** (`spec/backend`): cómo se expone el modelo (composición, permisos, errores).
 3. **Frontend** (`spec/frontend`): cómo lo consumen web y móvil (pantallas, theming, offline).
 4. **OpenSpec change** (`openspec/changes/add-core-platform/`): si se usa el flujo OpenSpec,
-   `proposal.md` (por qué), `design.md` (decisiones D1–D12 con alternativas), `tasks.md`
+   `proposal.md` (por qué), `design.md` (decisiones D1–D8 con alternativas), `tasks.md`
    (backlog ejecutable), `specs/` (requisitos con escenarios WHEN/THEN).
 
 ## Stack resumido
@@ -80,7 +79,6 @@ MODULOS OPTATIVOS (por tenant)
 |---|---|
 | Repo | `jarguetam/gestiones-comerciales` (privado) |
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
-| Plan | GitHub Projects: [Gestiones Comerciales — Plan de Implementación](https://github.com/users/jarguetam/projects/1) (34 tareas, F0–F3) |
 | Fase actual | **F0 — Plataforma y backoffice global** |
 
 ### Quickstart
