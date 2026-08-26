@@ -11,7 +11,7 @@
 ## 1. Principios arquitectónicos
 
 | # | Principio | Aplicación |
-|---|---|---|
+|---|-----------|------------|
 | B-1 | **Backend como compose, no como servicio monolítico** | No hay API .NET. El backend se compone de: PostgREST (CRUD+RLS), RPC de Postgres (lógica transaccional) y Edge Functions (efectos externos). |
 | B-2 | **Cero integraciones externas obligatorias** | El legado dependía de SIFCO y Fortitoken. Aquí todo efecto externo (push, mail, PDF, ETL) es una Edge Function desacoplada con contrato propio. |
 | B-3 | **Multi-tenant por diseño** | `tenant_id` + JWT claims + RLS en 100% de tablas de negocio (ver spec DB §3). |
