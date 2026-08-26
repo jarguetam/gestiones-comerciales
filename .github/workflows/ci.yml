@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Validar migraciones SQL (sintaxis + forwards-only)
+        run: |
+          echo "Validando migraciones..."
+          ls supabase/migrations/*.sql | sort | awk -F/ '{print $NF}' > /tmp/migs
+          # orden cronológico estricto por timestamp
+          sort -c /tmp/migs || { echo "ERROR: migraciones fuera de orden"; exit 1; }
+          echo "OK: $(wc -l < /tmp/migs) migraciones en orden"
+
+      - name: Lint de Edge Functions (Deno)
+        run: |
+          if ls supabase/functions/*/index.ts >/dev/null 2>&1; then
+            for f in supabase/functions/*/index.ts; do
+              deno check "$f"
+            done
+          else
+            echo "Sin Edge Functions aún"
+          fi
+
+      - name: Placeholder apps (cuando existan)
+        run: echo "apps/* pendientes de scaffold en F1"
