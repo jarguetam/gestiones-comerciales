@@ -1,15 +1,26 @@
+import { useEffect, useState } from 'react'
+
 interface StatusBarProps {
   theme?: 'dark' | 'light'
 }
 
 export function StatusBar({ theme = 'dark' }: StatusBarProps) {
+  const [hora, setHora] = useState(() => new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit', hour12: false }))
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setHora(new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit', hour12: false }))
+    }, 30000)
+    return () => clearInterval(t)
+  }, [])
+
   const isLight = theme === 'light'
   const textColor = isLight ? 'text-white' : 'text-slate-900'
   const iconColor = isLight ? 'fill-white text-white' : 'fill-slate-900 text-slate-900'
 
   return (
     <div className={`flex items-center justify-between px-6 pt-3 pb-1 text-xs font-semibold select-none ${textColor}`}>
-      <span className="tracking-tight text-[13px]">10:24</span>
+      <span className="tracking-tight text-[13px]">{hora}</span>
       <div className="flex items-center space-x-1.5">
         {/* Signal bars */}
         <svg className={`w-3.5 h-3 ${iconColor}`} viewBox="0 0 16 14" fill="currentColor">

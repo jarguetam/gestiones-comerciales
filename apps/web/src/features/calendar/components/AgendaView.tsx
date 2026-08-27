@@ -26,6 +26,18 @@ export function AgendaView({
   onNavigateTab,
   embedded = false,
 }: AgendaViewProps) {
+  const rangoMeses = useMemo(() => {
+    if (events.length === 0) return ''
+    const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const sorted = [...events].map((e) => e.date).sort()
+    const a = new Date(sorted[0])
+    const b = new Date(sorted[sorted.length - 1])
+    if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) {
+      return meses[a.getMonth()]
+    }
+    return `${meses[a.getMonth()]}- ${meses[b.getMonth()]}`
+  }, [events])
+
   const grouped = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>()
     const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
@@ -59,7 +71,9 @@ export function AgendaView({
       <div className="px-6 pt-5 pb-3">
         <h1 className="text-2xl font-serif text-slate-900 tracking-tight flex items-baseline gap-2">
           <span className="font-normal font-sans text-xl text-slate-800">2026</span>
-          <span className="italic font-serif text-[26px] font-normal text-slate-900">Sep- Dec</span>
+          <span className="italic font-serif text-[26px] font-normal text-slate-900">
+            {rangoMeses}
+          </span>
         </h1>
       </div>
 

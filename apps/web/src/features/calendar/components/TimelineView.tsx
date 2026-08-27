@@ -14,6 +14,11 @@ interface TimelineViewProps {
   embedded?: boolean
 }
 
+const MONTHS_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
 const WEEK_DAYS = [
   { label: 'M', date: '2026-09-13', num: 13 },
   { label: 'T', date: '2026-09-14', num: 14 },
@@ -89,9 +94,11 @@ export function TimelineView({
             </svg>
           </button>
 
-          {/* Month Title */}
+          {/* Month Title — derivado de la fecha seleccionada */}
           <h2 className="text-2xl font-serif italic text-white tracking-wide font-normal">
-            September
+            {MONTHS_ES[
+              Math.max(0, Math.min(11, parseInt(selectedDate.split('-')[1] || '9', 10) - 1))
+            ]}
           </h2>
 
           {/* Options Menu */}
@@ -208,7 +215,7 @@ export function TimelineView({
                     onClick={onOpenNewEvent}
                     className="w-full h-8 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-purple-50/50 flex items-center px-3 text-[11px] text-brand-600 transition-opacity"
                   >
-                    + Agregar visita / evento a las {slot.label} {slot.ampm}
+                    + Programar visita a las {slot.label} {slot.ampm}
                   </button>
                 )}
               </div>
