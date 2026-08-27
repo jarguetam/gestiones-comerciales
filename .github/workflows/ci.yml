@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
   security:
@@ -105,8 +107,49 @@ jobs:
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
 
-# Nota deploy: GitHub Pages no está disponible en el plan actual del repo (privado).
-# Los builds (apps/web, apps/backoffice) son estáticos con base './' y HashRouter:
-# se sirven desde cualquier hosting (Vercel/Netlify/S3/Cloudflare) sin configuración extra.
-# Al habilitar Pages o migrar el repo a un plan con soporte, re-agregar el job 'deploy'
-# (ver historial del commit 17d6242).
+  deploy:
+    name: Despliegue en GitHub Pages
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Instalar dependencias
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build web + backoffice
+        run: |
+          pnpm --filter @gc/web build
+          pnpm --filter @gc/backoffice build
+
+      - name: Preparar artefactos estáticos
+        run: |
+          mkdir -p _site/web _site/backoffice
+          cp -r apps/web/dist/* _site/web/
+          cp -r apps/backoffice/dist/* _site/backoffice/
+          # Raíz: la aplicación principal de agenda y calendario con todas sus vistas
+          cp -r apps/web/dist/* _site/
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir artefacto para Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Desplegar a GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
