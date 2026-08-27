@@ -16,6 +16,7 @@ export function EmpresaApp() {
   const [eventos, setEventos] = useState<CalendarEvent[]>(INITIAL_EVENTS)
   const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_LEADS)
+  const [modulos, setModulos] = useState<string[]>(['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje'])
   const [modalAbierto, setModalAbierto] = useState(false)
   const [personaInicial, setPersonaInicial] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -31,6 +32,7 @@ export function EmpresaApp() {
         setPersonas(d.personas)
         setEventos(d.eventos)
         setLeads(d.leads)
+        setModulos(d.modulos)
       })
       .finally(() => {
         if (vivo) setCargando(false)
@@ -79,13 +81,14 @@ export function EmpresaApp() {
       eventos,
       personas,
       leads,
+      modulos,
       setEventos,
       setPersonas,
       setLeads,
       abrirNuevaVisita,
       convertirLead: handleConvertLead,
     }),
-    [fuente, tenantNombre, aviso, eventos, personas, leads]
+    [fuente, tenantNombre, aviso, eventos, personas, leads, modulos]
   )
 
   if (cargando) {
@@ -102,6 +105,7 @@ export function EmpresaApp() {
         tenantNombre={tenantNombre}
         fuente={fuente}
         aviso={aviso}
+        modulos={modulos}
         onNuevaVisita={() => abrirNuevaVisita()}
       >
         <Outlet />

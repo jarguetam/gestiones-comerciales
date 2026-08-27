@@ -12,6 +12,7 @@ export interface DominioState {
   eventos: CalendarEvent[]
   personas: PersonaItem[]
   leads: LeadItem[]
+  modulos: string[]
   setEventos: (eventos: CalendarEvent[]) => void
   setPersonas: (personas: PersonaItem[]) => void
   setLeads: (leads: LeadItem[]) => void

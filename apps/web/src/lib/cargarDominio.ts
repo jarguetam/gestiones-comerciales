@@ -12,8 +12,11 @@ export interface DominioCargado {
   personas: PersonaItem[]
   eventos: CalendarEvent[]
   leads: LeadItem[]
+  modulos: string[]
   aviso?: string
 }
+
+const MODULOS_DEMO = ['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje']
 
 const CATEGORIAS: CalendarEvent['category'][] = ['amber', 'lavender', 'mint', 'rose', 'sky']
 
@@ -32,11 +35,12 @@ export async function cargarDominio(): Promise<DominioCargado> {
       personas: INITIAL_PERSONAS,
       eventos: INITIAL_EVENTS,
       leads: INITIAL_LEADS,
+      modulos: MODULOS_DEMO,
     }
   }
 
   try {
-    const [tenantRes, personaRes, visitaRes, leadRes] = await Promise.all([
+    const [tenantRes, personaRes, visitaRes, leadRes, moduloRes] = await Promise.all([
       supabase.from('tenant').select('nombre').limit(1).maybeSingle(),
       supabase
         .from('persona')
@@ -58,9 +62,19 @@ export async function cargarDominio(): Promise<DominioCargado> {
         )
         .order('creado_en', { ascending: false })
         .limit(300),
+      supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
     ])
 
     const error = tenantRes.error || personaRes.error || visitaRes.error || leadRes.error
+    const modulos = ((moduloRes.data ?? []) as Array<{
+      activo: boolean
+      modulo: { codigo?: string } | { codigo?: string }[] | null
+    }>)
+      .map((row) => {
+        const m = Array.isArray(row.modulo) ? row.modulo[0] : row.modulo
+        return m?.codigo
+      })
+      .filter((c): c is string => !!c)
     const personasDb = (personaRes.data ?? []) as Array<{
       id: number | string
       nombre: string
@@ -100,6 +114,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
         personas: INITIAL_PERSONAS,
         eventos: INITIAL_EVENTS,
         leads: INITIAL_LEADS,
+        modulos: modulos.length > 0 ? modulos : MODULOS_DEMO,
         aviso: error
           ? `Sin datos de tenant todavía (${error.message}). Mostrando cartera de demostración.`
           : 'El tenant no tiene visitas, personas ni leads. Mostrando cartera de demostración.',
@@ -159,6 +174,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
       personas: personas.length > 0 ? personas : INITIAL_PERSONAS,
       eventos: eventos.length > 0 ? eventos : INITIAL_EVENTS,
       leads: leads.length > 0 ? leads : INITIAL_LEADS,
+      modulos,
     }
   } catch (err) {
     return {
@@ -167,6 +183,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
       personas: INITIAL_PERSONAS,
       eventos: INITIAL_EVENTS,
       leads: INITIAL_LEADS,
+      modulos: MODULOS_DEMO,
       aviso: err instanceof Error ? err.message : 'No se pudo cargar el dominio',
     }
   }

@@ -3,7 +3,9 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { DEMO_MODE, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 
-const NAV = [
+type NavItem = { to: string; label: string; end?: boolean; codigo?: string }
+
+const CORE_NAV: NavItem[] = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/visitas', label: 'Visitas' },
   { to: '/personas', label: 'Personas' },
@@ -11,18 +13,30 @@ const NAV = [
   { to: '/notificaciones', label: 'Notificaciones' },
 ]
 
+const MODULOS_NAV: NavItem[] = [
+  { to: '/solicitudes', label: 'Solicitudes', codigo: 'solicitudes' },
+  { to: '/depositos', label: 'Depósitos', codigo: 'depositos' },
+  { to: '/cuentas', label: 'Cuentas', codigo: 'creditos' },
+  { to: '/kilometraje', label: 'Kilometraje', codigo: 'kilometraje' },
+]
+
 interface AppShellProps {
   tenantNombre: string
   fuente: 'demo' | 'supabase'
   aviso?: string
+  modulos?: string[]
   onNuevaVisita: () => void
   children: ReactNode
 }
 
-export function AppShell({ tenantNombre, fuente, aviso, onNuevaVisita, children }: AppShellProps) {
+export function AppShell({ tenantNombre, fuente, aviso, modulos = [], onNuevaVisita, children }: AppShellProps) {
   const { session, demo } = useAuth()
   const navigate = useNavigate()
   const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
+  const nav = [
+    ...CORE_NAV,
+    ...MODULOS_NAV.filter((item) => DEMO_MODE || modulos.includes(item.codigo)),
+  ]
 
   async function cerrarSesion() {
     if (!DEMO_MODE) await supabase.auth.signOut()
@@ -38,7 +52,7 @@ export function AppShell({ tenantNombre, fuente, aviso, onNuevaVisita, children 
           <p className="mt-2 text-xs text-slate-400 truncate">{tenantNombre}</p>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Principal">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -68,7 +82,7 @@ export function AppShell({ tenantNombre, fuente, aviso, onNuevaVisita, children 
             <p className="text-sm font-semibold truncate max-w-[12rem]">{tenantNombre}</p>
           </div>
           <nav className="flex md:hidden gap-1 overflow-x-auto" aria-label="Móvil">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
