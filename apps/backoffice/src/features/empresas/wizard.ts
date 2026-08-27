@@ -42,6 +42,7 @@ export interface WizardState {
   modulos: string[]
   adminEmail: string
   adminNombre: string
+  adminPassword: string
 }
 
 export const wizardInicial: WizardState = {
@@ -54,6 +55,7 @@ export const wizardInicial: WizardState = {
   modulos: [],
   adminEmail: '',
   adminNombre: '',
+  adminPassword: '',
 }
 
 export function validarPaso1(w: WizardState): string | null {
@@ -80,6 +82,7 @@ export function validarPaso3(w: WizardState): string | null {
 
 export function validarPaso4(w: WizardState): string | null {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(w.adminEmail)) return 'Email del administrador inválido.'
+  if (w.adminPassword.length < 8) return 'La contraseña del administrador debe tener al menos 8 caracteres.'
   return null
 }
 

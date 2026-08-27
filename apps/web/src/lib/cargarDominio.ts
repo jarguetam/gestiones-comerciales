@@ -1,8 +1,9 @@
 import type { CalendarEvent } from '../features/calendar/types'
-import { INITIAL_EVENTS } from '../features/calendar/eventsData'
+import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_EVENTS } from '../features/calendar/eventsData'
 import { INITIAL_PERSONAS, type PersonaItem } from '../features/calendar/personasData'
 import { INITIAL_LEADS, type LeadItem } from '../features/calendar/leadsData'
 import { DEMO_MODE, supabase } from './supabase'
+import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from './catalogos'
 
 export type FuenteDominio = 'demo' | 'supabase'
 
@@ -12,8 +13,19 @@ export interface DominioCargado {
   personas: PersonaItem[]
   eventos: CalendarEvent[]
   leads: LeadItem[]
+  modulos: string[]
+  catalogos: CatalogoActividad[]
+  horas: CatalogoHora[]
+  zonas: ZonaCatalogo[]
+  geo: GeoDefaults
   aviso?: string
 }
+
+const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
+
+const ZONAS_DEMO: ZonaCatalogo[] = [{ id: 1, codigo: 'Z1', nombre: 'Zona Centro', activo: true }]
+
+const MODULOS_DEMO = ['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje']
 
 const CATEGORIAS: CalendarEvent['category'][] = ['amber', 'lavender', 'mint', 'rose', 'sky']
 
@@ -32,11 +44,17 @@ export async function cargarDominio(): Promise<DominioCargado> {
       personas: INITIAL_PERSONAS,
       eventos: INITIAL_EVENTS,
       leads: INITIAL_LEADS,
+      modulos: MODULOS_DEMO,
+      catalogos: CATALOGO_ACTIVIDADES,
+      horas: CATALOGO_HORAS,
+      zonas: ZONAS_DEMO,
+      geo: { zonaId: 1, departamentoId: 1, municipioId: 1, horaDefaultId: 2 },
     }
   }
 
   try {
-    const [tenantRes, personaRes, visitaRes, leadRes] = await Promise.all([
+    const [tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
+      await Promise.all([
       supabase.from('tenant').select('nombre').limit(1).maybeSingle(),
       supabase
         .from('persona')
@@ -58,9 +76,41 @@ export async function cargarDominio(): Promise<DominioCargado> {
         )
         .order('creado_en', { ascending: false })
         .limit(300),
+      supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
+      supabase.from('actividad').select('id, nombre, activo').eq('activo', true).order('nombre'),
+      supabase.from('sub_actividad').select('id, actividad_id, nombre, activo').eq('activo', true).order('nombre'),
+      supabase.from('actividad_hora').select('id, nombre, cantidad, activo').eq('activo', true).order('cantidad'),
+      supabase.from('zona').select('id, codigo, nombre, activo').eq('activo', true).order('nombre'),
+      supabase.from('departamento').select('id').limit(1).maybeSingle(),
+      supabase.from('municipio').select('id').limit(1).maybeSingle(),
     ])
 
+    const subsDb = (subRes.data ?? []) as Array<{ id: number; actividad_id: number; nombre: string; activo: boolean }>
+    const catalogos: CatalogoActividad[] = ((actRes.data ?? []) as Array<{ id: number; nombre: string; activo: boolean }>).map(
+      (a) => ({
+        ...a,
+        sub_actividades: subsDb.filter((s) => s.actividad_id === a.id),
+      }),
+    )
+    const horas: CatalogoHora[] = (horaRes.data ?? []) as CatalogoHora[]
+    const zonas: ZonaCatalogo[] = (zonaRes.data ?? []) as ZonaCatalogo[]
+    const geo: GeoDefaults = {
+      zonaId: zonas[0]?.id ?? null,
+      departamentoId: (deptoRes.data as { id?: number } | null)?.id ?? null,
+      municipioId: (muniRes.data as { id?: number } | null)?.id ?? null,
+      horaDefaultId: horas[0]?.id ?? null,
+    }
+
     const error = tenantRes.error || personaRes.error || visitaRes.error || leadRes.error
+    const modulos = ((moduloRes.data ?? []) as Array<{
+      activo: boolean
+      modulo: { codigo?: string } | { codigo?: string }[] | null
+    }>)
+      .map((row) => {
+        const m = Array.isArray(row.modulo) ? row.modulo[0] : row.modulo
+        return m?.codigo
+      })
+      .filter((c): c is string => !!c)
     const personasDb = (personaRes.data ?? []) as Array<{
       id: number | string
       nombre: string
@@ -100,6 +150,11 @@ export async function cargarDominio(): Promise<DominioCargado> {
         personas: INITIAL_PERSONAS,
         eventos: INITIAL_EVENTS,
         leads: INITIAL_LEADS,
+        modulos: modulos.length > 0 ? modulos : MODULOS_DEMO,
+        catalogos: catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES,
+        horas: horas.length > 0 ? horas : CATALOGO_HORAS,
+        zonas: zonas.length > 0 ? zonas : ZONAS_DEMO,
+        geo,
         aviso: error
           ? `Sin datos de tenant todavía (${error.message}). Mostrando cartera de demostración.`
           : 'El tenant no tiene visitas, personas ni leads. Mostrando cartera de demostración.',
@@ -159,6 +214,11 @@ export async function cargarDominio(): Promise<DominioCargado> {
       personas: personas.length > 0 ? personas : INITIAL_PERSONAS,
       eventos: eventos.length > 0 ? eventos : INITIAL_EVENTS,
       leads: leads.length > 0 ? leads : INITIAL_LEADS,
+      modulos,
+      catalogos: catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES,
+      horas: horas.length > 0 ? horas : CATALOGO_HORAS,
+      zonas: zonas.length > 0 ? zonas : ZONAS_DEMO,
+      geo,
     }
   } catch (err) {
     return {
@@ -167,6 +227,11 @@ export async function cargarDominio(): Promise<DominioCargado> {
       personas: INITIAL_PERSONAS,
       eventos: INITIAL_EVENTS,
       leads: INITIAL_LEADS,
+      modulos: MODULOS_DEMO,
+      catalogos: CATALOGO_ACTIVIDADES,
+      horas: CATALOGO_HORAS,
+      zonas: ZONAS_DEMO,
+      geo: GEO_VACIO,
       aviso: err instanceof Error ? err.message : 'No se pudo cargar el dominio',
     }
   }

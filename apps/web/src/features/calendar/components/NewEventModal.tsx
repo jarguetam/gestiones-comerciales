@@ -2,15 +2,20 @@ import { useMemo, useState } from 'react'
 import type { CalendarEvent, EventCategory } from '../types'
 import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_ATTENDEES } from '../eventsData'
 import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
+import type { CatalogoActividad, CatalogoHora } from '../../../lib/catalogos'
 
 interface NewEventModalProps {
   onClose: () => void
-  onSave: (event: CalendarEvent) => void
-  onSavePersona?: (persona: PersonaItem) => void
+  onSave: (event: CalendarEvent) => void | Promise<void>
+  onSavePersona?: (persona: PersonaItem) => void | Promise<PersonaItem | void>
   initialDate?: string
   initialPersonaName?: string
   cartera?: PersonaItem[]
+  catalogos?: CatalogoActividad[]
+  horas?: CatalogoHora[]
 }
+
+const CATEGORIAS: EventCategory[] = ['amber', 'lavender', 'mint', 'rose', 'sky']
 
 /**
  * Mapping visual entre actividad del catálogo y la paleta de acentos del template.
@@ -31,14 +36,18 @@ export function NewEventModal({
   initialDate = '2026-09-17',
   initialPersonaName = '',
   cartera,
+  catalogos,
+  horas,
 }: NewEventModalProps) {
+  const catalogo = catalogos && catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES
+  const catalogoHoras = horas && horas.length > 0 ? horas : CATALOGO_HORAS
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(initialDate)
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:30')
   const [actividadId, setActividadId] = useState<number | ''>('')
   const [subActividadId, setSubActividadId] = useState<number | ''>('')
-  const [horaId, setHoraId] = useState<number>(2) // 1 hora
+  const [horaId, setHoraId] = useState<number>(catalogoHoras[0]?.id ?? 2)
   const [location, setLocation] = useState('')
   const [videoCall, setVideoCall] = useState('')
   const [notes, setNotes] = useState('')
@@ -56,10 +65,11 @@ export function NewEventModal({
   const [nuevaDireccion, setNuevaDireccion] = useState('')
   const [errorPersona, setErrorPersona] = useState('')
   const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   const actividadSeleccionada = useMemo(
-    () => CATALOGO_ACTIVIDADES.find((a) => a.id === actividadId),
-    [actividadId]
+    () => catalogo.find((a) => a.id === actividadId),
+    [catalogo, actividadId]
   )
   const subActividadSeleccionada = useMemo(
     () => actividadSeleccionada?.sub_actividades.find((sa) => sa.id === subActividadId),
@@ -75,7 +85,7 @@ export function NewEventModal({
   const personaSeleccionada = personas.find((p) => p.nombre === personaId)
 
   /** Registra un nuevo cliente en la cartera y lo selecciona para la visita. */
-  function handleRegistrarPersona(e: React.FormEvent) {
+  async function handleRegistrarPersona(e: React.FormEvent) {
     e.preventDefault()
     setErrorPersona('')
 
@@ -98,21 +108,24 @@ export function NewEventModal({
       direccion: nuevaDireccion.trim() || '—',
       visitasPendientes: 1,
     }
-    setPersonas((prev) => [...prev, nueva])
-    setPersonaId(nueva.nombre)
-    onSavePersona?.(nueva)
-    setMostrarAlta(false)
-    setNuevoNombre('')
-    setNuevoDocumento('')
-    setNuevoTelefono('')
-    setNuevaDireccion('')
-    // Autocompleta la dirección de la visita con la del nuevo cliente
-    if (nueva.direccion !== '—' && !location.trim()) {
-      setLocation(nueva.direccion)
+    try {
+      const guardada = (await onSavePersona?.(nueva)) ?? nueva
+      setPersonas((prev) => [...prev, guardada])
+      setPersonaId(guardada.nombre)
+      setMostrarAlta(false)
+      setNuevoNombre('')
+      setNuevoDocumento('')
+      setNuevoTelefono('')
+      setNuevaDireccion('')
+      if (guardada.direccion !== '—' && !location.trim()) {
+        setLocation(guardada.direccion)
+      }
+    } catch (err) {
+      setErrorPersona(err instanceof Error ? err.message : 'No se pudo registrar el cliente')
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     if (actividadId === '') {
@@ -138,7 +151,7 @@ export function NewEventModal({
       date,
       startTime,
       endTime,
-      category: ACTIVIDAD_CATEGORIA[Number(actividadId)] ?? 'lavender',
+      category: ACTIVIDAD_CATEGORIA[Number(actividadId)] ?? CATEGORIAS[Number(actividadId) % CATEGORIAS.length],
       location: location.trim() || undefined,
       videoCall: videoCall.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -147,11 +160,20 @@ export function NewEventModal({
       personaName: personaSeleccionada?.nombre,
       actividadId: Number(actividadId),
       subActividadId: Number(subActividadId),
+      actividadHoraId: horaId,
       estado: 'programada',
       attendees: INITIAL_ATTENDEES.slice(0, 2),
     }
-    onSave(newEv)
-    onClose()
+    setGuardando(true)
+    setError('')
+    try {
+      await onSave(newEv)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la visita')
+    } finally {
+      setGuardando(false)
+    }
   }
 
   return (
@@ -185,7 +207,7 @@ export function NewEventModal({
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
             >
               <option value="">— Selecciona el tipo de actividad —</option>
-              {CATALOGO_ACTIVIDADES.map((a) => (
+              {catalogo.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.nombre}
                 </option>
@@ -227,7 +249,7 @@ export function NewEventModal({
               onChange={(e) => setHoraId(Number(e.target.value))}
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
             >
-              {CATALOGO_HORAS.map((h) => (
+              {catalogoHoras.map((h) => (
                 <option key={h.id} value={h.id}>
                   {h.nombre}
                 </option>
@@ -345,7 +367,7 @@ export function NewEventModal({
               </>
             ) : (
               <form
-                onSubmit={handleRegistrarPersona}
+                onSubmit={(e) => void handleRegistrarPersona(e)}
                 className="space-y-2 rounded-xl border border-dashed border-brand-300 bg-purple-50/40 p-3"
               >
                 <input
@@ -474,9 +496,10 @@ export function NewEventModal({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-xl shadow-md transition-all"
+              disabled={guardando}
+              className="px-5 py-2 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-xl shadow-md transition-all disabled:opacity-50"
             >
-              Guardar visita
+              {guardando ? 'Guardando…' : 'Guardar visita'}
             </button>
           </div>
         </form>

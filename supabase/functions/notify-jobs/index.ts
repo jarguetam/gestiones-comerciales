@@ -10,6 +10,9 @@
  * Jobs:
  *  - recordatorio_agenda: push a cada asesor con sus visitas programadas de
  *    mañana (hora Guatemala). Degrada a in-app si el asesor no tiene dispositivo.
+ *  - recordatorio_depositos: RPC SQL, solo tenants con módulo depositos.
+ *  - recordatorio_kilometraje: RPC SQL, último día del mes (guarda en SQL).
+ *  - snapshot_cuentas: RPC SQL, corte diario de cuenta_saldo (módulo creditos).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { json, handleOptions } from "../_shared/cors.ts";
@@ -38,13 +41,20 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const job = body?.job ?? "recordatorio_agenda";
-    if (job !== "recordatorio_agenda") {
+    const jobsSql: string[] = ["recordatorio_depositos", "recordatorio_kilometraje", "snapshot_cuentas"];
+    if (job !== "recordatorio_agenda" && !jobsSql.includes(job)) {
       return json({ error: `GC-JOBS-012: job desconocido '${job}'` }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    if (jobsSql.includes(job)) {
+      const { data, error } = await supabase.rpc(job);
+      if (error) return json({ error: `GC-JOBS-013: ${error.message}` }, 500);
+      return json({ job, resultado: data, tenants_procesados: null });
+    }
 
     const { data: tenants, error: errTenants } = await supabase
       .from("tenant")

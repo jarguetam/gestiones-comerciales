@@ -33,8 +33,9 @@
 - [x] 2.5 Tests: transiciones inválidas, conversión idempotente, duplicados por teléfono. *(pgTAP: supabase/tests/004_crm_leads.sql — 11 casos: dedupe teléfono, avance válido, retroceso asesor rechazado / supervisor permitido, perdido sin/con motivo, ganado dispara conversión, idempotencia de conversión, convertido no retrocede, crm_funnel agrega)*
 
 ## FASE 3 — Módulos de rubro (mini-proyectos 4..n, por tenant)
-- [ ] 3.1 creditos: producto, cuenta, cuenta_saldo, movimiento + ingesta snapshot (pg_cron).
-- [ ] 3.2 solicitudes: solicitud, estado, archivo, firma + Edge pdf-solicitud.
-- [ ] 3.3 depositos: deposito + deposito_confirmar + recordatorios.
-- [ ] 3.4 kilometraje: kilometraje + km_registrar + recordatorio fin de mes.
-- [ ] 3.5 Pantallas web/móvil de cada módulo (W-06..W-09, M-06/M-07) activables por tenant.
+- [x] 3.1 creditos: producto, cuenta, cuenta_saldo, movimiento + ingesta snapshot (pg_cron).
+- [x] 3.2 solicitudes: solicitud, estado, archivo, firma + Edge pdf-solicitud.
+- [x] 3.3 depositos: deposito + deposito_confirmar + recordatorios.
+- [x] 3.4 kilometraje: kilometraje + km_registrar + recordatorio fin de mes.
+- [x] 3.5 Pantallas web/móvil de cada módulo (W-06..W-09, M-06/M-07) activables por tenant.
+- [ ] 3.6 Pendiente: Edge `importer` extendido (personas/cuentas/catálogos) y `webhook-tenant` HMAC (cola `integraciones`). No bloquea F3.1–3.5.

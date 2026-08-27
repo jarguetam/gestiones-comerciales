@@ -26,6 +26,7 @@ export interface CalendarEvent {
   /** Catálogo actividad → sub_actividad (tabla visita, F1.2) */
   actividadId?: number
   subActividadId?: number
+  actividadHoraId?: number
   /** Máquina de estados de la visita: programada → completada → aprobada/rechazada; anulada */
   estado?: 'programada' | 'completada' | 'aprobada' | 'rechazada' | 'anulada'
   checkinGps?: {

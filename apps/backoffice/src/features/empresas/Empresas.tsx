@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { WizardEmpresa } from './WizardEmpresa'
 import type { TenantRow } from './types'
 
 export function Empresas() {
-  const { session, demo } = useAuth()
-  const email = session?.user?.email ?? (demo ? 'demo@preview' : '—')
+  const { demo } = useAuth()
   const [tenants, setTenants] = useState<TenantRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -32,84 +32,70 @@ export function Empresas() {
   }, [cargar])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-slate-900 shadow">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <h1 className="text-xl font-bold text-white">GC Platform — Empresas</h1>
-          <span className="text-sm text-slate-300">{email}</span>
+    <main className="mx-auto max-w-7xl p-4">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">P-02</p>
+          <h2 className="text-2xl font-bold text-slate-900">Empresas</h2>
         </div>
-      </header>
-      <main className="mx-auto max-w-7xl p-4">
-        {demo && (
-          <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            Preview estático F1 — las empresas se administran vía RPC admin_* al conectar el backend.
-          </p>
-        )}
-        {error && (
-          <p className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
-        )}
-        <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setWizardOpen(true)}
-            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-          >
-            + Nueva empresa
-          </button>
-        </div>
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Empresa</th>
-                <th className="px-4 py-3">Rubro</th>
-                <th className="px-4 py-3">Plan</th>
-                <th className="px-4 py-3">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {tenants === null ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Cargando…</td></tr>
-              ) : tenants.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Sin empresas todavía. Creá la primera con el wizard.</td></tr>
-              ) : (
-                tenants.map((t) => (
-                  <Fila key={t.id} nombre={t.nombre} rubro={t.rubro} plan={t.plan} estado={t.activo ? 'activa' : 'suspendida'} />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
+        <button
+          type="button"
+          onClick={() => setWizardOpen(true)}
+          className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+        >
+          + Nueva empresa
+        </button>
+      </div>
+      {demo && (
+        <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+          Preview estático — abrí una fila para ver detalle (P-03) y usuarios (P-04).
+        </p>
+      )}
+      {error && (
+        <p className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      )}
+      <div className="overflow-hidden rounded-lg bg-white shadow">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Empresa</th>
+              <th className="px-4 py-3">Rubro</th>
+              <th className="px-4 py-3">Plan</th>
+              <th className="px-4 py-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {tenants === null ? (
+              <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Cargando…</td></tr>
+            ) : tenants.length === 0 ? (
+              <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Sin empresas todavía. Creá la primera con el wizard.</td></tr>
+            ) : (
+              tenants.map((t) => (
+                <tr key={t.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    <Link to={`/empresas/${t.id}`} className="text-teal-800 hover:underline">
+                      {t.nombre}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">{t.rubro}</td>
+                  <td className="px-4 py-3">{t.plan}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                      {t.activo ? 'activa' : 'suspendida'}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
       {wizardOpen && (
         <WizardEmpresa
           onClose={() => setWizardOpen(false)}
           onCreated={() => { setWizardOpen(false); void cargar() }}
         />
       )}
-    </div>
-  )
-}
-
-function Fila({
-  nombre,
-  rubro,
-  plan,
-  estado,
-}: {
-  nombre: string
-  rubro: string
-  plan: string
-  estado: string
-}) {
-  return (
-    <tr>
-      <td className="px-4 py-3 font-medium text-slate-800">{nombre}</td>
-      <td className="px-4 py-3">{rubro}</td>
-      <td className="px-4 py-3">{plan}</td>
-      <td className="px-4 py-3">
-        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{estado}</span>
-      </td>
-    </tr>
+    </main>
   )
 }

@@ -43,13 +43,18 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
 
       // 2) invitar al primer admin de la empresa (el auth user debe existir)
       if (w.adminEmail.trim()) {
-        const { error: invError } = await supabase.rpc('admin_usuario_invitar', {
-          p_tenant_id: tenantId,
-          p_email: w.adminEmail.trim(),
-          p_rol: 'admin',
-          p_nombre: w.adminNombre.trim() || w.adminEmail.trim(),
+        const { data: invited, error: invError } = await supabase.functions.invoke('invitar-usuario', {
+          body: {
+            tenant_id: tenantId,
+            email: w.adminEmail.trim(),
+            nombre: w.adminNombre.trim() || w.adminEmail.trim(),
+            rol: 'admin',
+            password: w.adminPassword,
+          },
         })
         if (invError) throw invError
+        const invitado = invited as { error?: string } | null
+        if (invitado?.error) throw new Error(invitado.error)
       }
 
       onCreated(tenantId)
@@ -158,8 +163,7 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
           {w.paso === 4 && (
             <>
               <p className="text-sm text-slate-600">
-                Se invitará al primer administrador de la empresa. El usuario de auth debe existir
-                previamente (creado vía Edge Function con service_role).
+                Se creará el usuario de autenticación y el primer administrador de la empresa.
               </p>
               <label className="mt-4 block text-sm font-medium text-slate-700">Email del administrador</label>
               <input type="email" value={w.adminEmail} onChange={(e) => set('adminEmail', e.target.value)}
@@ -169,6 +173,10 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
               <input type="text" value={w.adminNombre} onChange={(e) => set('adminNombre', e.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 placeholder="María Pérez" autoComplete="name" />
+              <label className="mt-4 block text-sm font-medium text-slate-700">Contraseña inicial</label>
+              <input type="password" value={w.adminPassword} onChange={(e) => set('adminPassword', e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                placeholder="mínimo 8 caracteres" autoComplete="new-password" />
             </>
           )}
 

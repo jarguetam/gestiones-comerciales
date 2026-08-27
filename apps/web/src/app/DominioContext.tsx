@@ -4,6 +4,7 @@ import type { CalendarEvent } from '../features/calendar/types'
 import type { PersonaItem } from '../features/calendar/personasData'
 import type { LeadItem } from '../features/calendar/leadsData'
 import type { FuenteDominio } from '../lib/cargarDominio'
+import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from '../lib/catalogos'
 
 export interface DominioState {
   fuente: FuenteDominio
@@ -12,6 +13,11 @@ export interface DominioState {
   eventos: CalendarEvent[]
   personas: PersonaItem[]
   leads: LeadItem[]
+  modulos: string[]
+  catalogos: CatalogoActividad[]
+  horas: CatalogoHora[]
+  zonas: ZonaCatalogo[]
+  geo: GeoDefaults
   setEventos: (eventos: CalendarEvent[]) => void
   setPersonas: (personas: PersonaItem[]) => void
   setLeads: (leads: LeadItem[]) => void
