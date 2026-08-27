@@ -47,6 +47,10 @@ policy = "per_worker"
 [functions.pdf-solicitud]
 verify_jwt = true
 
+# invitar-usuario: JWT del admin; crea auth user con service_role
+[functions.invitar-usuario]
+verify_jwt = true
+
 # notify-jobs se autentica con secret compartido (x-notify-secret), no con JWT
 [functions.notify-jobs]
 verify_jwt = false
