@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "587366358819",
+    "project_id": "gestiones-comerciales-d477f",
+    "storage_bucket": "gestiones-comerciales-d477f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:587366358819:android:d00cdc6551b724fe623696",
+        "android_client_info": {
+          "package_name": "com.gc.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJVMxJI-B3Fr6fmLKP_3rBj9bmUz_UvUU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
