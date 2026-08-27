@@ -43,6 +43,10 @@ enabled = true
 enabled = true
 policy = "per_worker"
 
+# pdf-solicitud se autentica con JWT del usuario (firma + PDF)
+[functions.pdf-solicitud]
+verify_jwt = true
+
 # notify-jobs se autentica con secret compartido (x-notify-secret), no con JWT
 [functions.notify-jobs]
 verify_jwt = false
