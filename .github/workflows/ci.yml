@@ -105,83 +105,8 @@ jobs:
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
 
-  deploy:
-    name: Desplegar preview (GitHub Pages)
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Instalar y compilar apps
-        run: |
-          pnpm install --no-frozen-lockfile
-          pnpm --filter @gc/web build
-          pnpm --filter @gc/backoffice build
-
-      - name: Preparar bundle de preview
-        run: |
-          # Landing en la raíz; cada SPA en su subdirectorio
-          mkdir -p _site/web _site/backoffice
-          cp -r apps/web/dist/. _site/web/
-          cp -r apps/backoffice/dist/. _site/backoffice/
-
-          # SPA fallback para rutas de react-router
-          cp _site/web/index.html _site/web/404.html
-          cp _site/backoffice/index.html _site/backoffice/404.html
-
-          cat > _site/index.html <<'HTML'
-          <!doctype html>
-          <html lang="es">
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <title>Gestiones Comerciales — Preview</title>
-              <style>
-                body { font-family: system-ui, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; background: #0f172a; color: #e2e8f0; }
-                main { text-align: center; }
-                a { color: #93c5fd; }
-                ul { list-style: none; padding: 0; }
-                li { margin: .5rem 0; }
-                small { color: #94a3b8; }
-              </style>
-            </head>
-            <body>
-              <main>
-                <h1>Gestiones Comerciales</h1>
-                <ul>
-                  <li><a href="./web/">App web (empresa)</a></li>
-                  <li><a href="./backoffice/">Backoffice (plataforma)</a></li>
-                </ul>
-                <small>Preview estático F1 — autenticación en modo demo (sin backend conectado)</small>
-              </main>
-            </body>
-          </html>
-          HTML
-
-      - name: Configurar Pages
-        uses: actions/configure-pages@v5
-
-      - name: Subir artefacto
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - name: Desplegar a Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+# Nota deploy: GitHub Pages no está disponible en el plan actual del repo (privado).
+# Los builds (apps/web, apps/backoffice) son estáticos con base './' y HashRouter:
+# se sirven desde cualquier hosting (Vercel/Netlify/S3/Cloudflare) sin configuración extra.
+# Al habilitar Pages o migrar el repo a un plan con soporte, re-agregar el job 'deploy'
+# (ver historial del commit 17d6242).
