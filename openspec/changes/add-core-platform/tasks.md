@@ -12,7 +12,7 @@
 - [ ] 0.6 Tests: RLS de plataforma (usuario sin membresía no opera RPC admin_*), auditoría de operaciones.
 
 ## FASE 1 — Núcleo operativo (mini-proyecto 2)
-- [ ] 1.1 Migración núcleo: usuario, dispositivo, zona, departamento, municipio, persona. *(parcial: usuario, zona, departamento, municipio ya están en F0; faltan dispositivo y persona)*
+- [x] 1.1 Migración núcleo: usuario, dispositivo, zona, departamento, municipio, persona. *(completa: persona + dispositivo en 20260826130000_f1_nucleo.sql con PostGIS, RLS por tenant+rol e índice único documento por tenant; usuario/zona/departamento/municipio desde F0)*
 - [ ] 1.2 Migración visitas: actividad, subactividad, actividad_horario, visita_estado, visita.
 - [ ] 1.3 Migración formularios: formulario_plantilla, formulario_respuesta.
 - [ ] 1.4 Migración rastreo: rastreo_ubicacion, config_rastreo; notificaciones + auditoría. *(auditoría ya existe como tabla transversal en F0)*
