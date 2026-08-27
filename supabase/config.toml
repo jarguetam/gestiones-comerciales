@@ -42,3 +42,7 @@ enabled = true
 [edge_runtime]
 enabled = true
 policy = "per_worker"
+
+# notify-jobs se autentica con secret compartido (x-notify-secret), no con JWT
+[functions.notify-jobs]
+verify_jwt = false
