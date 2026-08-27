@@ -20,6 +20,7 @@ export function InteractiveApp() {
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'showcase' | 'single' | 'fullwidth'>('showcase')
   const [tenantNombre, setTenantNombre] = useState('AgroMoney S.A.')
+  const [modalPersonaInicial, setModalPersonaInicial] = useState('')
 
   function handleSelectEvent(event: CalendarEvent) {
     setSelectedEvent(event)
@@ -40,11 +41,8 @@ export function InteractiveApp() {
   }
 
   function handleScheduleWithPersona(personaName: string) {
+    setModalPersonaInicial(personaName)
     setIsNewEventModalOpen(true)
-    // Pre-seleccionar persona si se provee
-    if (personaName) {
-      setTenantNombre((prev) => prev)
-    }
   }
 
   return (
@@ -120,7 +118,7 @@ export function InteractiveApp() {
               onClick={() => setIsNewEventModalOpen(true)}
               className="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold flex items-center gap-1 shadow-xs transition-colors"
             >
-              <span>+</span> Nueva Gestión
+              <span>+</span> Nueva Visita
             </button>
           </div>
         </div>
@@ -240,7 +238,11 @@ export function InteractiveApp() {
       {isNewEventModalOpen && (
         <NewEventModal
           initialDate={selectedDate}
-          onClose={() => setIsNewEventModalOpen(false)}
+          initialPersonaName={modalPersonaInicial}
+          onClose={() => {
+            setIsNewEventModalOpen(false)
+            setModalPersonaInicial('')
+          }}
           onSave={handleSaveEvent}
         />
       )}
