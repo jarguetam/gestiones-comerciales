@@ -224,12 +224,13 @@ export function TimelineView({
         })}
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNav
-        activeTab="timeline"
-        onTabChange={onNavigateTab}
-        onOpenNewEvent={onOpenNewEvent}
-      />
+      {!embedded && (
+        <BottomNav
+          activeTab="timeline"
+          onTabChange={onNavigateTab}
+          onOpenNewEvent={onOpenNewEvent}
+        />
+      )}
     </div>
   )
 }

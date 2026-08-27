@@ -122,12 +122,13 @@ export function AgendaView({
         ))}
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNav
-        activeTab="agenda"
-        onTabChange={onNavigateTab}
-        onOpenNewEvent={onOpenNewEvent}
-      />
+      {!embedded && (
+        <BottomNav
+          activeTab="agenda"
+          onTabChange={onNavigateTab}
+          onOpenNewEvent={onOpenNewEvent}
+        />
+      )}
     </div>
   )
 }

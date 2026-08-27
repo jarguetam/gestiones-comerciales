@@ -106,12 +106,13 @@ export function PersonasView({
         ))}
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNav
-        activeTab="personas"
-        onTabChange={onNavigateTab}
-        onOpenNewEvent={onOpenNewEvent}
-      />
+      {!embedded && (
+        <BottomNav
+          activeTab="personas"
+          onTabChange={onNavigateTab}
+          onOpenNewEvent={onOpenNewEvent}
+        />
+      )}
     </div>
   )
 }

@@ -143,7 +143,7 @@ export function CrmPipelineView({
     n == null ? '' : 'Q ' + n.toLocaleString('es-GT', { minimumFractionDigits: 0 })
 
   return (
-    <div className="flex flex-col h-full bg-white select-none overflow-hidden font-sans">
+    <div className="flex flex-col h-full bg-white select-none overflow-hidden font-sans relative">
       {!embedded && <StatusBar theme="dark" />}
 
       {/* Header */}
@@ -375,14 +375,18 @@ export function CrmPipelineView({
       {!mostrarNuevo && !seleccionado && (
         <button
           onClick={() => setMostrarNuevo(true)}
-          className="absolute right-5 bottom-20 z-20 w-11 h-11 rounded-full bg-brand-700 text-white shadow-fab flex items-center justify-center text-xl"
+          className={`absolute right-5 z-20 w-11 h-11 rounded-full bg-brand-700 text-white shadow-fab flex items-center justify-center text-xl ${
+            embedded ? 'bottom-6' : 'bottom-20'
+          }`}
           aria-label="Nuevo lead"
         >
           +
         </button>
       )}
 
-      <BottomNav activeTab={'crm'} onTabChange={onNavigateTab} onOpenNewEvent={onOpenNewEvent} />
+      {!embedded && (
+        <BottomNav activeTab={'crm'} onTabChange={onNavigateTab} onOpenNewEvent={onOpenNewEvent} />
+      )}
     </div>
   )
 }

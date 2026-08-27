@@ -1,5 +1,1 @@
-import { InteractiveApp } from '../calendar/InteractiveApp'
-
-export function Dashboard() {
-  return <InteractiveApp />
-}
+export { DashboardHome as Dashboard } from './DashboardHome'

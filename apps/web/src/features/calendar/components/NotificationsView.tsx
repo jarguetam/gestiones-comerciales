@@ -90,11 +90,13 @@ export function NotificationsView({
         ))}
       </div>
 
-      <BottomNav
-        activeTab="notifications"
-        onTabChange={onNavigateTab}
-        onOpenNewEvent={onOpenNewEvent}
-      />
+      {!embedded && (
+        <BottomNav
+          activeTab="notifications"
+          onTabChange={onNavigateTab}
+          onOpenNewEvent={onOpenNewEvent}
+        />
+      )}
     </div>
   )
 }

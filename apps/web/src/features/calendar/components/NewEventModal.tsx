@@ -9,6 +9,7 @@ interface NewEventModalProps {
   onSavePersona?: (persona: PersonaItem) => void
   initialDate?: string
   initialPersonaName?: string
+  cartera?: PersonaItem[]
 }
 
 /**
@@ -29,6 +30,7 @@ export function NewEventModal({
   onSavePersona,
   initialDate = '2026-09-17',
   initialPersonaName = '',
+  cartera,
 }: NewEventModalProps) {
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(initialDate)
@@ -41,9 +43,10 @@ export function NewEventModal({
   const [videoCall, setVideoCall] = useState('')
   const [notes, setNotes] = useState('')
   const [reminder, setReminder] = useState('20 mins before')
-  const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
+  const carteraInicial = cartera ?? INITIAL_PERSONAS
+  const [personas, setPersonas] = useState<PersonaItem[]>(carteraInicial)
   const [personaId, setPersonaId] = useState<string>(
-    INITIAL_PERSONAS.some((p) => p.nombre === initialPersonaName) ? initialPersonaName : ''
+    carteraInicial.some((p) => p.nombre === initialPersonaName) ? initialPersonaName : ''
   )
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [nuevoNombre, setNuevoNombre] = useState('')
@@ -78,7 +81,7 @@ export function NewEventModal({
 
     const nombreLimpio = nuevoNombre.trim()
     if (!nombreLimpio) {
-      setErrorPersona('Escribe el nombre del cliente')
+      setErrorPersona('El nombre es requerido')
       return
     }
     if (personas.some((p) => p.nombre.toLowerCase() === nombreLimpio.toLowerCase())) {
