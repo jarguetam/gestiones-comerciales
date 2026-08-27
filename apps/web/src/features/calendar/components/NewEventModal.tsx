@@ -33,13 +33,14 @@ export function NewEventModal({
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(initialDate)
   const [startTime, setStartTime] = useState('09:00')
-  const [duration, setDuration] = useState('1 hora')
-  const [location, setLocation] = useState('')
-  const [notes, setNotes] = useState('')
-  const [attendeeIds, setAttendeeIds] = useState<string[]>([])
+  const [endTime, setEndTime] = useState('10:30')
   const [actividadId, setActividadId] = useState<number | ''>('')
   const [subActividadId, setSubActividadId] = useState<number | ''>('')
-  const [horaId, setHoraId] = useState<number | ''>('')
+  const [horaId, setHoraId] = useState<number>(2) // 1 hora
+  const [location, setLocation] = useState('')
+  const [videoCall, setVideoCall] = useState('')
+  const [notes, setNotes] = useState('')
+  const [reminder, setReminder] = useState('20 mins before')
   const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
   const [personaId, setPersonaId] = useState<string>(
     INITIAL_PERSONAS.some((p) => p.nombre === initialPersonaName) ? initialPersonaName : ''
@@ -53,9 +54,13 @@ export function NewEventModal({
   const [errorPersona, setErrorPersona] = useState('')
   const [error, setError] = useState('')
 
-  const subActividadesDisponibles = useMemo(
-    () => CATALOGO_ACTIVIDADES.find((a) => a.id === actividadId)?.subActividades ?? [],
+  const actividadSeleccionada = useMemo(
+    () => CATALOGO_ACTIVIDADES.find((a) => a.id === actividadId),
     [actividadId]
+  )
+  const subActividadSeleccionada = useMemo(
+    () => actividadSeleccionada?.sub_actividades.find((sa) => sa.id === subActividadId),
+    [actividadSeleccionada, subActividadId]
   )
 
   function handleActividadChange(value: string) {
@@ -66,7 +71,7 @@ export function NewEventModal({
 
   const personaSeleccionada = personas.find((p) => p.nombre === personaId)
 
-  /** Registra un nuevo cliente en la cartera y lo deja seleccionado para la visita. */
+  /** Registra un nuevo cliente en la cartera y lo selecciona para la visita. */
   function handleRegistrarPersona(e: React.FormEvent) {
     e.preventDefault()
     setErrorPersona('')
@@ -123,76 +128,52 @@ export function NewEventModal({
       setError('Escribe el título de la visita')
       return
     }
-    if (!date.trim()) {
-      setError('Selecciona la fecha de la visita')
-      return
-    }
 
-    setError('')
-
-    const [horas, minutos] = startTime.split(':').map(Number)
-    const duracionHoras =
-      CATALOGO_HORAS.find((h) => h.id === horaId)?.cantidad ??
-      (duration === '30 minutos' ? 0.5 : duration === '2 horas' ? 2 : duration === '4 horas' ? 4 : duration === 'Jornada completa' ? 8 : 1)
-    const finMinutos = horas * 60 + minutos + duracionHoras * 60
-    const endTime = `${String(Math.floor(finMinutos / 60) % 24).padStart(2, '0')}:${String(finMinutos % 60).padStart(2, '0')}`
-
-    const nuevaVisita: CalendarEvent = {
+    const newEv: CalendarEvent = {
       id: `vis-${Date.now()}`,
       title: title.trim(),
       date,
       startTime,
       endTime,
       category: ACTIVIDAD_CATEGORIA[Number(actividadId)] ?? 'lavender',
-      location: location.trim() || personaSeleccionada.direccion,
-      notes: notes.trim(),
-      attendees: INITIAL_ATTENDEES.filter((a) => attendeeIds.includes(a.id)),
-      reminder: '30 mins before',
-      personaId: personaSeleccionada.id,
-      personaName: personaSeleccionada.nombre,
+      location: location.trim() || undefined,
+      videoCall: videoCall.trim() || undefined,
+      notes: notes.trim() || undefined,
+      reminder,
+      personaId: personaSeleccionada?.id,
+      personaName: personaSeleccionada?.nombre,
       actividadId: Number(actividadId),
       subActividadId: Number(subActividadId),
       estado: 'programada',
+      attendees: INITIAL_ATTENDEES.slice(0, 2),
     }
-
-    onSave(nuevaVisita)
+    onSave(newEv)
+    onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-slate-100 px-5 py-4 flex items-center justify-between z-10">
-          <div>
-            <h2 className="text-base font-serif font-semibold text-slate-900">Nueva Visita</h2>
-            <p className="text-[11px] text-slate-500">Agenda comercial multi-rubro</p>
-          </div>
+        <div className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-serif italic text-white tracking-wide">
+            Nueva Visita / Gestión
+          </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
-            aria-label="Cerrar"
+            className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10"
+            aria-label="Cerrar modal"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 py-5 space-y-4">
-          {error && (
-            <div className="rounded-xl bg-rose-50 border border-rose-200 px-3.5 py-2.5 text-xs font-semibold text-rose-600">
-              {error}
-            </div>
-          )}
-
-          {/* Tipo de Actividad */}
+        {/* Form body */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-sm">
+          {/* Tipo de Actividad (dropdown) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Tipo de Actividad *
             </label>
             <select
@@ -209,21 +190,23 @@ export function NewEventModal({
             </select>
           </div>
 
-          {/* Sub Actividad (dependiente) */}
+          {/* Sub Actividad (dropdown dependiente) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Sub Actividad *
             </label>
             <select
               value={subActividadId}
               onChange={(e) => setSubActividadId(e.target.value === '' ? '' : Number(e.target.value))}
-              disabled={actividadId === ''}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={!actividadSeleccionada}
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white ${
+                !actividadSeleccionada ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               <option value="">
-                {actividadId === '' ? 'Primero elige el tipo de actividad' : '— Selecciona la sub actividad —'}
+                {actividadSeleccionada ? '— Selecciona la sub actividad —' : 'Primero elige el tipo de actividad'}
               </option>
-              {subActividadesDisponibles.map((sa) => (
+              {actividadSeleccionada?.sub_actividades.map((sa) => (
                 <option key={sa.id} value={sa.id}>
                   {sa.nombre}
                 </option>
@@ -231,23 +214,88 @@ export function NewEventModal({
             </select>
           </div>
 
-          {/* Duración del catálogo */}
+          {/* Duración estimada (catálogo actividad_hora) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Duración estimada
             </label>
             <select
               value={horaId}
-              onChange={(e) => setHoraId(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={(e) => setHoraId(Number(e.target.value))}
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
             >
-              <option value="">— Selecciona la duración —</option>
               {CATALOGO_HORAS.map((h) => (
                 <option key={h.id} value={h.id}>
                   {h.nombre}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Título autogenerado de la visita */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Título de la visita *
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                placeholder={
+                  actividadSeleccionada && subActividadSeleccionada
+                    ? `${actividadSeleccionada.nombre} — ${subActividadSeleccionada.nombre}`
+                    : 'Ej. Verificación de garantías — Finca Las Palmas'
+                }
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 pr-24 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  actividadSeleccionada &&
+                  subActividadSeleccionada &&
+                  setTitle(
+                    `${actividadSeleccionada.nombre} — ${subActividadSeleccionada.nombre}`
+                  )
+                }
+                disabled={!actividadSeleccionada || !subActividadSeleccionada}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-purple-50 text-brand-700 text-[11px] font-semibold hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Autocompletar
+              </button>
+            </div>
+          </div>
+
+          {/* Date & Times */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Inicio</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Fin</label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
           </div>
 
           {/* Persona / Cliente (dropdown de la cartera + alta inline) */}
@@ -353,124 +401,79 @@ export function NewEventModal({
             )}
           </div>
 
-          {/* Title */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Título de la visita *
-            </label>
-            <input
-              type="text"
-              placeholder="Ej. Verificación de garantías — Finca Santa Isabel"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                const actividad = CATALOGO_ACTIVIDADES.find((a) => a.id === actividadId)
-                const subactividad = actividad?.subActividades.find((sa) => sa.id === subActividadId)
-                if (actividad && subactividad) {
-                  setTitle(`${actividad.nombre} — ${subactividad.nombre}`)
-                }
-              }}
-              className="mt-1.5 text-[11px] font-semibold text-brand-700 hover:text-brand-800"
-            >
-              Autocompletar con actividad y subactividad
-            </button>
-          </div>
-
-          {/* Date & Time */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha *</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Hora inicio *</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-              />
-            </div>
-          </div>
-
           {/* Location */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Ubicación</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Ubicación / Dirección</label>
             <input
               type="text"
-              placeholder="Ej. Km 56 Carretera a Puerto San José, Escuintla"
+              placeholder="Ej. Km 42 Carretera al Pacífico, Escuintla"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            />
+          </div>
+
+          {/* Video Call */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Enlace / Videollamada (Meet / Zoom)</label>
+            <input
+              type="text"
+              placeholder="Ej. meet.google.com/gc-visita-123"
+              value={videoCall}
+              onChange={(e) => setVideoCall(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Notas</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Notas / Instrucciones</label>
             <textarea
-              placeholder="Detalles del objetivo de la visita…"
+              rows={2}
+              placeholder="Ej. Llevar cámara para el registro fotográfico de las garantías"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600 resize-none"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
             />
           </div>
 
-          {/* Team */}
+          {/* Reminder */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Equipo asignado
-            </label>
-            <div className="space-y-2">
-              {INITIAL_ATTENDEES.map((att) => (
-                <label
-                  key={att.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={attendeeIds.includes(att.id)}
-                    onChange={(e) =>
-                      setAttendeeIds((prev) =>
-                        e.target.checked ? [...prev, att.id] : prev.filter((id) => id !== att.id)
-                      )
-                    }
-                    className="rounded border-slate-300 text-brand-700 focus:ring-brand-600"
-                  />
-                  <img src={att.avatarUrl} alt={att.name} className="w-7 h-7 rounded-full object-cover" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 truncate">{att.name}</p>
-                    <p className="text-[11px] text-slate-500">{att.role}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Recordatorio</label>
+            <select
+              value={reminder}
+              onChange={(e) => setReminder(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
+            >
+              <option value="10 mins before">10 mins before</option>
+              <option value="20 mins before">20 mins before</option>
+              <option value="30 mins before">30 mins before</option>
+              <option value="1 hour before">1 hour before</option>
+              <option value="1 day before">1 day before</option>
+            </select>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          {/* Error de validación (integridad actividad → sub_actividad) */}
+          {error && (
+            <p className="text-xs font-semibold text-rose-600 bg-rose-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          {/* Footer Buttons */}
+          <div className="pt-2 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-medium"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors"
+              className="px-5 py-2 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-xl shadow-md transition-all"
             >
-              Programar Visita
+              Guardar visita
             </button>
           </div>
         </form>
