@@ -8,11 +8,18 @@ export interface Rubro {
 
 /** Rubros iniciales de la plataforma (los mismos del seed de módulos). */
 export const RUBROS: Rubro[] = [
-  { codigo: 'agromoney', nombre: 'Microfinanzas', descripcion: 'Créditos, depósitos y cobros' },
+  { codigo: 'agro', nombre: 'Microfinanzas', descripcion: 'Créditos, depósitos y cobros' },
   { codigo: 'distribuidora', nombre: 'Distribución', descripcion: 'Ventas por ruta y punto de venta' },
   { codigo: 'farmaceutica', nombre: 'Farmacéutica', descripcion: 'Visitas médicas y detailing' },
   { codigo: 'generico', nombre: 'Genérico', descripcion: 'Fuerza comercial generalista' },
 ]
+
+const RUBRO_ALIAS: Record<string, string> = { agromoney: 'agro', consumo: 'distribuidora', farmacia: 'farmaceutica' }
+
+export function nombreRubro(codigo: string): string {
+  const canon = RUBRO_ALIAS[codigo] ?? codigo
+  return RUBROS.find((r) => r.codigo === canon)?.nombre ?? codigo
+}
 
 export const PLANES = ['basico', 'pro', 'enterprise'] as const
 export type Plan = (typeof PLANES)[number]

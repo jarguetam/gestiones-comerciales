@@ -32,6 +32,11 @@ enable_confirmations = true
 [auth.mfa]
 max_enrolled_factors = 10
 
+# Copia tenant_id/rol de app_metadata a la raíz del JWT (RLS histórica).
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+
 [storage]
 enabled = true
 file_size_limit = "10MiB"

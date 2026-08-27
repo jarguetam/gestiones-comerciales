@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
-import { MODULOS, PLANES, type Plan } from './wizard'
+import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
 
 interface TenantDetalle {
   id: string
@@ -118,6 +118,7 @@ export function EmpresaDetalle() {
         p_tenant_id: tenant.id,
         p_cambios: {
           nombre: tenant.nombre,
+          rubro: tenant.rubro === 'agromoney' ? 'agro' : tenant.rubro,
           plan: tenant.plan,
           activo: tenant.activo,
           branding: tenant.branding ?? {},
@@ -229,9 +230,9 @@ export function EmpresaDetalle() {
     <main className="mx-auto max-w-5xl p-4 space-y-4">
       <Link to="/" className="text-sm text-teal-800 hover:underline">← Empresas</Link>
       <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">P-03 / P-04</p>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">Detalle de empresa</p>
         <h2 className="text-2xl font-bold text-slate-900">{tenant.nombre}</h2>
-        <p className="text-sm text-slate-500">{tenant.codigo} · {tenant.rubro}</p>
+        <p className="text-sm text-slate-500">{tenant.codigo} · {nombreRubro(tenant.rubro)}</p>
       </div>
 
       {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -251,6 +252,23 @@ export function EmpresaDetalle() {
           <div className="rounded-lg bg-white p-4 shadow space-y-3">
             <label className="block text-sm font-medium">Nombre</label>
             <input value={tenant.nombre} onChange={(e) => setTenant({ ...tenant, nombre: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+            <label className="block text-sm font-medium">Rubro</label>
+            <div className="flex flex-wrap gap-2">
+              {RUBROS.map((r) => (
+                <button
+                  key={r.codigo}
+                  type="button"
+                  onClick={() => setTenant({ ...tenant, rubro: r.codigo })}
+                  className={`rounded-md border px-3 py-1.5 text-sm ${
+                    (tenant.rubro === r.codigo || (r.codigo === 'agro' && tenant.rubro === 'agromoney'))
+                      ? 'border-teal-700 bg-teal-50 font-semibold'
+                      : 'border-slate-300'
+                  }`}
+                >
+                  {r.nombre}
+                </button>
+              ))}
+            </div>
             <label className="block text-sm font-medium">Plan</label>
             <div className="flex gap-2">
               {PLANES.map((p) => (
