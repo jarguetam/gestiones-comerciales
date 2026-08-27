@@ -6,9 +6,56 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  validate:
+  security:
+    name: Seguridad (OWASP)
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A01 Broken Access Control / A02 Crypto Failures — nada de secretos ni .env en el repo
+      - name: Rechazar archivos .env versionados
+        run: |
+          echo "Buscando .env fuera de *.example..."
+          FOUND=$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -v '\.example$' || true)
+          if [ -n "$FOUND" ]; then
+            echo "::error::Archivos .env detectados en el repositorio:"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "OK: sin .env versionados"
+
+      - name: Escanear secretos (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A06 Vulnerable and Outdated Components — dependencias con CVEs conocidos
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Audit de dependencias (falla en nivel alto o crítico)
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm -r exec -- npm audit --audit-level=high || {
+            echo "::error::Vulnerabilidades de nivel alto/crítico en dependencias (OWASP A06)"
+            exit 1
+          }
+
+  validate:
+    name: Validar (SQL + Edge + builds)
+    runs-on: ubuntu-latest
+    needs: security
     steps:
       - uses: actions/checkout@v4
 
@@ -20,11 +67,10 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Validar migraciones SQL (sintaxis + forwards-only)
+      - name: Validar migraciones SQL (orden forwards-only)
         run: |
           echo "Validando migraciones..."
           ls supabase/migrations/*.sql | sort | awk -F/ '{print $NF}' > /tmp/migs
-          # orden cronológico estricto por timestamp
           sort -c /tmp/migs || { echo "ERROR: migraciones fuera de orden"; exit 1; }
           echo "OK: $(wc -l < /tmp/migs) migraciones en orden"
 
@@ -49,3 +95,84 @@ jobs:
         run: |
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
+
+  deploy:
+    name: Desplegar preview (GitHub Pages)
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar y compilar apps
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --filter @gc/web build
+          pnpm --filter @gc/backoffice build
+
+      - name: Preparar bundle de preview
+        run: |
+          # Landing en la raíz; cada SPA en su subdirectorio
+          mkdir -p _site/web _site/backoffice
+          cp -r apps/web/dist/. _site/web/
+          cp -r apps/backoffice/dist/. _site/backoffice/
+
+          # SPA fallback para rutas de react-router
+          cp _site/web/index.html _site/web/404.html
+          cp _site/backoffice/index.html _site/backoffice/404.html
+
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="es">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Gestiones Comerciales — Preview</title>
+              <style>
+                body { font-family: system-ui, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; background: #0f172a; color: #e2e8f0; }
+                main { text-align: center; }
+                a { color: #93c5fd; }
+                ul { list-style: none; padding: 0; }
+                li { margin: .5rem 0; }
+                small { color: #94a3b8; }
+              </style>
+            </head>
+            <body>
+              <main>
+                <h1>Gestiones Comerciales</h1>
+                <ul>
+                  <li><a href="./web/">App web (empresa)</a></li>
+                  <li><a href="./backoffice/">Backoffice (plataforma)</a></li>
+                </ul>
+                <small>Preview estático F1 — autenticación en modo demo (sin backend conectado)</small>
+              </main>
+            </body>
+          </html>
+          HTML
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir artefacto
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Desplegar a Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

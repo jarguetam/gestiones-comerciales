@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
+import { DEMO_MODE, supabase } from '../../lib/supabase'
 
 export function Login() {
   const [email, setEmail] = useState('')
@@ -14,6 +14,9 @@ export function Login() {
     setError(null)
     setLoading(true)
     try {
+      if (DEMO_MODE) {
+        throw new Error('GC-AUTH-020: preview en modo demo — autenticación deshabilitada')
+      }
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       navigate('/', { replace: true })
@@ -29,6 +32,11 @@ export function Login() {
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl">
         <h1 className="mb-2 text-center text-2xl font-bold text-slate-900">GC Platform</h1>
         <p className="mb-6 text-center text-sm text-slate-500">Backoffice de plataforma</p>
+        {DEMO_MODE && (
+          <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            Modo demo: preview estático sin backend.
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -37,6 +45,7 @@ export function Login() {
             <input
               id="email"
               type="email"
+              autoComplete="username"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -50,6 +59,7 @@ export function Login() {
             <input
               id="password"
               type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

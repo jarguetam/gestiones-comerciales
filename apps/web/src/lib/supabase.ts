@@ -1,10 +1,15 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY deben estar definidas en el entorno')
-}
+export const DEMO_MODE = !supabaseUrl || !supabaseAnonKey
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+/**
+ * Cliente de Supabase. En demo (preview sin .env) devolvemos un stub que
+ * simula "sin sesión" para que la UI renderice sin explotar.
+ * Nunca incluir service_role ni keys que no sean la anon (pública por diseño).
+ */
+export const supabase: SupabaseClient = DEMO_MODE
+  ? ({} as SupabaseClient)
+  : createClient(supabaseUrl!, supabaseAnonKey!)
