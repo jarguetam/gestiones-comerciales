@@ -45,6 +45,7 @@ export interface Perfil {
   nombre: string
   rol: Rol
   tenantNombre?: string
+  modulos: string[]
 }
 
 /** Decodifica los claims custom del JWT (tenant_id y rol, spec F0.3). */
@@ -69,11 +70,19 @@ export async function cargarPerfil(userId: string, tenantId: string, rol: Rol): 
     .single()
   if (error || !data) return null
   const tenant = (data as unknown as { tenant?: { nombre?: string } }).tenant
+  const { data: mods } = await supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true)
+  const modulos = ((mods ?? []) as Array<{ modulo: { codigo?: string } | { codigo?: string }[] | null }>)
+    .map((row) => {
+      const m = Array.isArray(row.modulo) ? row.modulo[0] : row.modulo
+      return m?.codigo
+    })
+    .filter((c): c is string => !!c)
   return {
     id: data.id,
     tenantId,
     nombre: data.nombre,
     rol,
     tenantNombre: tenant?.nombre,
+    modulos,
   }
 }
