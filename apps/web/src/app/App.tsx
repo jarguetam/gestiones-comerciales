@@ -12,6 +12,8 @@ import { DepositosPage } from '../features/depositos/DepositosPage'
 import { CuentasPage } from '../features/cuentas/CuentasPage'
 import { KilometrajePage } from '../features/kilometraje/KilometrajePage'
 import { NotificationsView } from '../features/calendar/components/NotificationsView'
+import { CatalogosPage } from '../features/configuracion/CatalogosPage'
+import { UsuariosPage } from '../features/usuarios/UsuariosPage'
 import { useDominio } from './DominioContext'
 import { DEMO_MODE } from '../lib/supabase'
 
@@ -90,6 +92,8 @@ export default function App() {
           }
         />
         <Route path="/notificaciones" element={<NotificacionesPage />} />
+        <Route path="/configuracion" element={<CatalogosPage />} />
+        <Route path="/usuarios" element={<UsuariosPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

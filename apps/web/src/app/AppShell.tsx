@@ -33,9 +33,17 @@ export function AppShell({ tenantNombre, fuente, aviso, modulos = [], onNuevaVis
   const { session, demo } = useAuth()
   const navigate = useNavigate()
   const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
+  const rol = session?.user.app_metadata?.rol as string | undefined
+  const mostrarConfig = DEMO_MODE || rol === 'admin'
+  const mostrarUsuarios = DEMO_MODE || rol === 'admin' || rol === 'gerente'
+  const adminNav: NavItem[] = [
+    ...(mostrarConfig ? [{ to: '/configuracion', label: 'Configuración' }] : []),
+    ...(mostrarUsuarios ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
+  ]
   const nav = [
     ...CORE_NAV,
-    ...MODULOS_NAV.filter((item) => DEMO_MODE || modulos.includes(item.codigo)),
+    ...adminNav,
+    ...MODULOS_NAV.filter((item) => DEMO_MODE || (item.codigo != null && modulos.includes(item.codigo))),
   ]
 
   async function cerrarSesion() {

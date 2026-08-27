@@ -55,4 +55,14 @@ test.describe('F1 MVP web (modo demo)', () => {
     await page.getByRole('link', { name: /^kilometraje$/i }).first().click()
     await expect(page.getByText(/W-09/i).first()).toBeVisible()
   })
+
+  test('W-10 y W-11: configuración y usuarios están en la navegación', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: /configuración/i }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: /^usuarios$/i }).first()).toBeVisible()
+    await page.getByRole('link', { name: /configuración/i }).first().click()
+    await expect(page.getByText(/W-10/i).first()).toBeVisible()
+    await page.getByRole('link', { name: /^usuarios$/i }).first().click()
+    await expect(page.getByText(/W-11/i).first()).toBeVisible()
+  })
 })

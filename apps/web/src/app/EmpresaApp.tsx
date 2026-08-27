@@ -4,10 +4,15 @@ import { AppShell } from './AppShell'
 import { DominioProvider } from './DominioContext'
 import { NewEventModal } from '../features/calendar/components/NewEventModal'
 import { cargarDominio, type FuenteDominio } from '../lib/cargarDominio'
-import { INITIAL_EVENTS } from '../features/calendar/eventsData'
+import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_EVENTS } from '../features/calendar/eventsData'
 import { INITIAL_PERSONAS, type PersonaItem } from '../features/calendar/personasData'
 import { INITIAL_LEADS, type LeadItem } from '../features/calendar/leadsData'
 import type { CalendarEvent } from '../features/calendar/types'
+import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from '../lib/catalogos'
+import { persistirPersona, persistirVisita } from '../lib/persistir'
+import { DEMO_MODE } from '../lib/supabase'
+
+const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
 
 export function EmpresaApp() {
   const [fuente, setFuente] = useState<FuenteDominio>('demo')
@@ -17,6 +22,10 @@ export function EmpresaApp() {
   const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_LEADS)
   const [modulos, setModulos] = useState<string[]>(['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje'])
+  const [catalogos, setCatalogos] = useState<CatalogoActividad[]>(CATALOGO_ACTIVIDADES)
+  const [horas, setHoras] = useState<CatalogoHora[]>(CATALOGO_HORAS)
+  const [zonas, setZonas] = useState<ZonaCatalogo[]>([])
+  const [geo, setGeo] = useState<GeoDefaults>(GEO_VACIO)
   const [modalAbierto, setModalAbierto] = useState(false)
   const [personaInicial, setPersonaInicial] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -33,6 +42,10 @@ export function EmpresaApp() {
         setEventos(d.eventos)
         setLeads(d.leads)
         setModulos(d.modulos)
+        setCatalogos(d.catalogos)
+        setHoras(d.horas)
+        setZonas(d.zonas)
+        setGeo(d.geo)
       })
       .finally(() => {
         if (vivo) setCargando(false)
@@ -47,12 +60,17 @@ export function EmpresaApp() {
     setModalAbierto(true)
   }
 
-  function handleSaveEvent(event: CalendarEvent) {
-    setEventos((prev) => [event, ...prev])
+  async function handleSaveEvent(event: CalendarEvent) {
+    const persistir = !DEMO_MODE && fuente === 'supabase'
+    const guardado = persistir ? await persistirVisita(event, geo) : event
+    setEventos((prev) => [guardado, ...prev])
   }
 
-  function handleSavePersona(persona: PersonaItem) {
-    setPersonas((prev) => (prev.some((p) => p.id === persona.id) ? prev : [...prev, persona]))
+  async function handleSavePersona(persona: PersonaItem): Promise<PersonaItem> {
+    const persistir = !DEMO_MODE && fuente === 'supabase'
+    const guardada = persistir ? await persistirPersona(persona) : persona
+    setPersonas((prev) => (prev.some((p) => p.id === guardada.id) ? prev : [...prev, guardada]))
+    return guardada
   }
 
   function handleConvertLead(lead: LeadItem) {
@@ -82,13 +100,17 @@ export function EmpresaApp() {
       personas,
       leads,
       modulos,
+      catalogos,
+      horas,
+      zonas,
+      geo,
       setEventos,
       setPersonas,
       setLeads,
       abrirNuevaVisita,
       convertirLead: handleConvertLead,
     }),
-    [fuente, tenantNombre, aviso, eventos, personas, leads, modulos]
+    [fuente, tenantNombre, aviso, eventos, personas, leads, modulos, catalogos, horas, zonas, geo],
   )
 
   if (cargando) {
@@ -113,6 +135,9 @@ export function EmpresaApp() {
       {modalAbierto && (
         <NewEventModal
           cartera={personas}
+          catalogos={catalogos}
+          horas={horas}
+          initialDate={new Date().toISOString().slice(0, 10)}
           initialPersonaName={personaInicial}
           onSavePersona={handleSavePersona}
           onClose={() => {
