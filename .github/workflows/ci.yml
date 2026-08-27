@@ -129,16 +129,13 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build web + backoffice
-        run: |
-          pnpm --filter @gc/web build
-          pnpm --filter @gc/backoffice build
-           - name: Build web + backoffice (con Supabase real)
+      - name: Build web + backoffice (con Supabase real)
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-    
-
+        run: |
+          pnpm --filter @gc/web build
+          pnpm --filter @gc/backoffice build
 
       - name: Preparar artefactos estáticos
         run: |
