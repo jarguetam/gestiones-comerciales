@@ -133,6 +133,12 @@ jobs:
         run: |
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
+           - name: Build web + backoffice (con Supabase real)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    
+
 
       - name: Preparar artefactos estáticos
         run: |
