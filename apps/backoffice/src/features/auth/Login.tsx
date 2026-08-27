@@ -15,7 +15,8 @@ export function Login() {
     setLoading(true)
     try {
       if (DEMO_MODE) {
-        throw new Error('GC-AUTH-020: preview en modo demo — autenticación deshabilitada')
+        navigate('/', { replace: true })
+        return
       }
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
@@ -46,7 +47,7 @@ export function Login() {
               id="email"
               type="email"
               autoComplete="username"
-              required
+              required={!DEMO_MODE}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
@@ -60,7 +61,7 @@ export function Login() {
               id="password"
               type="password"
               autoComplete="current-password"
-              required
+              required={!DEMO_MODE}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
@@ -72,7 +73,7 @@ export function Login() {
             disabled={loading}
             className="w-full rounded-md bg-slate-900 py-2 text-white disabled:opacity-50"
           >
-            {loading ? 'Ingresando…' : 'Ingresar'}
+            {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar al backoffice' : 'Ingresar'}
           </button>
         </form>
       </div>
