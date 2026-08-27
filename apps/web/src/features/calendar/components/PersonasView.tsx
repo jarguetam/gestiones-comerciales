@@ -1,199 +1,118 @@
 import { useState } from 'react'
 import { StatusBar } from './StatusBar'
 import { BottomNav } from './BottomNav'
+import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
 
 interface PersonasViewProps {
   onOpenNewEvent: () => void
   onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications') => void
   onScheduleWithPersona?: (personaName: string) => void
+  /** Cartera viva: admite personas registradas desde el modal de nueva visita */
+  personas?: PersonaItem[]
   embedded?: boolean
 }
-
-interface PersonaItem {
-  id: string
-  nombre: string
-  categoria: string
-  documento: string
-  telefono: string
-  direccion: string
-  visitasPendientes: number
-  saldo?: string
-}
-
-/**
- * Cartera del asesor: personas del núcleo F1.1 (tabla persona) con
- * categoría de negocio real del dominio agro-financiero.
- */
-const INITIAL_PERSONAS: PersonaItem[] = [
-  {
-    id: 'p1',
-    nombre: 'Agropecuaria El Triunfo',
-    categoria: 'Cliente — Crédito agrícola activo',
-    documento: 'NIT 8492019-3',
-    telefono: '+502 5521-9988',
-    direccion: 'Km 56 Carretera a Puerto San José, Escuintla',
-    visitasPendientes: 2,
-    saldo: 'Q 45,000.00',
-  },
-  {
-    id: 'p2',
-    nombre: 'Distribuidora La Bendición',
-    categoria: 'Cliente — Crédito de capital de trabajo',
-    documento: 'NIT 2948102-1',
-    telefono: '+502 4432-1100',
-    direccion: '4a Calle 12-45 Zona 3, Quetzaltenango',
-    visitasPendientes: 1,
-    saldo: 'Q 18,250.00',
-  },
-  {
-    id: 'p3',
-    nombre: 'Farmacia Santa María',
-    categoria: 'Cliente — Ampliación de local (verificar uso de fondos)',
-    documento: 'NIT 9948201-8',
-    telefono: '+502 3320-7711',
-    direccion: 'Avenida Elena 8-30 Zona 1, Guatemala',
-    visitasPendientes: 1,
-  },
-  {
-    id: 'p4',
-    nombre: 'Cooperativa Agrícola San Pedro',
-    categoria: 'Prospecto — Levantamiento de ficha pendiente',
-    documento: 'DPI 2489 19201 0101',
-    telefono: '+502 5900-2233',
-    direccion: 'San Pedro Carchá, Alta Verapaz',
-    visitasPendientes: 1,
-  },
-  {
-    id: 'p5',
-    nombre: 'Finca Santa Isabel',
-    categoria: 'Cliente — Cultivo de maíz (pre-cosecha)',
-    documento: 'NIT 7710234-5',
-    telefono: '+502 5510-4477',
-    direccion: 'Aldea Panzós, Valle del Polochic',
-    visitasPendientes: 1,
-    saldo: 'Q 120,000.00',
-  },
-  {
-    id: 'p6',
-    nombre: 'Transportes El Norte',
-    categoria: 'Cliente — Prenda vehicular (Freightliner)',
-    documento: 'NIT 5560012-9',
-    telefono: '+502 5588-2211',
-    direccion: 'Ruta al Atlántico Km 85, El Progreso',
-    visitasPendientes: 1,
-    saldo: 'Q 310,500.00',
-  },
-  {
-    id: 'p7',
-    nombre: 'Comercial El Progreso',
-    categoria: 'Cliente en mora (45 días)',
-    documento: 'NIT 3302456-7',
-    telefono: '+502 4400-9987',
-    direccion: '7a Avenida 6-20 Zona 1, Cobán',
-    visitasPendientes: 1,
-    saldo: 'Q 8,900.00',
-  },
-]
 
 export function PersonasView({
   onOpenNewEvent,
   onNavigateTab,
   onScheduleWithPersona,
+  personas = INITIAL_PERSONAS,
   embedded = false,
 }: PersonasViewProps) {
   const [busqueda, setBusqueda] = useState('')
 
-  const filtradas = INITIAL_PERSONAS.filter(
+  const filtradas = personas.filter(
     (p) =>
       p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.categoria.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.direccion.toLowerCase().includes(busqueda.toLowerCase())
+      p.documento.toLowerCase().includes(busqueda.toLowerCase())
   )
 
   return (
-    <div className="flex flex-col h-full bg-white select-none overflow-hidden font-sans">
-      {!embedded && <StatusBar theme="dark" />}
+    <div className="min-h-full flex flex-col">
+      {!embedded && <StatusBar />}
 
-      {/* Header */}
-      <div className="px-6 pt-5 pb-3 bg-gradient-to-b from-purple-50/50 to-white">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-serif font-semibold text-slate-900">
-            Personas & Clientes
-          </h1>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-brand-800">
-            {INITIAL_PERSONAS.length} registros
-          </span>
-        </div>
-        <p className="text-xs text-slate-500 mt-1">
-          Fuerza comercial multi-rubro · Núcleo F1
-        </p>
-
-        {/* Search input */}
-        <div className="mt-3 relative">
-          <input
-            type="text"
-            placeholder="Buscar por nombre, rubro o dirección..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-9 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:bg-white"
-          />
-          <svg className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Personas List */}
-      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
-        {filtradas.map((persona) => (
-          <div
-            key={persona.id}
-            className="rounded-2xl border border-slate-100 bg-white p-3.5 shadow-xs hover:shadow-md transition-all space-y-2"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900 leading-tight">
-                  {persona.nombre}
-                </h3>
-                <span className="inline-block mt-0.5 text-[10.5px] font-medium text-brand-700 bg-purple-50 px-2 py-0.5 rounded-md">
-                  {persona.categoria}
-                </span>
-              </div>
-              {persona.saldo && (
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">Saldo</span>
-                  <span className="text-xs font-bold text-slate-800">{persona.saldo}</span>
-                </div>
-              )}
-            </div>
-
-            <p className="text-[11.5px] text-slate-500 leading-normal">
-              📍 {persona.direccion}
-            </p>
-
-            <div className="flex items-center justify-between pt-1 border-t border-slate-50 text-xs">
-              <span className="text-[11px] text-slate-400">
-                📞 {persona.telefono}
-              </span>
-              <button
-                type="button"
-                onClick={() => onScheduleWithPersona?.(persona.nombre)}
-                className="px-2.5 py-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-[11px] font-medium shadow-xs transition-colors"
-              >
-                + Agendar visita
-              </button>
-            </div>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 pt-4 pb-6">
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-serif font-semibold text-slate-900">
+              Personas & Clientes
+            </h1>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-brand-800">
+              {personas.length} registros
+            </span>
           </div>
-        ))}
+          <p className="text-xs text-slate-500 mt-1">
+            Fuerza comercial multi-rubro · Núcleo F1
+          </p>
+
+          {/* Search input */}
+          <div className="mt-3 relative">
+            <input
+              type="text"
+              placeholder="Buscar por nombre o documento"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-full py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            />
+            <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+
+          {/* Personas List */}
+          <div className="mt-4 space-y-3">
+            {filtradas.map((persona) => (
+              <div key={persona.id} className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-slate-900">{persona.nombre}</h3>
+                    </div>
+                    <p className="text-xs text-brand-700 mt-0.5">{persona.categoria}</p>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[11px] text-slate-600">{persona.documento} · {persona.telefono}</p>
+                      <p className="text-[11px] text-slate-500">{persona.direccion}</p>
+                    </div>
+                    <div className="mt-2.5 flex items-center gap-2">
+                      {persona.visitasPendientes > 0 ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          {persona.visitasPendientes} visitas pendientes
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-mint-100 text-green-700">
+                          Al día
+                        </span>
+                      )}
+                      {persona.saldo && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          Saldo {persona.saldo}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onScheduleWithPersona?.(persona.nombre)}
+                    className="ml-3 shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 hover:text-brand-800 bg-purple-50 hover:bg-purple-100 px-3 py-2 rounded-xl transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    Agendar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNav
-        activeTab="personas"
-        onTabChange={onNavigateTab}
-        onOpenNewEvent={onOpenNewEvent}
-      />
+      {!embedded && <BottomNav activeTab="personas" onNavigateTab={onNavigateTab} />}
     </div>
   )
 }
