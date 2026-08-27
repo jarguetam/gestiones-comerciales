@@ -7,6 +7,8 @@ import { AgendaView } from './components/AgendaView'
 import { TimelineView } from './components/TimelineView'
 import { EventDetailView } from './components/EventDetailView'
 import { PersonasView } from './components/PersonasView'
+import { CrmPipelineView } from './components/CrmPipelineView'
+import { INITIAL_LEADS, type LeadItem } from './leadsData'
 import { NotificationsView } from './components/NotificationsView'
 import { SearchView } from './components/SearchView'
 import { NewEventModal } from './components/NewEventModal'
@@ -16,13 +18,14 @@ export function InteractiveApp() {
   const [events, setEvents] = useState<CalendarEvent[]>(INITIAL_EVENTS)
   const [selectedDate, setSelectedDate] = useState<string>('2026-09-17')
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent>(INITIAL_EVENTS[0])
-  const [activeTab, setActiveTab] = useState<'agenda' | 'timeline' | 'personas' | 'search' | 'notifications'>('timeline')
+  const [activeTab, setActiveTab] = useState<'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm'>('timeline')
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'showcase' | 'single' | 'fullwidth'>('showcase')
   const [tenantNombre, setTenantNombre] = useState('AgroMoney S.A.')
   const [modalPersonaInicial, setModalPersonaInicial] = useState('')
   const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
+  const [leads, setLeads] = useState<LeadItem[]>(INITIAL_LEADS)
 
   function handleSelectEvent(event: CalendarEvent) {
     setSelectedEvent(event)
@@ -52,6 +55,25 @@ export function InteractiveApp() {
     setPersonas((prev) =>
       prev.some((p) => p.id === persona.id) ? prev : [...prev, persona]
     )
+  }
+
+  /** Convierte un lead ganado (GC-CRM-003) en persona de la cartera (núcleo F1). */
+  function handleConvertLead(lead: LeadItem) {
+    setPersonas((prev) => {
+      if (prev.some((p) => p.nombre === lead.nombre)) return prev
+      return [
+        ...prev,
+        {
+          id: `p${prev.length + 1}`,
+          nombre: lead.nombre,
+          categoria: 'Cliente — convertido desde CRM',
+          documento: lead.documento ?? '',
+          telefono: lead.telefono,
+          direccion: lead.direccion ?? '',
+          visitasPendientes: 0,
+        },
+      ]
+    })
   }
 
   return (
@@ -180,6 +202,14 @@ export function InteractiveApp() {
                   onOpenNewEvent={() => setIsNewEventModalOpen(true)}
                   onNavigateTab={setActiveTab}
                   onScheduleWithPersona={handleScheduleWithPersona}
+                />
+              ) : activeTab === 'crm' ? (
+                <CrmPipelineView
+                  leads={leads}
+                  onChangeLeads={setLeads}
+                  onConvertLead={handleConvertLead}
+                  onOpenNewEvent={() => setIsNewEventModalOpen(true)}
+                  onNavigateTab={setActiveTab}
                 />
               ) : activeTab === 'notifications' ? (
                 <NotificationsView

@@ -9,10 +9,11 @@ import { StatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
 import AgendaScreen from './screens/AgendaScreen'
 import PersonaScreen from './screens/PersonaScreen'
+import LeadsScreen from './screens/LeadsScreen'
 import AjustesScreen from './screens/AjustesScreen'
 import { claimsDe, DEMO_MODE, supabase, type Perfil, cargarPerfil } from './lib/supabase'
 
-type Tab = 'agenda' | 'personas' | 'ajustes'
+type Tab = 'agenda' | 'personas' | 'leads' | 'ajustes'
 
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
@@ -52,7 +53,7 @@ export default function App() {
     <View style={styles.fondo}>
       <View style={styles.header}>
         <Text style={styles.headerTitulo}>
-          {tab === 'agenda' ? 'Agenda de hoy' : tab === 'personas' ? 'Cartera' : 'Ajustes'}
+          {tab === 'agenda' ? 'Agenda de hoy' : tab === 'personas' ? 'Cartera' : tab === 'leads' ? 'Mis leads' : 'Ajustes'}
         </Text>
         <Text style={styles.headerSub}>{perfil.tenantNombre ?? perfil.nombre}</Text>
       </View>
@@ -60,6 +61,7 @@ export default function App() {
       <View style={{ flex: 1 }}>
         {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
         {tab === 'personas' && <PersonaScreen />}
+        {tab === 'leads' && <LeadsScreen perfil={perfil} />}
         {tab === 'ajustes' && <AjustesScreen perfil={perfil} onLogout={() => setPerfil(null)} />}
       </View>
 
@@ -68,6 +70,7 @@ export default function App() {
           [
             { id: 'agenda', etiqueta: 'Agenda' },
             { id: 'personas', etiqueta: 'Cartera' },
+            { id: 'leads', etiqueta: 'Leads' },
             { id: 'ajustes', etiqueta: 'Ajustes' },
           ] as { id: Tab; etiqueta: string }[]
         ).map((t) => (

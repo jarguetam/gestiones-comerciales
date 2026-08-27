@@ -8,7 +8,7 @@ interface SearchViewProps {
   events: CalendarEvent[]
   onSelectEvent: (event: CalendarEvent) => void
   onOpenNewEvent: () => void
-  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications') => void
+  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm') => void
   embedded?: boolean
 }
 

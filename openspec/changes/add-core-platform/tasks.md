@@ -26,11 +26,11 @@
 - [x] 1.12 Tests de aislamiento por rol (pgTAP) + E2E Playwright/Detox de los MVP. *(pgTAP: supabase/tests/001_rls_tenant_rol.sql — 13 casos de aislamiento por tenant (GC-RLS-001), alcance asesor/supervisor/admin (GC-RLS-002), escritura cross-tenant y cross-asesor bloqueadas, plataforma sin tenant sin acceso a negocio (GC-RLS-004), anon sin acceso. E2E: apps/web/tests/flujos-f1.spec.ts Playwright contra preview demo (W-03 modal visita con Cliente dropdown + alta inline, W-04 cartera con búsqueda); Detox móvil pendiente de build EAS del usuario)*
 
 ## FASE 2 — CRM leads (mini-proyecto 3)
-- [ ] 2.1 Migración crm: lead, lead_estado, lead_actividad, lead_origen.
-- [ ] 2.2 RPCs: lead_transicion/convertir/reasignar, crm_funnel (reglas GC-CRM-*).
-- [ ] 2.3 Web: W-15 pipeline kanban, W-16 detalle (agendar visita, convertir), W-17 reporte embudo.
-- [ ] 2.4 Móvil: M-11 mis leads (offline), M-12 detalle (llamar/whatsapp, agendar, convertir).
-- [ ] 2.5 Tests: transiciones inválidas, conversión idempotente, duplicados por teléfono.
+- [x] 2.1 Migración crm: lead, lead_estado, lead_actividad, lead_origen. *(completa: 20260827170000_f2_crm_leads.sql — embudo configurable por tenant con orden/es_ganado/es_perdido, lead con conexión núcleo (persona_id, asesor_id), índice único parcial teléfono por tenant mientras no convierta, lead_actividad como historial; RLS por tenant + alcance por rol; aplicada a la base real)*
+- [x] 2.2 RPCs: lead_transicion/convertir/reasignar, crm_funnel (reglas GC-CRM-*). *(completa: 20260827170100_f2_crm_rpcs.sql — transicion valida CRM-1 retroceso solo supervisor+, CRM-2 perdido exige motivo, CRM-3 ganado dispara conversión, CRM-4 convertido no retrocede; convertir idempotente por documento/teléfono; reasignar solo supervisor+ (CRM-5); crm_funnel con alcance por rol; todo con auditoría; aplicadas a la base real)*
+- [x] 2.3 Web: W-15 pipeline kanban, W-16 detalle (agendar visita, convertir), W-17 reporte embudo. *(completa: leadsData.ts + CrmPipelineView con kanban por estado, detalle con transiciones y 'Agendar visita', alta con dedupe por teléfono, reporte embudo; lead ganado se convierte y aparece en la cartera (núcleo F1); nuevo tab CRM en BottomNav; build web OK)*
+- [x] 2.4 Móvil: M-11 mis leads (offline), M-12 detalle (llamar/whatsapp, agendar, convertir). *(completa: LeadsScreen con lista por etapa, alta con dedupe, detalle con llamar/WhatsApp, transiciones vía lead_transicion y convertir; tab Leads en la app; tsc OK)*
+- [x] 2.5 Tests: transiciones inválidas, conversión idempotente, duplicados por teléfono. *(pgTAP: supabase/tests/004_crm_leads.sql — 11 casos: dedupe teléfono, avance válido, retroceso asesor rechazado / supervisor permitido, perdido sin/con motivo, ganado dispara conversión, idempotencia de conversión, convertido no retrocede, crm_funnel agrega)*
 
 ## FASE 3 — Módulos de rubro (mini-proyectos 4..n, por tenant)
 - [ ] 3.1 creditos: producto, cuenta, cuenta_saldo, movimiento + ingesta snapshot (pg_cron).

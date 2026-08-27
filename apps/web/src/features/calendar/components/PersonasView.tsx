@@ -5,7 +5,7 @@ import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
 
 interface PersonasViewProps {
   onOpenNewEvent: () => void
-  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications') => void
+  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm') => void
   onScheduleWithPersona?: (personaName: string) => void
   /** Cartera viva: admite personas registradas desde el modal de nueva visita */
   personas?: PersonaItem[]

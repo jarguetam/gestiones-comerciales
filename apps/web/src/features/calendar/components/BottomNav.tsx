@@ -1,6 +1,6 @@
 interface BottomNavProps {
-  activeTab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications'
-  onTabChange: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications') => void
+  activeTab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm'
+  onTabChange: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm') => void
   onOpenNewEvent: () => void
 }
 
@@ -77,18 +77,20 @@ export function BottomNav({ activeTab, onTabChange, onOpenNewEvent }: BottomNavP
         </svg>
       </button>
 
-      {/* Search */}
+      {/* CRM Pipeline */}
       <button
         type="button"
-        onClick={() => onTabChange('search')}
+        onClick={() => onTabChange('crm')}
         className={`p-2.5 rounded-full transition-colors ${
-          activeTab === 'search' ? 'text-brand-700 bg-purple-50' : 'text-slate-400 hover:text-slate-700'
+          activeTab === 'crm' ? 'text-brand-700 bg-purple-50' : 'text-slate-400 hover:text-slate-700'
         }`}
-        aria-label="Buscar"
+        aria-label="Pipeline CRM"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <path d="M3 3v18h18" />
+          <rect x="7" y="12" width="3" height="6" rx="0.5" fill="currentColor" stroke="none" />
+          <rect x="12" y="8" width="3" height="10" rx="0.5" fill="currentColor" stroke="none" />
+          <rect x="17" y="4" width="3" height="14" rx="0.5" fill="currentColor" stroke="none" />
         </svg>
       </button>
     </div>

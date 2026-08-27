@@ -11,7 +11,7 @@ interface Showcase3PhonesProps {
   onDateChange: (date: string) => void
   onSelectEvent: (event: CalendarEvent) => void
   onOpenNewEvent: () => void
-  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications') => void
+  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm') => void
   onCloseDetail: () => void
 }
 

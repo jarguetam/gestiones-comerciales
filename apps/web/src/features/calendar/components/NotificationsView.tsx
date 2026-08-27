@@ -3,7 +3,7 @@ import { BottomNav } from './BottomNav'
 
 interface NotificationsViewProps {
   onOpenNewEvent: () => void
-  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications') => void
+  onNavigateTab: (tab: 'agenda' | 'timeline' | 'personas' | 'search' | 'notifications' | 'crm') => void
   embedded?: boolean
 }
 
