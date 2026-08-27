@@ -43,7 +43,7 @@ jobs:
           version: 9.15.9
 
       - name: Instalar dependencias (workspace)
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Typecheck + build apps (web + backoffice)
         run: |
