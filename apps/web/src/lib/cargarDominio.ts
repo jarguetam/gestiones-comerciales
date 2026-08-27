@@ -53,9 +53,10 @@ export async function cargarDominio(): Promise<DominioCargado> {
   }
 
   try {
-    const [tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
+    const [userRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
       await Promise.all([
-      supabase.from('tenant').select('nombre').limit(1).maybeSingle(),
+      supabase.auth.getUser(),
+      supabase.from('tenant').select('id, nombre').limit(50),
       supabase
         .from('persona')
         .select('id, nombre, categoria, documento, direccion, detalles, activo')
@@ -85,6 +86,11 @@ export async function cargarDominio(): Promise<DominioCargado> {
       supabase.from('municipio').select('id').limit(1).maybeSingle(),
     ])
 
+    const jwtTenant = userRes.data.user?.app_metadata?.tenant_id as string | undefined
+    const tenants = (tenantRes.data ?? []) as Array<{ id: string; nombre: string }>
+    const tenantRow =
+      tenants.find((t) => t.id === jwtTenant) ?? tenants[0] ?? null
+    const tenantNombre = tenantRow?.nombre ?? 'Gestiones Comerciales'
     const subsDb = (subRes.data ?? []) as Array<{ id: number; actividad_id: number; nombre: string; activo: boolean }>
     const catalogos: CatalogoActividad[] = ((actRes.data ?? []) as Array<{ id: number; nombre: string; activo: boolean }>).map(
       (a) => ({
@@ -143,10 +149,10 @@ export async function cargarDominio(): Promise<DominioCargado> {
       lead_origen: { nombre?: string } | { nombre?: string }[] | null
     }>
 
-    if (error || (personasDb.length === 0 && visitasDb.length === 0 && leadsDb.length === 0)) {
+    if (error) {
       return {
         fuente: 'demo',
-        tenantNombre: (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'AgroMoney S.A.',
+        tenantNombre,
         personas: INITIAL_PERSONAS,
         eventos: INITIAL_EVENTS,
         leads: INITIAL_LEADS,
@@ -155,11 +161,11 @@ export async function cargarDominio(): Promise<DominioCargado> {
         horas: horas.length > 0 ? horas : CATALOGO_HORAS,
         zonas: zonas.length > 0 ? zonas : ZONAS_DEMO,
         geo,
-        aviso: error
-          ? `Sin datos de tenant todavía (${error.message}). Mostrando cartera de demostración.`
-          : 'El tenant no tiene visitas, personas ni leads. Mostrando cartera de demostración.',
+        aviso: `No se pudo leer el tenant (${error.message}). Mostrando cartera de demostración.`,
       }
     }
+
+    const vacio = personasDb.length === 0 && visitasDb.length === 0 && leadsDb.length === 0
 
     const personas: PersonaItem[] = personasDb.map((p) => ({
       id: String(p.id),
@@ -210,15 +216,18 @@ export async function cargarDominio(): Promise<DominioCargado> {
 
     return {
       fuente: 'supabase',
-      tenantNombre: (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales',
-      personas: personas.length > 0 ? personas : INITIAL_PERSONAS,
-      eventos: eventos.length > 0 ? eventos : INITIAL_EVENTS,
-      leads: leads.length > 0 ? leads : INITIAL_LEADS,
+      tenantNombre,
+      personas,
+      eventos,
+      leads,
       modulos,
-      catalogos: catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES,
-      horas: horas.length > 0 ? horas : CATALOGO_HORAS,
-      zonas: zonas.length > 0 ? zonas : ZONAS_DEMO,
+      catalogos,
+      horas,
+      zonas,
       geo,
+      aviso: vacio
+        ? 'Esta empresa aún no tiene clientes, visitas ni leads. Creá el primero desde Personas, Visitas o CRM.'
+        : undefined,
     }
   } catch (err) {
     return {

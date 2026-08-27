@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { WizardEmpresa } from './WizardEmpresa'
+import { nombreRubro } from './wizard'
 import type { TenantRow } from './types'
 
 export function Empresas() {
@@ -77,7 +78,7 @@ export function Empresas() {
                       {t.nombre}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{t.rubro}</td>
+                  <td className="px-4 py-3">{nombreRubro(t.rubro)}</td>
                   <td className="px-4 py-3">{t.plan}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
