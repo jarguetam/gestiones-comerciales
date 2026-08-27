@@ -1,0 +1,118 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  apps/backoffice:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.45.0
+        version: 2.112.4
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      react-router-dom:
+        specifier: ^6.26.0
+        version: 6.26.2(react-dom@18.3.1)(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.3
+        version: 18.3.12
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.1
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.4(vite@5.4.21)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.49)
+      postcss:
+        specifier: ^8.4.41
+        version: 8.4.49
+      tailwindcss:
+        specifier: ^3.4.10
+        version: 3.4.17
+      typescript:
+        specifier: ^5.5.4
+        version: 5.7.3
+      vite:
+        specifier: ^5.4.2
+        version: 5.4.21(@types/node@22.10.2)(sass@1.83.0)(terser@5.37.0)
+
+  apps/mobile:
+    dependencies:
+      expo:
+        specifier: ~51.0.28
+        version: 51.0.28
+      expo-status-bar:
+        specifier: ~1.12.1
+        version: 1.12.1
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-native:
+        specifier: 0.74.5
+        version: 0.74.5
+    devDependencies:
+      '@types/react':
+        specifier: ~18.3.12
+        version: 18.3.12
+
+  apps/web:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.45.0
+        version: 2.112.4
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      react-router-dom:
+        specifier: ^6.26.0
+        version: 6.26.2(react-dom@18.3.1)(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.3
+        version: 18.3.12
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.1
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.4(vite@5.4.21)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.49)
+      postcss:
+        specifier: ^8.4.41
+        version: 8.4.49
+      tailwindcss:
+        specifier: ^3.4.10
+        version: 3.4.17
+      typescript:
+        specifier: ^5.5.4
+        version: 5.7.3
+      vite:
+        specifier: ^5.4.2
+        version: 5.4.21(@types/node@22.10.2)(sass@1.83.0)(terser@5.37.0)
+
+packages:
+
+  '@ampproject/remapping@2.3.0':
+    resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
+    engines: {node: '>=6.0.0'}
+
+  '@babel/code-frame@7.26.2':
+    resolution: {integrity: sha512-RYlWa9rsdvKEsiIuuSHm+wNMDEy5XpWDpXwgMa6AYvtHMLnpDyhD7gIuJlagsTcOexjEXnp13bjE2vNk++7s1w==}
+    engines: {node: '>=6.0.0'}
