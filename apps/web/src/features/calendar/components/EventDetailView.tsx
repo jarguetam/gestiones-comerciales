@@ -1,5 +1,6 @@
 import type { CalendarEvent } from '../types'
 import { CATEGORY_STYLES } from '../types'
+import { CATALOGO_ACTIVIDADES } from '../eventsData'
 import { StatusBar } from './StatusBar'
 
 interface EventDetailViewProps {
@@ -35,6 +36,14 @@ function format12h(timeStr: string) {
   return `${h}:${m} ${ampm}`
 }
 
+const ESTADO_LABEL: Record<string, string> = {
+  programada: 'Programada',
+  completada: 'Completada',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  anulada: 'Anulada',
+}
+
 export function EventDetailView({
   event,
   onClose,
@@ -43,6 +52,8 @@ export function EventDetailView({
   embedded = false,
 }: EventDetailViewProps) {
   const style = CATEGORY_STYLES[event.category] || CATEGORY_STYLES.lavender
+  const actividad = CATALOGO_ACTIVIDADES.find((a) => a.id === event.actividadId)
+  const subActividad = actividad?.sub_actividades.find((sa) => sa.id === event.subActividadId)
 
   return (
     <div className="flex flex-col h-full bg-white select-none overflow-hidden font-sans">
@@ -104,14 +115,56 @@ export function EventDetailView({
             {event.title}
           </h1>
         </div>
-        {/* Status circle indicator */}
-        <div className="mt-1.5 w-4 h-4 rounded-full border-2 border-brand-600 flex items-center justify-center p-0.5 shrink-0">
-          <div className="w-2 h-2 rounded-full bg-brand-600"></div>
-        </div>
+        {/* Estado de la visita (máquina de estados) */}
+        <span className="mt-0.5 shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-purple-50 text-brand-800 border border-purple-100">
+          {ESTADO_LABEL[event.estado ?? 'programada']}
+        </span>
       </div>
 
       {/* Details List */}
       <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-8 divide-y divide-slate-100">
+        {/* Actividad / Sub Actividad (catálogo de visitas) */}
+        {actividad && (
+          <div className="flex items-start gap-4 pt-1">
+            <div className="w-6 h-6 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v4" />
+                <path d="M12 18v4" />
+                <path d="M2 12h4" />
+                <path d="M18 12h4" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-[13.5px] font-medium text-slate-800">
+                {actividad.nombre}
+              </p>
+              {subActividad && (
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {subActividad.nombre}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Persona / Cliente */}
+        {event.personaName && (
+          <div className="flex items-start gap-4 pt-4">
+            <div className="w-6 h-6 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-[13.5px] font-medium text-slate-800">
+                {event.personaName}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Date & Time */}
         <div className="flex items-start gap-4 pt-1">
           <div className="w-6 h-6 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
@@ -203,10 +256,10 @@ export function EventDetailView({
           </div>
           <div className="flex items-center space-x-1.5 flex-1">
             {(event.attendees && event.attendees.length > 0 ? event.attendees : [
-              { id: '1', name: 'Sofía', initials: 'SM', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face' },
-              { id: '2', name: 'Carlos', initials: 'CR', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face' },
-              { id: '3', name: 'Elena', initials: 'EG', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face' },
-              { id: '4', name: 'David', initials: 'DL', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face' },
+              { id: '1', name: 'Luisa', initials: 'LR', avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&crop=face' },
+              { id: '2', name: 'Erick', initials: 'EB', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face' },
+              { id: '3', name: 'Ana Lucía', initials: 'AP', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face' },
+              { id: '4', name: 'Marco', initials: 'MM', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face' },
             ]).map((att) => (
               <div
                 key={att.id}
