@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gc-primary: #1D4ED8;
+  --gc-secondary: #F59E0B;
+}

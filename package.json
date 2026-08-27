@@ -1,0 +1,19 @@
+{
+  "name": "gestiones-comerciales",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @gc/web dev",
+    "dev:backoffice": "pnpm --filter @gc/backoffice dev",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter @gc/web build",
+    "build:backoffice": "pnpm --filter @gc/backoffice build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  }
+}

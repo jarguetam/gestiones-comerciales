@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Gestiones Comerciales",
+    "slug": "gestiones-comerciales",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "gestiones",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1D4ED8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gc.mobile"
+    },
+    "android": {
+      "package": "com.gc.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#1D4ED8"
+      }
+    }
+  }
+}

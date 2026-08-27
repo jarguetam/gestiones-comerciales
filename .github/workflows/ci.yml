@@ -38,5 +38,14 @@ jobs:
             echo "Sin Edge Functions aún"
           fi
 
-      - name: Placeholder apps (cuando existan)
-        run: echo "apps/* pendientes de scaffold en F1"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Instalar dependencias (workspace)
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck + build apps (web + backoffice)
+        run: |
+          pnpm --filter @gc/web build
+          pnpm --filter @gc/backoffice build
