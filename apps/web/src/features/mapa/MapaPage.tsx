@@ -167,19 +167,25 @@ export function MapaPage() {
       )}
 
       <div className="flex flex-wrap gap-3 items-end">
-        <label className="text-sm">
-          <span className="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Fecha</span>
+        <div className="text-sm">
+          <label htmlFor="mapa-fecha" className="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+            Fecha
+          </label>
           <input
+            id="mapa-fecha"
             type="date"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
             className="rounded-lg border border-[#E4DCC8] bg-white px-3 py-2 text-sm"
           />
-        </label>
+        </div>
         {mostrarFiltro && (
-          <label className="text-sm">
-            <span className="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Equipo</span>
+          <div className="text-sm">
+            <label htmlFor="filtro-equipo" className="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+              Equipo
+            </label>
             <select
+              id="filtro-equipo"
               value={equipo}
               onChange={(e) => setEquipo(e.target.value)}
               className="rounded-lg border border-[#E4DCC8] bg-white px-3 py-2 text-sm min-w-[12rem]"
@@ -191,7 +197,7 @@ export function MapaPage() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         )}
       </div>
 
