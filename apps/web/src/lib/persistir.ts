@@ -89,3 +89,37 @@ export async function persistirVisita(evento: CalendarEvent, geo: GeoDefaults): 
   if (error) throw error
   return { ...evento, id: `vis-${data.id}` }
 }
+
+export interface FormularioEnviado {
+  id: string
+  resultado: number | null
+  enviadoEn: string
+}
+
+export async function persistirFormulario(args: {
+  plantillaId: string
+  respuestas: Record<string, unknown>
+  visitaId?: number
+  clienteKey?: string
+}): Promise<FormularioEnviado> {
+  if (DEMO_MODE) {
+    return {
+      id: `demo-${Date.now()}`,
+      resultado: null,
+      enviadoEn: new Date().toISOString(),
+    }
+  }
+  const { data, error } = await supabase.rpc('formulario_enviar', {
+    p_plantilla_id: Number(args.plantillaId),
+    p_respuestas: args.respuestas,
+    p_visita_id: args.visitaId ?? null,
+    p_cliente_key: args.clienteKey ?? crypto.randomUUID(),
+  })
+  if (error) throw error
+  const row = data as { id?: number | string; resultado?: number | null; enviado_en?: string } | null
+  return {
+    id: String(row?.id ?? Date.now()),
+    resultado: row?.resultado ?? null,
+    enviadoEn: row?.enviado_en ?? new Date().toISOString(),
+  }
+}

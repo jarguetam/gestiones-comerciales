@@ -11,6 +11,7 @@ const CORE_NAV: NavItem[] = [
   { to: '/visitas', label: 'Visitas' },
   { to: '/personas', label: 'Personas' },
   { to: '/crm', label: 'CRM' },
+  { to: '/formularios', label: 'Formularios' },
   { to: '/notificaciones', label: 'Notificaciones' },
 ]
 

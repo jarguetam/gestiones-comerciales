@@ -1,6 +1,6 @@
 /**
  * @gc/mobile — App del asesor de campo (F1.11 MVP + F3 módulos).
- * Tabs: M-02 Agenda, M-03 Persona, M-11 Leads, M-06 Solicitudes, M-07 Depósitos, M-10 Ajustes.
+ * Tabs: M-02 Agenda, M-03 Persona, M-05 Formularios, M-11 Leads, M-06 Solicitudes, M-07 Depósitos, M-10 Ajustes.
  * M-06/M-07 solo si el tenant tiene el módulo activo (en DEMO_MODE se muestran).
  */
 import React, { useEffect, useState } from 'react'
@@ -10,17 +10,19 @@ import LoginScreen from './screens/LoginScreen'
 import AgendaScreen from './screens/AgendaScreen'
 import PersonaScreen from './screens/PersonaScreen'
 import LeadsScreen from './screens/LeadsScreen'
+import FormulariosScreen from './screens/FormulariosScreen'
 import SolicitudesScreen from './screens/SolicitudesScreen'
 import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
 import { claimsDe, DEMO_MODE, supabase, type Perfil, cargarPerfil } from './lib/supabase'
 
-type Tab = 'agenda' | 'personas' | 'leads' | 'solicitudes' | 'depositos' | 'ajustes'
+type Tab = 'agenda' | 'personas' | 'leads' | 'formularios' | 'solicitudes' | 'depositos' | 'ajustes'
 
 const TITULOS: Record<Tab, string> = {
   agenda: 'Agenda de hoy',
   personas: 'Cartera',
   leads: 'Mis leads',
+  formularios: 'Formularios',
   solicitudes: 'Solicitudes',
   depositos: 'Depósitos',
   ajustes: 'Ajustes',
@@ -63,6 +65,7 @@ export default function App() {
     { id: 'agenda', etiqueta: 'Agenda' },
     { id: 'personas', etiqueta: 'Cartera' },
     { id: 'leads', etiqueta: 'Leads' },
+    { id: 'formularios', etiqueta: 'Fichas' },
     ...(DEMO_MODE || perfil.modulos.includes('solicitudes')
       ? [{ id: 'solicitudes' as const, etiqueta: 'Solicitudes' }]
       : []),
@@ -83,6 +86,7 @@ export default function App() {
         {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
         {tab === 'personas' && <PersonaScreen />}
         {tab === 'leads' && <LeadsScreen perfil={perfil} />}
+        {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}
         {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
         {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
         {tab === 'ajustes' && <AjustesScreen perfil={perfil} onLogout={() => setPerfil(null)} />}
