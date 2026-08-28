@@ -46,15 +46,11 @@ export function BackofficeShell() {
         </div>
       </aside>
       <div className="flex-1 min-w-0">
-        <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-          <span className="font-semibold">GC Platform</span>
+        <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-3">
+          <span className="font-semibold shrink-0">GC Platform</span>
           <nav className="flex gap-3 text-xs">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? 'text-teal-300' : 'text-slate-300')}>
-              Empresas
-            </NavLink>
-            <NavLink to="/salud" className={({ isActive }) => (isActive ? 'text-teal-300' : 'text-slate-300')}>
-              Salud
-            </NavLink>
+            <NavLink to="/" end className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Empresas</NavLink>
+            <NavLink to="/catalogos" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Catálogos</NavLink>
           </nav>
         </header>
         <Outlet />

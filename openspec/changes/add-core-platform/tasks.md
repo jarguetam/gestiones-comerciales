@@ -7,7 +7,7 @@
 - [x] 0.1 Migración: tenant (plan, dominios), usuario_plataforma, usuario_plataforma_tenant, modulo, tenant_modulo.
 - [x] 0.2 RPCs admin_*: tenant_crear/actualizar, usuario_invitar/gestionar, modulo_activar, importar_personas (+auditoría de cada operación). *(las 6 aplicadas; importar_personas con guard to_regclass hasta F1)*
 - [x] 0.3 Claims JWT duales: `{tenant_id, rol}` para usuarios de empresa; `{plataforma:true, superadmin}` para plataforma. *(trigger trg_sync_auth_user_claims sobre auth.users + refresh al cambiar rol/tenant + degradación al desactivar)*
-- [x] 0.4 apps/backoffice (React+Vite): P-01 login MFA, P-02 empresas (wizard de alta), P-03 detalle (branding/plan/módulos), P-04 usuarios, P-05 catálogos globales, P-06 salud. *(P-01/P-02/P-03 listos; P-06 salud con RPC `admin_salud_plataforma` y UI; MFA y P-05 pendientes)*
+- [x] 0.4 apps/backoffice (React+Vite): P-01 login MFA, P-02 empresas (wizard de alta), P-03 detalle (branding/plan/módulos), P-04 usuarios, P-05 catálogos globales, P-06 salud. *(P-01..P-05: login, empresas, detalle, usuarios y catálogos globales geografía/módulos/plantillas; MFA TOTP y P-06 salud pendientes)*
 - [x] 0.5 Wizard de alta de empresa: rubro → branding → módulos → seed inicial → invitación del primer admin. *(4 pasos: empresa/plan → rubro+branding+dominios CORS → módulos optativos → admin inicial vía admin_tenant_crear + admin_usuario_invitar)*
 - [x] 0.6 Tests: RLS de plataforma (usuario sin membresía no opera RPC admin_*), auditoría de operaciones. *(pgTAP: supabase/tests/003_plataforma_admin.sql — admin_tenant_crear/admin_modulo_activar rechazados sin membresía (GC-AUTH-001) y auditados con membresía (GC-AUD-*))*
 
