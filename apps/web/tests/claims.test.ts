@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { claimsDeUsuario, mostrarConfiguracion, mostrarUsuarios } from '../src/lib/claims.ts'
+import { claimsDeUsuario, mostrarAuditoria, mostrarConfiguracion, mostrarUsuarios } from '../src/lib/claims.ts'
 
 function jwtCon(payload: Record<string, unknown>): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url')
@@ -32,6 +32,13 @@ test('gerente ve Usuarios pero no Configuración', () => {
 
 test('demo muestra Configuración aunque no haya rol', () => {
   assert.equal(mostrarConfiguracion(undefined, true), true)
+})
+
+test('solo admin ve Auditoría (W-12); en demo también', () => {
+  assert.equal(mostrarAuditoria('admin', false), true)
+  assert.equal(mostrarAuditoria('gerente', false), false)
+  assert.equal(mostrarAuditoria('asesor', false), false)
+  assert.equal(mostrarAuditoria(undefined, true), true)
 })
 
 test('hidrata rol desde la raíz del JWT (hook custom_access_token)', () => {

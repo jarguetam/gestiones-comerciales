@@ -5,10 +5,12 @@ import type { PersonaItem } from '../features/calendar/personasData'
 import type { LeadItem } from '../features/calendar/leadsData'
 import type { FuenteDominio } from '../lib/cargarDominio'
 import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from '../lib/catalogos'
+import type { BrandingTenant } from '../lib/branding'
 
 export interface DominioState {
   fuente: FuenteDominio
   tenantNombre: string
+  branding: BrandingTenant
   aviso?: string
   eventos: CalendarEvent[]
   personas: PersonaItem[]

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { mostrarConfiguracion, mostrarMapa, mostrarUsuarios } from '../lib/claims'
+import { mostrarAuditoria, mostrarConfiguracion, mostrarMapa, mostrarUsuarios } from '../lib/claims'
 import { DEMO_MODE, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 
@@ -39,6 +39,7 @@ export function AppShell({ tenantNombre, fuente, aviso, modulos = [], onNuevaVis
     ...(mostrarMapa(rol, DEMO_MODE) ? [{ to: '/mapa', label: 'Mapa' }] : []),
     ...(mostrarConfiguracion(rol, DEMO_MODE) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
     ...(mostrarUsuarios(rol, DEMO_MODE) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
+    ...(mostrarAuditoria(rol, DEMO_MODE) ? [{ to: '/auditoria', label: 'Auditoría' }] : []),
   ]
   const nav = [
     ...CORE_NAV,

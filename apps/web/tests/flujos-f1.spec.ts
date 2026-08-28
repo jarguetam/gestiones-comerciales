@@ -29,7 +29,8 @@ test.describe('F1 MVP web (modo demo)', () => {
 
   test('W-03: alta inline valida nombre requerido', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: /nueva visita/i }).first().click()
+    await page.getByRole('banner').getByRole('button', { name: /nueva visita/i }).click()
+    await expect(page.getByRole('heading', { name: /nueva visita/i })).toBeVisible()
     await page.getByRole('button', { name: /nuevo cliente/i }).click()
     await page.getByRole('button', { name: /registrar y usar/i }).click()
     await expect(page.getByText(/nombre es requerido/i).first()).toBeVisible()
@@ -98,6 +99,31 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByText(/ana asesora/i)).toHaveCount(0)
     await page.getByRole('cell', { name: /luisa asesora/i }).click()
     await expect(page.getByText(/puntos/i).first()).toBeVisible()
+  })
+
+  test('W-02b: tablero gerencial con drill-down y ranking', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByText(/W-02b/i).first()).toBeVisible()
+    await expect(page.getByLabel(/filtrar por supervisor/i)).toBeVisible()
+    await expect(page.getByText(/ranking de equipos/i).first()).toBeVisible()
+    await expect(page.getByRole('listitem').filter({ hasText: /erick supervisor/i })).toBeVisible()
+    await page.getByLabel(/filtrar por supervisor/i).selectOption({ label: 'Erick Supervisor' })
+  })
+
+  test('W-12: auditoría lista visita y persona', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^auditoría$/i }).first().click()
+    await expect(page.getByText(/W-12/i).first()).toBeVisible()
+    await expect(page.getByRole('cell', { name: /^visita$/i }).first()).toBeVisible()
+    await expect(page.getByRole('cell', { name: /^persona$/i }).first()).toBeVisible()
+  })
+
+  test('W-13: notificaciones con marcar leída', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^notificaciones$/i }).first().click()
+    await expect(page.getByText(/W-13/i).first()).toBeVisible()
+    await page.getByRole('button', { name: /marcar leída/i }).first().click()
+    await expect(page.getByRole('button', { name: /marcar leída/i })).toHaveCount(1)
   })
 
   test('W-10 y W-11: configuración y usuarios están en la navegación', async ({ page }) => {
