@@ -1,9 +1,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-export const DEMO_MODE = !supabaseUrl || !supabaseAnonKey
+export const DEMO_MODE = !SUPABASE_URL || !supabaseAnonKey
 
 /**
  * Cliente de Supabase. En demo (preview sin .env) devolvemos un stub que
@@ -12,4 +12,4 @@ export const DEMO_MODE = !supabaseUrl || !supabaseAnonKey
  */
 export const supabase: SupabaseClient = DEMO_MODE
   ? ({} as SupabaseClient)
-  : createClient(supabaseUrl!, supabaseAnonKey!)
+  : createClient(SUPABASE_URL!, supabaseAnonKey!)

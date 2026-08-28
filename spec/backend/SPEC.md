@@ -149,6 +149,10 @@ Las tablas del núcleo y módulos se publican vía PostgREST con los siguientes 
 | `admin_modulo_catalogo_guardar(codigo, nombre, nucleo)` | catálogo | módulo upsert | plataforma |
 | `admin_plantilla_guardar(id?, rubro, tipo, nombre, payload, activo)` | plantilla base | catalogo_plantilla upsert | plataforma |
 | `admin_importar_personas(tenant_id, jsonb)` | lote | resumen {insertados, actualizados, errores[]} | plataforma o admin |
+| `admin_importar_cuentas(tenant_id, jsonb)` | lote | resumen {insertados, actualizados, errores[]} | plataforma o admin; exige módulo creditos |
+| `admin_importar_catalogos(tenant_id, jsonb)` | lote | resumen {insertados, actualizados, errores[]} | plataforma o admin |
+| `admin_webhook_rotar_secret(tenant_id)` | — | secret HMAC (una sola vez) | plataforma |
+| `integracion_recibir(...)` | body + firma | evento encolado/procesado | service_role (Edge webhook-tenant) |
 | `formulario_enviar(respuesta jsonb)` | documento | resultado + score | asesor |
 | `deposito_confirmar(id, estado)` | — | depósito actualizado | supervisor/admin |
 | `solicitud_transicion(id, estado_codigo, comentario)` | — | solicitud + historial | según flujo |
@@ -167,10 +171,10 @@ Las tablas del núcleo y módulos se publican vía PostgREST con los siguientes 
 | `push-notifications` | HTTP (cliente) o notify-jobs | `{tenant_id, usuario_ids[], titulo, cuerpo, datos}` → encola FCM por dispositivo activo; degrada a notificación in-app (`notificacion`). |
 | `emailer` | HTTP interno | `{tenant_id, destinatarios[], asunto, html}` → Resend/SMTP. |
 | `pdf-solicitud` | RPC trigger (after insert firma) | Genera PDF (plantilla por tenant desde `tenant.branding`) y sube a Storage; actualiza `pdf_ruta`. |
-| `importer` | HTTP (admin) | CSV/Excel de personas/cuentas/catálogos → validación por fila → `importar_personas` RPC → reporte de errores. |
+| `importer` | HTTP (admin) | CSV o JSON `{tipo, tenant_id, filas[]}` de personas/cuentas/catálogos → RPC `admin_importar_*` → `{insertados, actualizados, errores[]}`. Excel `.xlsx` se rechaza (`GC-IMP-002`). |
 | `rastreo-ingesta` | HTTP (app móvil) | Array de puntos GPS `{lat,lng,precision,velocidad,bateria,capturado_en}`; valida ventana `config_rastreo` y precision_max_m; inserta lote. |
 | `notify-jobs` | `pg_cron` vía `pg_net` | Ejecuta jobs genéricos (§7) por tenant activo; orquesta `push-notifications`/`emailer`. |
-| `webhook-tenant` | HTTP (sistemas del rubro) | Webhook entrante firmado por HMAC; encola a cola `integraciones` para procesar (ex ETL SIFCO). |
+| `webhook-tenant` | HTTP (sistemas del rubro) | Webhook firmado HMAC-SHA256 (`X-GC-Signature` sobre el body crudo); encola `integracion_evento` y procesa `persona.upsert` / `cuenta.snapshot` / `catalogo.upsert`. |
 | `auth-guard` | HTTP | Rate limiting y bloqueo de intentos de login. |
 | `pdf-cotizacion` | alias de `pdf-solicitud` | Compatibilidad naming por tenant financiero. |
 
@@ -202,6 +206,10 @@ Las tablas del núcleo y módulos se publican vía PostgREST con los siguientes 
 | Lead ganado dispara conversión idempotente a persona | RPC `lead_transicion` | GC-CRM-003 |
 | Lead con `persona_id` no retrocede de estado | RPC `lead_transicion` | GC-CRM-004 |
 | Reasignar lead de asesor requiere supervisor+ | RPC `lead_reasignar` | GC-CRM-005 |
+| Importación: nombre y documento obligatorios | RPC `admin_importar_personas` | GC-IMP-001 |
+| Webhook: firma HMAC inválida | RPC `integracion_recibir` / Edge `webhook-tenant` | GC-IMP-010 |
+| Webhook sin secret configurado | RPC `integracion_recibir` | GC-IMP-011 |
+| Cuentas sin módulo creditos | RPC `admin_importar_cuentas` | GC-IMP-020 |
 | Jerarquía: `jefe_id` debe respetar cadena asesor→supervisor→gerente (sin ciclos) | trigger DB | GC-CORE-010 |
 | Los códigos de error GC-* se devuelven como `P0001` + mensaje | todas las RPC | — |
 
@@ -254,7 +262,7 @@ Orquestación:
 
 ## 10. Códigos de error y i18n
 
-- Formato: `GC-<MOD>-NNN` (MOD ∈ CORE, AUTH, FORM, SOLI, DEPO, CRED, RAS, CRM).
+- Formato: `GC-<MOD>-NNN` (MOD ∈ CORE, AUTH, FORM, SOLI, DEPO, CRED, RAS, CRM, IMP).
 - Toda respuesta de error incluye `{code, message, details?}`.
 - El frontend mantiene catálogo `locales/{es,en}/errors.json` con traducciones por código.
 - Los textos de notificaciones/jobs se generan desde plantillas por tenant (`plantilla_notificacion` en configuración del tenant) — no hardcodeados en la función.
@@ -294,5 +302,5 @@ Orquestación:
 5. [ ] Edge Functions: `auth-guard`, `rastreo-ingesta`, `push-notifications`, `notify-jobs`.
 6. [ ] Jobs pg_cron desplegados y monitorizados.
 7. [ ] Buckets Storage con políticas por tenant.
-8. [ ] Seed por tenant + `importer` para onboarding de rubros.
+8. [x] Seed por tenant + `importer` para onboarding de rubros.
 9. [ ] Suite de smoke tests end-to-end (login → visita → formulario → notificación).

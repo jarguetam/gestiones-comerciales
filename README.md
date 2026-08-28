@@ -79,7 +79,7 @@ MODULOS OPTATIVOS (por tenant)
 |---|---|
 | Repo | `jarguetam/gestiones-comerciales` (privado) |
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
-| Fase actual | **F0 — Plataforma y backoffice global** |
+| Fase actual | **F3 cerrada**. W-05/M-05 y W-14 mapa en UI. Pendiente operativo: MFA, P-05/P-06, W-12, cola offline móvil, `db push` F3.6 + `mapa_recorrido`. |
 
 ### Quickstart
 
@@ -109,8 +109,6 @@ apps/               → web / mobile / backoffice (scaffold en F1)
 
 ## Próximos pasos (según tasks.md)
 
-1. **F0 (en curso):** aplicar migraciones al proyecto Supabase + seeds; crear superadmin de
-   plataforma; wizard de alta de primera empresa.
-2. **F1:** núcleo operativo (personas, visitas, rastreo) + apps web/móvil MVP.
-3. **F2:** CRM leads (pipeline, conversión lead→visita→persona).
-4. **F3:** módulos de rubro por tenant (creditos, solicitudes, depositos, kilometraje).
+1. **Operación:** aplicar migraciones F3.6 (`supabase db push`) y desplegar Edge `importer` + `webhook-tenant`; rotar el secreto HMAC en P-03.
+2. **Cierre de producto (fuera de F0–F3):** MFA, P-05/P-06, W-12 auditoría, M-08/M-09 offline. W-05/M-05 formularios y W-14 mapa de asesores (OSM, última posición + recorrido, filtro por equipo).
+3. Issues GitHub #9 y #11 cubren F1.11 y F1.3, ya implementadas — se pueden cerrar.

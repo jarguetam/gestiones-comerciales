@@ -59,3 +59,11 @@ verify_jwt = true
 # notify-jobs se autentica con secret compartido (x-notify-secret), no con JWT
 [functions.notify-jobs]
 verify_jwt = false
+
+# importer: JWT del admin/plataforma; parsea CSV y llama RPC admin_importar_*
+[functions.importer]
+verify_jwt = true
+
+# webhook-tenant: HMAC propio (X-GC-Signature), sin JWT
+[functions.webhook-tenant]
+verify_jwt = false

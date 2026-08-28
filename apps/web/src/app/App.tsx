@@ -14,6 +14,8 @@ import { KilometrajePage } from '../features/kilometraje/KilometrajePage'
 import { NotificationsView } from '../features/calendar/components/NotificationsView'
 import { CatalogosPage } from '../features/configuracion/CatalogosPage'
 import { UsuariosPage } from '../features/usuarios/UsuariosPage'
+import { FormulariosPage } from '../features/formularios/FormulariosPage'
+import { MapaPage } from '../features/mapa/MapaPage'
 import { useDominio } from './DominioContext'
 import { DEMO_MODE } from '../lib/supabase'
 
@@ -59,6 +61,8 @@ export default function App() {
         <Route path="/visitas" element={<VisitasPage />} />
         <Route path="/personas" element={<PersonasPage />} />
         <Route path="/crm" element={<CrmPage />} />
+        <Route path="/formularios" element={<FormulariosPage />} />
+        <Route path="/mapa" element={<MapaPage />} />
         <Route
           path="/solicitudes"
           element={

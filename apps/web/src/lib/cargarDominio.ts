@@ -2,6 +2,7 @@ import type { CalendarEvent } from '../features/calendar/types'
 import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_EVENTS } from '../features/calendar/eventsData'
 import { INITIAL_PERSONAS, type PersonaItem } from '../features/calendar/personasData'
 import { INITIAL_LEADS, type LeadItem } from '../features/calendar/leadsData'
+import { claimsDeUsuario } from './claims'
 import { DEMO_MODE, supabase } from './supabase'
 import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from './catalogos'
 
@@ -53,9 +54,9 @@ export async function cargarDominio(): Promise<DominioCargado> {
   }
 
   try {
-    const [userRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
+    const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
       await Promise.all([
-      supabase.auth.getUser(),
+      supabase.auth.getSession(),
       supabase.from('tenant').select('id, nombre').limit(50),
       supabase
         .from('persona')
@@ -86,7 +87,19 @@ export async function cargarDominio(): Promise<DominioCargado> {
       supabase.from('municipio').select('id').limit(1).maybeSingle(),
     ])
 
-    const jwtTenant = userRes.data.user?.app_metadata?.tenant_id as string | undefined
+    let sesion = sessionRes.data.session
+    let jwtTenant = claimsDeUsuario(sesion?.user, sesion?.access_token).tenantId
+    if (sesion && !jwtTenant) {
+      const refreshed = await supabase.auth.refreshSession()
+      if (refreshed.data.session) {
+        sesion = refreshed.data.session
+        jwtTenant = claimsDeUsuario(sesion.user, sesion.access_token).tenantId
+      }
+    }
+    if (!jwtTenant) {
+      const { data: tid } = await supabase.rpc('tenant_id_actual')
+      jwtTenant = tid != null ? String(tid) : undefined
+    }
     const tenants = (tenantRes.data ?? []) as Array<{ id: string; nombre: string }>
     const tenantRow =
       tenants.find((t) => t.id === jwtTenant) ?? tenants[0] ?? null

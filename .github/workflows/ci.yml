@@ -95,12 +95,18 @@ jobs:
             echo "Sin Edge Functions aún"
           fi
 
+      - name: Tests unitarios de helpers Edge (CSV + HMAC)
+        run: deno test supabase/functions/_shared/
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
 
       - name: Instalar dependencias (workspace)
         run: pnpm install --no-frozen-lockfile
+
+      - name: Tests unitarios web (claims + formularios + mapa)
+        run: pnpm --filter @gc/web test
 
       - name: Typecheck + build apps (web + backoffice)
         run: |

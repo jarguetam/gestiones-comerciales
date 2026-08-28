@@ -53,9 +53,15 @@ export function claimsDe(accessToken: string): { tenantId: string; rol: Rol } | 
   const partes = accessToken.split('.')
   if (partes.length !== 3) return null
   try {
-    const payload = JSON.parse(base64UrlDecode(partes[1]))
-    if (!payload.tenant_id || !payload.rol) return null
-    return { tenantId: payload.tenant_id, rol: payload.rol }
+    const payload = JSON.parse(base64UrlDecode(partes[1])) as {
+      tenant_id?: string
+      rol?: Rol
+      app_metadata?: { tenant_id?: string; rol?: Rol }
+    }
+    const tenantId = payload.tenant_id || payload.app_metadata?.tenant_id
+    const rol = payload.rol || payload.app_metadata?.rol
+    if (!tenantId || !rol) return null
+    return { tenantId, rol }
   } catch {
     return null
   }
