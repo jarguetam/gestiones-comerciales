@@ -38,4 +38,4 @@
 - [x] 3.3 depositos: deposito + deposito_confirmar + recordatorios.
 - [x] 3.4 kilometraje: kilometraje + km_registrar + recordatorio fin de mes.
 - [x] 3.5 Pantallas web/móvil de cada módulo (W-06..W-09, M-06/M-07) activables por tenant.
-- [ ] 3.6 Pendiente: Edge `importer` extendido (personas/cuentas/catálogos) y `webhook-tenant` HMAC (cola `integraciones`). No bloquea F3.1–3.5.
+- [x] 3.6 Edge `importer` (personas/cuentas/catálogos) y `webhook-tenant` HMAC (cola `integraciones`). *(RPC admin_importar_* con reporte por fila; tabla integracion_evento; Edge importer + webhook-tenant; W-04 CSV y rotación de secreto en P-03)*

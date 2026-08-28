@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
 
 interface TenantDetalle {
@@ -11,7 +11,7 @@ interface TenantDetalle {
   plan: string
   activo: boolean
   branding: { color_primario?: string } | null
-  configuracion: { dominios_cors?: string[] } | null
+  configuracion: { dominios_cors?: string[]; webhook_secret?: string } | null
 }
 
 interface ModuloTenant {
@@ -70,6 +70,8 @@ export function EmpresaDetalle() {
   const [nombre, setNombre] = useState('')
   const [rol, setRol] = useState('asesor')
   const [password, setPassword] = useState('')
+  const [webhookSecret, setWebhookSecret] = useState<string | null>(null)
+  const [rotando, setRotando] = useState(false)
 
   const cargar = useCallback(async () => {
     if (!id) return
@@ -180,6 +182,30 @@ export function EmpresaDetalle() {
       await cargar()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo gestionar el usuario')
+    }
+  }
+
+  async function rotarWebhook() {
+    if (!tenant) return
+    setError(null)
+    setAviso(null)
+    setRotando(true)
+    try {
+      if (!live) {
+        setWebhookSecret('demo-webhook-secret-no-persistido')
+        setAviso('Preview: secreto de demostración (no se persiste)')
+        return
+      }
+      const { data, error } = await supabase.rpc('admin_webhook_rotar_secret', {
+        p_tenant_id: tenant.id,
+      })
+      if (error) throw error
+      setWebhookSecret(String(data))
+      setAviso('Secreto rotado. Cópialo ahora; no se vuelve a mostrar.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo rotar el secreto')
+    } finally {
+      setRotando(false)
     }
   }
 
@@ -320,6 +346,43 @@ export function EmpresaDetalle() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="rounded-lg bg-white p-4 shadow space-y-3">
+            <h3 className="font-medium">Webhook del rubro</h3>
+            <p className="text-sm text-slate-600">
+              Los sistemas externos firman el cuerpo con HMAC-SHA256 y envían
+              {' '}<code className="text-xs">X-GC-Signature</code> + <code className="text-xs">X-GC-Tenant-Id</code>.
+            </p>
+            <label className="block text-xs font-medium text-slate-500">URL</label>
+            <input
+              readOnly
+              value={SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/webhook-tenant` : 'https://<proyecto>.supabase.co/functions/v1/webhook-tenant'}
+              className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-mono"
+            />
+            <p className="text-xs text-slate-500">
+              {tenant.configuracion?.webhook_secret
+                ? 'Hay un secreto configurado. Rotarlo invalida el anterior.'
+                : 'Aún no hay secreto. Generá uno para habilitar el webhook.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => void rotarWebhook()}
+              disabled={rotando}
+              className="rounded-md border border-teal-700 px-4 py-2 text-sm font-medium text-teal-800 disabled:opacity-50"
+            >
+              {rotando ? 'Rotando…' : 'Rotar secreto HMAC'}
+            </button>
+            {webhookSecret && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500">Secreto (una sola vez)</label>
+                <input
+                  readOnly
+                  value={webhookSecret}
+                  className="mt-1 w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-mono"
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
