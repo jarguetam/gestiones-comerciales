@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { mostrarConfiguracion, mostrarUsuarios } from '../lib/claims'
 import { DEMO_MODE, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 
@@ -30,15 +31,12 @@ interface AppShellProps {
 }
 
 export function AppShell({ tenantNombre, fuente, aviso, modulos = [], onNuevaVisita, children }: AppShellProps) {
-  const { session, demo } = useAuth()
+  const { session, demo, rol } = useAuth()
   const navigate = useNavigate()
   const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
-  const rol = session?.user.app_metadata?.rol as string | undefined
-  const mostrarConfig = DEMO_MODE || rol === 'admin'
-  const mostrarUsuarios = DEMO_MODE || rol === 'admin' || rol === 'gerente'
   const adminNav: NavItem[] = [
-    ...(mostrarConfig ? [{ to: '/configuracion', label: 'Configuración' }] : []),
-    ...(mostrarUsuarios ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
+    ...(mostrarConfiguracion(rol, DEMO_MODE) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
+    ...(mostrarUsuarios(rol, DEMO_MODE) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
   ]
   const nav = [
     ...CORE_NAV,
