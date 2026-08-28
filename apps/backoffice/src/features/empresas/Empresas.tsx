@@ -39,13 +39,21 @@ export function Empresas() {
           <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">P-02</p>
           <h2 className="text-2xl font-bold text-slate-900">Empresas</h2>
         </div>
-        <button
-          type="button"
-          onClick={() => setWizardOpen(true)}
-          className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-        >
-          + Nueva empresa
-        </button>
+        <div className="flex gap-2">
+          <Link
+            to="/salud"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Ver salud
+          </Link>
+          <button
+            type="button"
+            onClick={() => setWizardOpen(true)}
+            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+          >
+            + Nueva empresa
+          </button>
+        </div>
       </div>
       {demo && (
         <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
