@@ -28,6 +28,10 @@ supabase/.temp
 
 # Testing
 coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Artefactos móviles
 *.apk
