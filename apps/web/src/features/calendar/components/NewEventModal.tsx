@@ -85,8 +85,8 @@ export function NewEventModal({
   const personaSeleccionada = personas.find((p) => p.nombre === personaId)
 
   /** Registra un nuevo cliente en la cartera y lo selecciona para la visita. */
-  async function handleRegistrarPersona(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleRegistrarPersona(e?: React.FormEvent) {
+    e?.preventDefault()
     setErrorPersona('')
 
     const nombreLimpio = nuevoNombre.trim()
@@ -366,10 +366,7 @@ export function NewEventModal({
                 )}
               </>
             ) : (
-              <form
-                onSubmit={(e) => void handleRegistrarPersona(e)}
-                className="space-y-2 rounded-xl border border-dashed border-brand-300 bg-purple-50/40 p-3"
-              >
+              <div className="space-y-2 rounded-xl border border-dashed border-brand-300 bg-purple-50/40 p-3">
                 <input
                   type="text"
                   autoFocus
@@ -417,12 +414,13 @@ export function NewEventModal({
                   <p className="text-[11px] font-semibold text-rose-600">{errorPersona}</p>
                 )}
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void handleRegistrarPersona()}
                   className="w-full py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition-colors"
                 >
                   Registrar y usar en esta visita
                 </button>
-              </form>
+              </div>
             )}
           </div>
 

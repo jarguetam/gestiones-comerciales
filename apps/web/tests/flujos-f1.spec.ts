@@ -29,7 +29,8 @@ test.describe('F1 MVP web (modo demo)', () => {
 
   test('W-03: alta inline valida nombre requerido', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: /nueva visita/i }).first().click()
+    await page.getByRole('banner').getByRole('button', { name: /nueva visita/i }).click()
+    await expect(page.getByRole('heading', { name: /nueva visita/i })).toBeVisible()
     await page.getByRole('button', { name: /nuevo cliente/i }).click()
     await page.getByRole('button', { name: /registrar y usar/i }).click()
     await expect(page.getByText(/nombre es requerido/i).first()).toBeVisible()
@@ -105,7 +106,8 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByText(/W-02b/i).first()).toBeVisible()
     await expect(page.getByLabel(/filtrar por supervisor/i)).toBeVisible()
     await expect(page.getByText(/ranking de equipos/i).first()).toBeVisible()
-    await expect(page.getByText(/erick supervisor/i).first()).toBeVisible()
+    await expect(page.getByRole('listitem').filter({ hasText: /erick supervisor/i })).toBeVisible()
+    await page.getByLabel(/filtrar por supervisor/i).selectOption({ label: 'Erick Supervisor' })
   })
 
   test('W-12: auditoría lista visita y persona', async ({ page }) => {
