@@ -105,13 +105,17 @@ jobs:
       - name: Instalar dependencias (workspace)
         run: pnpm install --no-frozen-lockfile
 
-      - name: Tests unitarios web (claims + formularios + mapa)
+      - name: Tests unitarios web (dashboard, auditoría, MFA, branding)
         run: pnpm --filter @gc/web test
 
-      - name: Typecheck + build apps (web + backoffice)
+      - name: Tests unitarios móvil (cola offline, MFA, notifs)
+        run: pnpm --filter @gc/mobile test
+
+      - name: Typecheck + build apps (web + backoffice + mobile)
         run: |
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
+          pnpm --filter @gc/mobile typecheck
 
   deploy:
     name: Despliegue en GitHub Pages

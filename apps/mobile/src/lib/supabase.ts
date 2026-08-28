@@ -7,6 +7,7 @@
  * En builds de desarrollo nativos, process.env se rellena en build time.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
 
 // Base64 URL-safe sin Buffer (Hermes no lo incluye por defecto)
 function base64UrlDecode(input: string): string {
@@ -46,6 +47,17 @@ export interface Perfil {
   rol: Rol
   tenantNombre?: string
   modulos: string[]
+  branding: BrandingTenant
+}
+
+export const PERFIL_DEMO: Perfil = {
+  id: 'demo-asesor',
+  tenantId: 'demo-tenant',
+  nombre: 'Luisa Asesora',
+  rol: 'asesor',
+  tenantNombre: BRANDING_DEMO.nombre_comercial,
+  modulos: ['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje'],
+  branding: BRANDING_DEMO,
 }
 
 /** Decodifica los claims custom del JWT (tenant_id y rol, spec F0.3). */
@@ -71,11 +83,12 @@ export function claimsDe(accessToken: string): { tenantId: string; rol: Rol } | 
 export async function cargarPerfil(userId: string, tenantId: string, rol: Rol): Promise<Perfil | null> {
   const { data, error } = await supabase
     .from('usuario')
-    .select('id, nombre, tenant(nombre)')
+    .select('id, nombre, tenant(nombre, branding)')
     .eq('id', userId)
     .single()
   if (error || !data) return null
-  const tenant = (data as unknown as { tenant?: { nombre?: string } }).tenant
+  const tenant = (data as unknown as { tenant?: { nombre?: string; branding?: unknown } }).tenant
+  const branding = brandingDeJson(tenant?.branding)
   const { data: mods } = await supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true)
   const modulos = ((mods ?? []) as Array<{ modulo: { codigo?: string } | { codigo?: string }[] | null }>)
     .map((row) => {
@@ -88,7 +101,8 @@ export async function cargarPerfil(userId: string, tenantId: string, rol: Rol): 
     tenantId,
     nombre: data.nombre,
     rol,
-    tenantNombre: tenant?.nombre,
+    tenantNombre: nombreComercial(branding, tenant?.nombre ?? 'Gestiones Comerciales'),
     modulos,
+    branding,
   }
 }
