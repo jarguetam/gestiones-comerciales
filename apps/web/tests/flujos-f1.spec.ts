@@ -40,6 +40,20 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByText(/registros/i).first()).toBeVisible()
   })
 
+  test('W-04: importar CSV agrega personas a la cartera (demo)', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /personas/i }).first().click()
+    await expect(page.getByRole('button', { name: /importar csv/i })).toBeVisible()
+    const csv = 'nombre,documento,categoria,telefono,direccion\nCliente CSV Importado,NIT-CSV-1,Cliente,+502 1111-2222,Zona 1\n'
+    await page.getByLabel(/archivo csv de personas/i).setInputFiles({
+      name: 'cartera.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(csv),
+    })
+    await expect(page.getByText(/cliente csv importado/i).first()).toBeVisible()
+    await expect(page.getByText(/importación demo/i).first()).toBeVisible()
+  })
+
   test('W-06..W-09: en demo se muestran los módulos de rubro', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('link', { name: /^solicitudes$/i }).first()).toBeVisible()
