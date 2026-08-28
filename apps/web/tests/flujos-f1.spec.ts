@@ -13,6 +13,7 @@ test.describe('F1 MVP web (modo demo)', () => {
     await page.goto('/')
     await expect(page).toHaveTitle(/gestiones/i)
     await expect(page.getByRole('link', { name: /dashboard/i }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: /^formularios$/i }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /nueva visita/i }).first()).toBeVisible()
   })
 
@@ -52,6 +53,20 @@ test.describe('F1 MVP web (modo demo)', () => {
     })
     await expect(page.getByText(/cliente csv importado/i).first()).toBeVisible()
     await expect(page.getByText(/importación demo/i).first()).toBeVisible()
+  })
+
+  test('W-05: renderer dinámico, score en vivo y envío demo', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^formularios$/i }).first().click()
+    await expect(page.getByText(/W-05/i).first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: /ficha de cultivo/i }).first()).toBeVisible()
+    await page.getByLabel(/^cultivo/i).fill('Maíz')
+    await page.getByLabel(/hectáreas sembradas/i).fill('3.5')
+    await page.getByLabel(/estado fenológico/i).selectOption('Cosecha')
+    await expect(page.getByText(/score \d+%/i).first()).toBeVisible()
+    await page.getByRole('button', { name: /enviar formulario/i }).click()
+    await expect(page.getByRole('status')).toContainText(/envío demo|enviado/i)
+    await expect(page.getByText(/maíz/i).first()).toBeVisible()
   })
 
   test('W-06..W-09: en demo se muestran los módulos de rubro', async ({ page }) => {

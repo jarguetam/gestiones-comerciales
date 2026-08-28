@@ -105,7 +105,7 @@ jobs:
       - name: Instalar dependencias (workspace)
         run: pnpm install --no-frozen-lockfile
 
-      - name: Tests unitarios web (visibilidad W-10/W-11)
+      - name: Tests unitarios web (claims + formularios)
         run: pnpm --filter @gc/web test
 
       - name: Typecheck + build apps (web + backoffice)

@@ -238,7 +238,7 @@ Monorepo con pnpm workspaces; CI separado por app (web deploy a CDN, móvil a EA
 2. [ ] Supabase client + tipos generados + interceptor de errores GC-*.
 3. [ ] Web: W-01 login+MFA, W-02 dashboard, W-03 visitas (MVP admin).
 4. [ ] Móvil: M-01 login, M-02 agenda, M-04 check-in/out (MVP campo).
-5. [ ] Renderer de formularios dinámicos (M-05) + score.
+5. [x] Renderer de formularios dinámicos (M-05) + score.
 6. [ ] Cola offline + sync (móvil) con tests de pérdida de datos.
 7. [ ] Servicio de rastreo con `config_rastreo` + batch.
 8. [ ] Módulos: solicitudes+firma (PDF), depósitos, kilometraje, cuentas.
