@@ -108,6 +108,9 @@ jobs:
       - name: Tests unitarios web (claims + formularios + mapa)
         run: pnpm --filter @gc/web test
 
+      - name: Tests unitarios backoffice (P-06 salud)
+        run: pnpm --filter @gc/backoffice test
+
       - name: Typecheck + build apps (web + backoffice)
         run: |
           pnpm --filter @gc/web build

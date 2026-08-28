@@ -30,12 +30,12 @@ export function BackofficeShell() {
             Empresas
           </NavLink>
           <NavLink
-            to="/catalogos"
+            to="/salud"
             className={({ isActive }) =>
               `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-teal-700 text-white' : 'text-slate-300 hover:bg-white/5'}`
             }
           >
-            Catálogos
+            Salud
           </NavLink>
         </nav>
         <div className="px-5 py-4 border-t border-white/10 text-[11px] text-slate-400">

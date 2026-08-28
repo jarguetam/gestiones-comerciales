@@ -262,7 +262,10 @@ export function EmpresaDetalle() {
 
   return (
     <main className="mx-auto max-w-5xl p-4 space-y-4">
-      <Link to="/" className="text-sm text-teal-800 hover:underline">← Empresas</Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/" className="text-sm text-teal-800 hover:underline">← Empresas</Link>
+        <Link to="/salud" className="text-sm text-teal-800 hover:underline">Salud de plataforma</Link>
+      </div>
       <div>
         <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">Detalle de empresa</p>
         <h2 className="text-2xl font-bold text-slate-900">{tenant.nombre}</h2>
