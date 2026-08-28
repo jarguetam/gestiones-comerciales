@@ -5,7 +5,7 @@
 -- JWT queda sin {tenant_id, rol} y la web oculta Configuración.
 -- ============================================================
 begin;
-select plan(5);
+select plan(6);
 
 insert into auth.users (id, email) values
   ('eeeeeeee-0000-0000-0000-000000000001', 'admin-nuevo@empresa.test')
@@ -70,6 +70,18 @@ select is(
     )) -> 'claims' ->> 'rol'),
   'admin',
   'el hook copia rol a la raíz del JWT (RLS histórica)'
+);
+
+select is(
+  (select public.custom_access_token_hook(jsonb_build_object(
+      'user_id', 'eeeeeeee-0000-0000-0000-000000000001',
+      'claims', jsonb_build_object(
+        'sub', 'eeeeeeee-0000-0000-0000-000000000001',
+        'app_metadata', '{}'::jsonb
+      )
+    )) -> 'claims' ->> 'tenant_id'),
+  '33333333-3333-3333-3333-333333333333',
+  'el hook copia tenant_id a la raíz del JWT (RLS histórica)'
 );
 
 select * from finish();

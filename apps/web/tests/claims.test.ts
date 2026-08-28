@@ -14,7 +14,7 @@ test('admin con app_metadata.rol ve Configuración', () => {
   assert.equal(mostrarConfiguracion(claims.rol, false), true)
 })
 
-test('admin nuevo sin app_metadata no ve Configuración (bug original)', () => {
+test('sin claims en app_metadata ni JWT no muestra Configuración', () => {
   const claims = claimsDeUsuario({ app_metadata: {} })
   assert.equal(claims.rol, undefined)
   assert.equal(mostrarConfiguracion(claims.rol, false), false)

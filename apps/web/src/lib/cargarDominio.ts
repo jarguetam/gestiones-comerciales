@@ -87,7 +87,19 @@ export async function cargarDominio(): Promise<DominioCargado> {
       supabase.from('municipio').select('id').limit(1).maybeSingle(),
     ])
 
-    const jwtTenant = claimsDeUsuario(sessionRes.data.session?.user, sessionRes.data.session?.access_token).tenantId
+    let sesion = sessionRes.data.session
+    let jwtTenant = claimsDeUsuario(sesion?.user, sesion?.access_token).tenantId
+    if (sesion && !jwtTenant) {
+      const refreshed = await supabase.auth.refreshSession()
+      if (refreshed.data.session) {
+        sesion = refreshed.data.session
+        jwtTenant = claimsDeUsuario(sesion.user, sesion.access_token).tenantId
+      }
+    }
+    if (!jwtTenant) {
+      const { data: tid } = await supabase.rpc('tenant_id_actual')
+      jwtTenant = tid != null ? String(tid) : undefined
+    }
     const tenants = (tenantRes.data ?? []) as Array<{ id: string; nombre: string }>
     const tenantRow =
       tenants.find((t) => t.id === jwtTenant) ?? tenants[0] ?? null
