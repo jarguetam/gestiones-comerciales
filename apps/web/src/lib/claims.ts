@@ -67,6 +67,11 @@ export function mostrarUsuarios(rol: string | undefined, demo: boolean): boolean
   return demo || rol === 'admin' || rol === 'gerente'
 }
 
+/** W-12: log de auditoría. */
+export function mostrarAuditoria(rol: string | undefined, demo: boolean): boolean {
+  return demo || rol === 'admin'
+}
+
 /** W-14: mapa de asesores (última posición + recorrido). */
 export function mostrarMapa(rol: string | undefined, demo: boolean): boolean {
   return demo || rol === 'admin' || rol === 'gerente' || rol === 'supervisor'

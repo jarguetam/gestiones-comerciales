@@ -100,6 +100,30 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByText(/puntos/i).first()).toBeVisible()
   })
 
+  test('W-02b: tablero gerencial con drill-down y ranking', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByText(/W-02b/i).first()).toBeVisible()
+    await expect(page.getByLabel(/filtrar por supervisor/i)).toBeVisible()
+    await expect(page.getByText(/ranking de equipos/i).first()).toBeVisible()
+    await expect(page.getByText(/erick supervisor/i).first()).toBeVisible()
+  })
+
+  test('W-12: auditoría lista visita y persona', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^auditoría$/i }).first().click()
+    await expect(page.getByText(/W-12/i).first()).toBeVisible()
+    await expect(page.getByRole('cell', { name: /^visita$/i }).first()).toBeVisible()
+    await expect(page.getByRole('cell', { name: /^persona$/i }).first()).toBeVisible()
+  })
+
+  test('W-13: notificaciones con marcar leída', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^notificaciones$/i }).first().click()
+    await expect(page.getByText(/W-13/i).first()).toBeVisible()
+    await page.getByRole('button', { name: /marcar leída/i }).first().click()
+    await expect(page.getByRole('button', { name: /marcar leída/i })).toHaveCount(1)
+  })
+
   test('W-10 y W-11: configuración y usuarios están en la navegación', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('link', { name: /configuración/i }).first()).toBeVisible()

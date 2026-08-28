@@ -11,12 +11,15 @@ import type { CalendarEvent } from '../features/calendar/types'
 import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from '../lib/catalogos'
 import { persistirPersona, persistirVisita } from '../lib/persistir'
 import { DEMO_MODE } from '../lib/supabase'
+import { BRANDING_DEMO, varsDeBranding, type BrandingTenant } from '../lib/branding'
+import type { CSSProperties } from 'react'
 
 const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
 
 export function EmpresaApp() {
   const [fuente, setFuente] = useState<FuenteDominio>('demo')
   const [tenantNombre, setTenantNombre] = useState('AgroMoney S.A.')
+  const [branding, setBranding] = useState<BrandingTenant>(BRANDING_DEMO)
   const [aviso, setAviso] = useState<string | undefined>()
   const [eventos, setEventos] = useState<CalendarEvent[]>(INITIAL_EVENTS)
   const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
@@ -37,6 +40,7 @@ export function EmpresaApp() {
         if (!vivo) return
         setFuente(d.fuente)
         setTenantNombre(d.tenantNombre)
+        setBranding(d.branding)
         setAviso(d.aviso)
         setPersonas(d.personas)
         setEventos(d.eventos)
@@ -95,6 +99,7 @@ export function EmpresaApp() {
     () => ({
       fuente,
       tenantNombre,
+      branding,
       aviso,
       eventos,
       personas,
@@ -110,7 +115,7 @@ export function EmpresaApp() {
       abrirNuevaVisita,
       convertirLead: handleConvertLead,
     }),
-    [fuente, tenantNombre, aviso, eventos, personas, leads, modulos, catalogos, horas, zonas, geo],
+    [fuente, tenantNombre, branding, aviso, eventos, personas, leads, modulos, catalogos, horas, zonas, geo],
   )
 
   if (cargando) {
@@ -123,30 +128,32 @@ export function EmpresaApp() {
 
   return (
     <DominioProvider value={value}>
-      <AppShell
-        tenantNombre={tenantNombre}
-        fuente={fuente}
-        aviso={aviso}
-        modulos={modulos}
-        onNuevaVisita={() => abrirNuevaVisita()}
-      >
-        <Outlet />
-      </AppShell>
-      {modalAbierto && (
-        <NewEventModal
-          cartera={personas}
-          catalogos={catalogos}
-          horas={horas}
-          initialDate={new Date().toISOString().slice(0, 10)}
-          initialPersonaName={personaInicial}
-          onSavePersona={handleSavePersona}
-          onClose={() => {
-            setModalAbierto(false)
-            setPersonaInicial('')
-          }}
-          onSave={handleSaveEvent}
-        />
-      )}
+      <div style={varsDeBranding(branding) as CSSProperties}>
+        <AppShell
+          tenantNombre={tenantNombre}
+          fuente={fuente}
+          aviso={aviso}
+          modulos={modulos}
+          onNuevaVisita={() => abrirNuevaVisita()}
+        >
+          <Outlet />
+        </AppShell>
+        {modalAbierto && (
+          <NewEventModal
+            cartera={personas}
+            catalogos={catalogos}
+            horas={horas}
+            initialDate={new Date().toISOString().slice(0, 10)}
+            initialPersonaName={personaInicial}
+            onSavePersona={handleSavePersona}
+            onClose={() => {
+              setModalAbierto(false)
+              setPersonaInicial('')
+            }}
+            onSave={handleSaveEvent}
+          />
+        )}
+      </div>
     </DominioProvider>
   )
 }
