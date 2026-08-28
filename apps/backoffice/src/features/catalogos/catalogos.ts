@@ -127,6 +127,15 @@ export function validarPayloadPlantilla(
   return null
 }
 
+export function mensajeError(e: unknown, fallback = 'No se pudo completar la operación'): string {
+  if (e instanceof Error && e.message) return e.message
+  if (e && typeof e === 'object' && 'message' in e) {
+    const m = (e as { message: unknown }).message
+    if (typeof m === 'string' && m.length > 0) return m
+  }
+  return fallback
+}
+
 export function subactividadesDeTexto(texto: string): string[] {
   return texto
     .split(/\r?\n/)

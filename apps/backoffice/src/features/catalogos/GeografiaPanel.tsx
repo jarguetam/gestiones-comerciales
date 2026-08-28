@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  mensajeError,
   parseCsvGeografia,
   type Departamento,
   type Municipio,
@@ -33,6 +34,9 @@ export function GeografiaPanel({
   const [nuevoMuni, setNuevoMuni] = useState('')
   const [csv, setCsv] = useState('departamento,municipio\n')
   const [importando, setImportando] = useState(false)
+  const [muniId, setMuniId] = useState<number | null>(null)
+  const [nombreDepto, setNombreDepto] = useState(departamentos[0]?.nombre ?? '')
+  const [nombreMuni, setNombreMuni] = useState('')
 
   const munis = municipios.filter((m) => m.departamento_id === deptoId)
   const deptoSel = departamentos.find((d) => d.id === deptoId)
@@ -45,10 +49,24 @@ export function GeografiaPanel({
       const id = await onGuardarDepto(null, nombre)
       onDepartamentos([...departamentos, { id, nombre }])
       setDeptoId(id)
+      setNombreDepto(nombre)
       setNuevoDepto('')
       onAviso('Departamento creado')
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo crear el departamento')
+      onError(mensajeError(e, 'No se pudo crear el departamento'))
+    }
+  }
+
+  async function renombrarDepto() {
+    const nombre = nombreDepto.trim()
+    if (!nombre || deptoId == null) return
+    onError(null)
+    try {
+      await onGuardarDepto(deptoId, nombre)
+      onDepartamentos(departamentos.map((d) => (d.id === deptoId ? { ...d, nombre } : d)))
+      onAviso('Departamento actualizado')
+    } catch (e) {
+      onError(mensajeError(e, 'No se pudo renombrar el departamento'))
     }
   }
 
@@ -62,7 +80,20 @@ export function GeografiaPanel({
       setNuevoMuni('')
       onAviso('Municipio creado')
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo crear el municipio')
+      onError(mensajeError(e, 'No se pudo crear el municipio'))
+    }
+  }
+
+  async function renombrarMuni() {
+    const nombre = nombreMuni.trim()
+    if (!nombre || deptoId == null || muniId == null) return
+    onError(null)
+    try {
+      await onGuardarMuni(muniId, deptoId, nombre)
+      onMunicipios(municipios.map((m) => (m.id === muniId ? { ...m, nombre } : m)))
+      onAviso('Municipio actualizado')
+    } catch (e) {
+      onError(mensajeError(e, 'No se pudo renombrar el municipio'))
     }
   }
 
@@ -74,7 +105,7 @@ export function GeografiaPanel({
       await onImportar(filas)
       onAviso(`Importadas ${filas.length} filas`)
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo importar el CSV')
+      onError(mensajeError(e, 'No se pudo importar el CSV'))
     } finally {
       setImportando(false)
     }
@@ -100,7 +131,12 @@ export function GeografiaPanel({
             <li key={d.id}>
               <button
                 type="button"
-                onClick={() => setDeptoId(d.id)}
+                onClick={() => {
+                  setDeptoId(d.id)
+                  setNombreDepto(d.nombre)
+                  setMuniId(null)
+                  setNombreMuni('')
+                }}
                 className={`w-full text-left px-3 py-2 text-sm ${d.id === deptoId ? 'bg-teal-50 font-medium text-teal-900' : 'hover:bg-slate-50'}`}
               >
                 {d.nombre}
@@ -108,6 +144,19 @@ export function GeografiaPanel({
             </li>
           ))}
         </ul>
+        {deptoSel && (
+          <div className="flex gap-2">
+            <input
+              value={nombreDepto}
+              onChange={(e) => setNombreDepto(e.target.value)}
+              placeholder="Renombrar departamento"
+              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            <button type="button" onClick={() => void renombrarDepto()} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+              Renombrar
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="rounded-lg bg-white p-4 shadow space-y-3">
@@ -129,10 +178,31 @@ export function GeografiaPanel({
             <li className="px-3 py-4 text-sm text-slate-500">Sin municipios en este departamento.</li>
           ) : (
             munis.map((m) => (
-              <li key={m.id} className="px-3 py-2 text-sm">{m.nombre}</li>
+              <li key={m.id}>
+                <button
+                  type="button"
+                  onClick={() => { setMuniId(m.id); setNombreMuni(m.nombre) }}
+                  className={`w-full text-left px-3 py-2 text-sm ${m.id === muniId ? 'bg-teal-50 font-medium text-teal-900' : 'hover:bg-slate-50'}`}
+                >
+                  {m.nombre}
+                </button>
+              </li>
             ))
           )}
         </ul>
+        {muniId != null && (
+          <div className="flex gap-2">
+            <input
+              value={nombreMuni}
+              onChange={(e) => setNombreMuni(e.target.value)}
+              placeholder="Renombrar municipio"
+              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            <button type="button" onClick={() => void renombrarMuni()} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+              Renombrar
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="lg:col-span-2 rounded-lg bg-white p-4 shadow space-y-3">

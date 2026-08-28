@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ModuloCatalogo } from './catalogos'
+import { mensajeError, type ModuloCatalogo } from './catalogos'
 
 interface Props {
   modulos: ModuloCatalogo[]
@@ -28,18 +28,7 @@ export function ModulosPanel({ modulos, onChange, onGuardar, onError, onAviso }:
       setNucleo(false)
       onAviso('Módulo guardado')
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo guardar el módulo')
-    }
-  }
-
-  async function toggleNucleo(m: ModuloCatalogo) {
-    if (m.codigo === 'core') return
-    onError(null)
-    try {
-      await onGuardar(m.codigo, m.nombre, !m.nucleo)
-      onChange(modulos.map((x) => (x.codigo === m.codigo ? { ...x, nucleo: !x.nucleo } : x)))
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo actualizar el módulo')
+      onError(mensajeError(e, 'No se pudo guardar el módulo'))
     }
   }
 
@@ -86,14 +75,9 @@ export function ModulosPanel({ modulos, onChange, onGuardar, onError, onAviso }:
                 <td className="px-4 py-3 font-mono text-xs">{m.codigo}</td>
                 <td className="px-4 py-3">{m.nombre}</td>
                 <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => void toggleNucleo(m)}
-                    disabled={m.codigo === 'core'}
-                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs disabled:opacity-60"
-                  >
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">
                     {m.nucleo ? 'núcleo' : 'optativo'}
-                  </button>
+                  </span>
                 </td>
               </tr>
             ))}

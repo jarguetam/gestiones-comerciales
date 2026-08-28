@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   RUBROS_PLANTILLA,
   TIPOS_PLANTILLA,
+  mensajeError,
   subactividadesDeTexto,
   validarPayloadPlantilla,
   type PlantillaBase,
@@ -77,7 +78,7 @@ export function PlantillasPanel({ plantillas, onChange, onGuardar, onError, onAv
       setEditId(null)
       onAviso(editId ? 'Plantilla actualizada' : 'Plantilla creada')
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo guardar la plantilla')
+      onError(mensajeError(e, 'No se pudo guardar la plantilla'))
     }
   }
 
@@ -94,7 +95,7 @@ export function PlantillasPanel({ plantillas, onChange, onGuardar, onError, onAv
       })
       onChange(plantillas.map((x) => (x.id === p.id ? { ...x, activo: !x.activo } : x)))
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo cambiar el estado')
+      onError(mensajeError(e, 'No se pudo cambiar el estado'))
     }
   }
 

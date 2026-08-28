@@ -58,7 +58,7 @@ export function CatalogosPage() {
       p_id: id,
       p_nombre: nombre,
     })
-    if (error) throw error
+    if (error) throw new Error(error.message)
     return data as number
   }
 
@@ -69,7 +69,7 @@ export function CatalogosPage() {
       p_departamento_id: departamentoId,
       p_nombre: nombre,
     })
-    if (error) throw error
+    if (error) throw new Error(error.message)
     return data as number
   }
 
@@ -92,7 +92,7 @@ export function CatalogosPage() {
       return
     }
     const { error } = await supabase.rpc('admin_geografia_importar', { p_filas: filas })
-    if (error) throw error
+    if (error) throw new Error(error.message)
     await cargar()
   }
 
@@ -103,7 +103,7 @@ export function CatalogosPage() {
       p_nombre: nombre,
       p_nucleo: nucleo,
     })
-    if (error) throw error
+    if (error) throw new Error(error.message)
     return data as number
   }
 
@@ -124,7 +124,7 @@ export function CatalogosPage() {
       p_payload: p.payload,
       p_activo: p.activo,
     })
-    if (error) throw error
+    if (error) throw new Error(error.message)
     return data as number
   }
 

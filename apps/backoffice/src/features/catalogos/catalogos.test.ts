@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { parseCsvGeografia, subactividadesDeTexto, validarPayloadPlantilla } from './catalogos.ts'
+import { parseCsvGeografia, subactividadesDeTexto, validarPayloadPlantilla, mensajeError } from './catalogos.ts'
 
 describe('parseCsvGeografia', () => {
   it('parsea encabezado y filas', () => {
@@ -39,6 +39,12 @@ describe('validarPayloadPlantilla', () => {
       validarPayloadPlantilla('formulario', { esquema: {} }),
       'GC-CAT-001: el formulario requiere esquema.campos',
     )
+  })
+})
+
+describe('mensajeError', () => {
+  it('extrae message de errores tipo PostgREST', () => {
+    assert.equal(mensajeError({ message: 'GC-CAT-002: duplicado' }), 'GC-CAT-002: duplicado')
   })
 })
 

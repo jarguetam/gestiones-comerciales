@@ -4,7 +4,7 @@
 -- admin_tenant_crear copia plantillas del rubro.
 -- ============================================================
 begin;
-select plan(14);
+select plan(19);
 
 -- usuario de negocio no opera catálogos globales
 select tests.set_claims(
@@ -20,6 +20,29 @@ select throws_ok(
   $$select public.admin_plantilla_guardar(null, 'agro', 'hora', '3 horas', '{"cantidad":3}'::jsonb, true)$$,
   'GC-AUTH-001: requiere rol de plataforma',
   'admin de empresa no edita plantillas base'
+);
+
+select throws_ok(
+  $$select public.admin_geografia_importar('[{"departamento":"X","municipio":"Y"}]'::jsonb)$$,
+  'GC-AUTH-001: requiere rol de plataforma',
+  'admin de empresa no importa geografía global'
+);
+
+select throws_ok(
+  $$select public.admin_modulo_catalogo_guardar('intruso', 'Intruso', false)$$,
+  'GC-AUTH-001: requiere rol de plataforma',
+  'admin de empresa no muta el catálogo de módulos'
+);
+
+select throws_ok(
+  $$insert into public.departamento (nombre) values ('Intruso Geo')$$,
+  '42501',
+  'RLS bloquea INSERT directo a departamento (ADR-005)'
+);
+
+select is_empty(
+  $$select id from public.catalogo_plantilla$$,
+  'usuario de empresa no lee plantillas globales'
 );
 
 select tests.reset_claims();
@@ -122,6 +145,29 @@ select ok(
       and f.nombre = 'Ficha de cultivo'
   ),
   'el tenant agro hereda formularios de catalogo_plantilla'
+);
+
+-- plataforma con rol 'lectura' no muta catálogos globales
+select tests.reset_claims();
+insert into auth.users (id, email) values
+  ('cccccccc-0000-0000-0000-000000000006', 'lectura@plataforma.test')
+on conflict (id) do nothing;
+insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
+  ('cccccccc-0000-0000-0000-000000000006', 'lectura@plataforma.test', 'Lectura', false)
+on conflict (id) do update set es_superadmin = false, activo = true;
+insert into public.usuario_plataforma_tenant (usuario_plataforma_id, tenant_id, rol)
+values ('cccccccc-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', 'lectura')
+on conflict do nothing;
+
+select set_config('request.jwt.claims',
+  json_build_object('plataforma', true, 'superadmin', false,
+                    'sub', 'cccccccc-0000-0000-0000-000000000006')::text, true);
+select set_config('role', 'authenticated', true);
+
+select throws_ok(
+  $$select public.admin_departamento_guardar(null, 'Lectura No Puede')$$,
+  'GC-AUTH-001: requiere rol de plataforma',
+  'plataforma con rol lectura no escribe catálogos globales'
 );
 
 select tests.reset_claims();

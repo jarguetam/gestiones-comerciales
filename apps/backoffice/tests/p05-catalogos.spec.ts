@@ -22,6 +22,10 @@ test.describe('P-05 catálogos globales (modo demo)', () => {
     await page.getByRole('button', { name: /^agregar$/i }).first().click()
     await expect(page.getByText('Departamento creado')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sololá' })).toBeVisible()
+    await page.getByPlaceholder(/renombrar departamento/i).fill('Sololá Norte')
+    await page.getByRole('button', { name: /^renombrar$/i }).first().click()
+    await expect(page.getByText('Departamento actualizado')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sololá Norte' })).toBeVisible()
   })
 
   test('geografía importa CSV de municipios en demo', async ({ page }) => {

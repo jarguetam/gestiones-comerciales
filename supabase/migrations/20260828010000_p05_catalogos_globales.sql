@@ -96,9 +96,18 @@ security definer
 set search_path = public
 as $$
 begin
-  if not public.es_usuario_plataforma() then
-    raise exception 'GC-AUTH-001: requiere rol de plataforma';
+  if public.es_superadmin() then
+    return;
   end if;
+  if public.es_usuario_plataforma()
+     and exists (
+       select 1 from public.usuario_plataforma_tenant upt
+       where upt.usuario_plataforma_id = auth.uid()
+         and upt.rol in ('owner', 'soporte')
+     ) then
+    return;
+  end if;
+  raise exception 'GC-AUTH-001: requiere rol de plataforma';
 end;
 $$;
 
@@ -155,6 +164,7 @@ declare
   v_sub text;
   v_tiene_act boolean;
 begin
+  perform public.requiere_plataforma();
   for r in
     select * from public.catalogo_plantilla
     where rubro = v_rubro and activo
@@ -370,6 +380,7 @@ declare
   v_codigo text := lower(trim(p_codigo));
   v_nombre text := trim(p_nombre);
   v_nucleo boolean := coalesce(p_nucleo, false);
+  v_existia boolean;
 begin
   perform public.requiere_plataforma();
   if v_codigo is null or v_codigo = '' or v_nombre is null or v_nombre = '' then
@@ -382,6 +393,8 @@ begin
     v_nucleo := true;
   end if;
 
+  select exists(select 1 from public.modulo m where m.codigo = v_codigo) into v_existia;
+
   insert into public.modulo (codigo, nombre, nucleo)
   values (v_codigo, v_nombre, v_nucleo)
   on conflict (codigo) do update
@@ -389,7 +402,7 @@ begin
         nucleo = case when excluded.codigo = 'core' then true else excluded.nucleo end
   returning id into v_id;
 
-  perform public.registrar_auditoria(null, 'modulo', v_codigo, 'update',
+  perform public.registrar_auditoria(null, 'modulo', v_codigo, case when v_existia then 'update' else 'insert' end,
     jsonb_build_object('nombre', v_nombre, 'nucleo', v_nucleo));
   return v_id;
 end;
