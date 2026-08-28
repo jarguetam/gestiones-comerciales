@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import {
   MODULOS, RUBROS, PLANES, branding, dominiosArray, wizardInicial,
   validarPaso1, validarPaso2, validarPaso3, validarPaso4,
-  type WizardState,
+  type WizardState, type ModuloInfo,
 } from './wizard'
 
 const PASOS = ['Empresa', 'Rubro y branding', 'Módulos', 'Admin inicial']
@@ -17,6 +17,16 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
   const [w, setW] = useState<WizardState>(wizardInicial)
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const [modulos, setModulos] = useState<ModuloInfo[]>(MODULOS)
+
+  useEffect(() => {
+    if (DEMO_MODE) return
+    void supabase.from('modulo').select('codigo, nombre, nucleo').order('codigo').then(({ data }) => {
+      if (!data) return
+      const optativos = (data as ModuloInfo[]).filter((m) => !m.nucleo)
+      if (optativos.length > 0) setModulos(optativos)
+    })
+  }, [])
 
   const set = <K extends keyof WizardState>(k: K, v: WizardState[K]) =>
     setW((prev) => ({ ...prev, [k]: v }))
@@ -148,7 +158,7 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
                 Elegí los módulos optativos:
               </p>
               <div className="mt-3 space-y-2">
-                {MODULOS.map((m) => (
+                {modulos.map((m) => (
                   <label key={m.codigo} className="flex items-center gap-3 rounded-md border border-slate-200 p-3">
                     <input type="checkbox" checked={w.modulos.includes(m.codigo)}
                       onChange={(e) => set('modulos', e.target.checked ? [...w.modulos, m.codigo] : w.modulos.filter((c) => c !== m.codigo))}
