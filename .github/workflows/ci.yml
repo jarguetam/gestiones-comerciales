@@ -96,7 +96,7 @@ jobs:
           fi
 
       - name: Tests unitarios de helpers Edge (CSV + HMAC)
-        run: deno test --allow-none supabase/functions/_shared/
+        run: deno test supabase/functions/_shared/
 
       - uses: pnpm/action-setup@v4
         with:

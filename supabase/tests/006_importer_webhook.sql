@@ -8,7 +8,8 @@
 --   - idempotency_key no duplica el evento
 -- ============================================================
 begin;
-select plan(12);
+set search_path = public, extensions;
+select plan(13);
 
 -- secret de prueba (no es un secreto real de producción)
 update public.tenant
