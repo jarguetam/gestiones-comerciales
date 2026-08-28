@@ -21,16 +21,16 @@ test.describe('F1 MVP web (modo demo)', () => {
   }) => {
     await page.goto('/')
     await page.getByRole('button', { name: /nueva visita/i }).first().click()
-    await expect(page.getByText(/cliente/i).first()).toBeVisible()
-    await expect(page.getByText(/nuevo cliente/i).first()).toBeVisible()
+    await expect(page.getByText(/cliente \*/i).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /nuevo cliente/i })).toBeVisible()
   })
 
   test('W-03: alta inline valida nombre requerido', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: /nueva visita/i }).first().click()
-    await page.getByText(/nuevo cliente/i).first().click()
-    await page.getByRole('button', { name: /registrar/i }).first().click()
-    await expect(page.getByText(/nombre.*requerido|requerido/i).first()).toBeVisible()
+    await page.getByRole('button', { name: /nuevo cliente/i }).click()
+    await page.getByRole('button', { name: /registrar y usar/i }).click()
+    await expect(page.getByText(/nombre es requerido/i).first()).toBeVisible()
   })
 
   test('W-04: la pantalla de personas lista la cartera y permite buscar', async ({ page }) => {
