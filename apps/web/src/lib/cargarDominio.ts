@@ -5,12 +5,14 @@ import { INITIAL_LEADS, type LeadItem } from '../features/calendar/leadsData'
 import { claimsDeUsuario } from './claims'
 import { DEMO_MODE, supabase } from './supabase'
 import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from './catalogos'
+import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
 
 export type FuenteDominio = 'demo' | 'supabase'
 
 export interface DominioCargado {
   fuente: FuenteDominio
   tenantNombre: string
+  branding: BrandingTenant
   personas: PersonaItem[]
   eventos: CalendarEvent[]
   leads: LeadItem[]
@@ -41,7 +43,8 @@ export async function cargarDominio(): Promise<DominioCargado> {
   if (DEMO_MODE) {
     return {
       fuente: 'demo',
-      tenantNombre: 'AgroMoney S.A.',
+      tenantNombre: nombreComercial(BRANDING_DEMO, 'AgroMoney S.A.'),
+      branding: BRANDING_DEMO,
       personas: INITIAL_PERSONAS,
       eventos: INITIAL_EVENTS,
       leads: INITIAL_LEADS,
@@ -57,7 +60,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
     const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
       await Promise.all([
       supabase.auth.getSession(),
-      supabase.from('tenant').select('id, nombre').limit(50),
+      supabase.from('tenant').select('id, nombre, branding').limit(50),
       supabase
         .from('persona')
         .select('id, nombre, categoria, documento, direccion, detalles, activo')
@@ -100,10 +103,11 @@ export async function cargarDominio(): Promise<DominioCargado> {
       const { data: tid } = await supabase.rpc('tenant_id_actual')
       jwtTenant = tid != null ? String(tid) : undefined
     }
-    const tenants = (tenantRes.data ?? []) as Array<{ id: string; nombre: string }>
+    const tenants = (tenantRes.data ?? []) as Array<{ id: string; nombre: string; branding?: unknown }>
     const tenantRow =
       tenants.find((t) => t.id === jwtTenant) ?? tenants[0] ?? null
-    const tenantNombre = tenantRow?.nombre ?? 'Gestiones Comerciales'
+    const branding = brandingDeJson(tenantRow?.branding)
+    const tenantNombre = nombreComercial(branding, tenantRow?.nombre ?? 'Gestiones Comerciales')
     const subsDb = (subRes.data ?? []) as Array<{ id: number; actividad_id: number; nombre: string; activo: boolean }>
     const catalogos: CatalogoActividad[] = ((actRes.data ?? []) as Array<{ id: number; nombre: string; activo: boolean }>).map(
       (a) => ({
@@ -166,6 +170,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
       return {
         fuente: 'demo',
         tenantNombre,
+        branding,
         personas: INITIAL_PERSONAS,
         eventos: INITIAL_EVENTS,
         leads: INITIAL_LEADS,
@@ -230,6 +235,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
     return {
       fuente: 'supabase',
       tenantNombre,
+      branding,
       personas,
       eventos,
       leads,
@@ -245,7 +251,8 @@ export async function cargarDominio(): Promise<DominioCargado> {
   } catch (err) {
     return {
       fuente: 'demo',
-      tenantNombre: 'AgroMoney S.A.',
+      tenantNombre: nombreComercial(BRANDING_DEMO, 'AgroMoney S.A.'),
+      branding: BRANDING_DEMO,
       personas: INITIAL_PERSONAS,
       eventos: INITIAL_EVENTS,
       leads: INITIAL_LEADS,

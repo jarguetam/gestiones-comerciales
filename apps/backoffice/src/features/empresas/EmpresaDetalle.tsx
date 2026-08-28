@@ -61,6 +61,7 @@ export function EmpresaDetalle() {
   const live = !DEMO_MODE
   const [tenant, setTenant] = useState<TenantDetalle | null>(null)
   const [modulos, setModulos] = useState<ModuloTenant[]>([])
+  const [catalogoModulos, setCatalogoModulos] = useState(MODULOS)
   const [usuarios, setUsuarios] = useState<UsuarioTenant[]>([])
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -79,13 +80,15 @@ export function EmpresaDetalle() {
     if (!live) {
       setTenant(DEMO_DETALLE[id] ?? DEMO_DETALLE.demo)
       setModulos(MODULOS.map((m) => ({ codigo: m.codigo, activo: m.codigo === 'crm' })))
+      setCatalogoModulos(MODULOS)
       setUsuarios(DEMO_USERS)
       return
     }
-    const [tRes, mRes, uRes] = await Promise.all([
+    const [tRes, mRes, uRes, catRes] = await Promise.all([
       supabase.from('tenant').select('id, codigo, nombre, rubro, plan, activo, branding, configuracion').eq('id', id).maybeSingle(),
       supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('tenant_id', id),
       supabase.rpc('admin_usuarios_tenant', { p_tenant_id: id }),
+      supabase.from('modulo').select('codigo, nombre, nucleo').order('codigo'),
     ])
     if (tRes.error) {
       setError(tRes.error.message)
@@ -100,6 +103,11 @@ export function EmpresaDetalle() {
     )
     if (uRes.error) setError(uRes.error.message)
     else setUsuarios((uRes.data ?? []) as UsuarioTenant[])
+    if (!catRes.error && catRes.data) {
+      setCatalogoModulos(
+        (catRes.data as Array<{ codigo: string; nombre: string; nucleo: boolean }>).filter((m) => !m.nucleo),
+      )
+    }
   }, [id, live])
 
   useEffect(() => {
@@ -254,7 +262,10 @@ export function EmpresaDetalle() {
 
   return (
     <main className="mx-auto max-w-5xl p-4 space-y-4">
-      <Link to="/" className="text-sm text-teal-800 hover:underline">← Empresas</Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/" className="text-sm text-teal-800 hover:underline">← Empresas</Link>
+        <Link to="/salud" className="text-sm text-teal-800 hover:underline">Salud de plataforma</Link>
+      </div>
       <div>
         <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">Detalle de empresa</p>
         <h2 className="text-2xl font-bold text-slate-900">{tenant.nombre}</h2>
@@ -334,7 +345,7 @@ export function EmpresaDetalle() {
           <div className="rounded-lg bg-white p-4 shadow">
             <h3 className="font-medium mb-3">Módulos</h3>
             <div className="space-y-2">
-              {MODULOS.map((m) => (
+              {catalogoModulos.map((m) => (
                 <label key={m.codigo} className="flex items-center gap-3 rounded-md border border-slate-200 p-3">
                   <input
                     type="checkbox"
