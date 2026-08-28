@@ -12,7 +12,8 @@ test.describe('P-06 salud de plataforma (modo demo)', () => {
   })
 
   test('muestra jobs pg_cron con estados y uso por empresa', async ({ page }) => {
-    await page.goto('/salud')
+    await page.goto('/')
+    await page.getByRole('link', { name: /^salud$/i }).first().click()
     await expect(page.getByRole('heading', { name: /jobs pg_cron/i })).toBeVisible()
     await expect(page.getByText('notify-jobs-recordatorio-agenda')).toBeVisible()
     await expect(page.getByText('snapshot-cuentas')).toBeVisible()
@@ -21,7 +22,7 @@ test.describe('P-06 salud de plataforma (modo demo)', () => {
     await expect(page.getByRole('heading', { name: /uso por empresa/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /agromoney/i })).toBeVisible()
     await expect(page.getByText('Errores 24 h')).toBeVisible()
-    await expect(page.getByText('Dispositivos')).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Dispositivos' })).toBeVisible()
   })
 
   test('desde Empresas se entra a salud', async ({ page }) => {
