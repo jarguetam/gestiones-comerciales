@@ -25,9 +25,9 @@ const DEMO_USUARIOS: UsuarioEmpresa[] = [
 
 export function UsuariosPage() {
   const { fuente } = useDominio()
-  const { session } = useAuth()
+  const { rol: rolAuth, tenantId: tenantAuth } = useAuth()
   const live = !DEMO_MODE && fuente === 'supabase'
-  const rolSesion = (session?.user.app_metadata?.rol as string | undefined) ?? (DEMO_MODE ? 'admin' : undefined)
+  const rolSesion = rolAuth ?? (DEMO_MODE ? 'admin' : undefined)
   const puedeEditar = DEMO_MODE || rolSesion === 'admin'
   const [usuarios, setUsuarios] = useState<UsuarioEmpresa[]>(DEMO_USUARIOS)
   const [error, setError] = useState<string | null>(null)
@@ -80,7 +80,7 @@ export function UsuariosPage() {
         setAviso('Usuario agregado (demo)')
         return
       }
-      const tenantId = session?.user.app_metadata?.tenant_id as string | undefined
+      const tenantId = tenantAuth
       const { data, error } = await supabase.functions.invoke('invitar-usuario', {
         body: {
           tenant_id: tenantId,

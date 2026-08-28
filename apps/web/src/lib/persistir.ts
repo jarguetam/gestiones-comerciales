@@ -1,3 +1,4 @@
+import { claimsDeUsuario } from './claims'
 import { DEMO_MODE, supabase } from './supabase'
 import type { CalendarEvent } from '../features/calendar/types'
 import type { PersonaItem } from '../features/calendar/personasData'
@@ -11,11 +12,11 @@ export function mensajeGc(err: unknown): string {
 }
 
 export async function contextoOperacion(): Promise<{ usuarioId: string; tenantId: string }> {
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data.user) throw new Error('GC-AUTH-001: sin sesión')
-  const tenantId = data.user.app_metadata?.tenant_id as string | undefined
+  const { data, error } = await supabase.auth.getSession()
+  if (error || !data.session?.user) throw new Error('GC-AUTH-001: sin sesión')
+  const tenantId = claimsDeUsuario(data.session.user, data.session.access_token).tenantId
   if (!tenantId) throw new Error('GC-AUTH-001: sin tenant en la sesión')
-  return { usuarioId: data.user.id, tenantId }
+  return { usuarioId: data.session.user.id, tenantId }
 }
 
 export async function persistirPersona(persona: PersonaItem): Promise<PersonaItem> {
