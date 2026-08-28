@@ -1,7 +1,6 @@
 /**
  * M-01 Login (spec F1.10/F1.11).
- * Autenticación con email + contraseña; los claims duales {tenant_id, rol}
- * ya vienen en el JWT (trigger F0.3) — la app no los inventa.
+ * Email + contraseña + TOTP si aal1→aal2. En DEMO_MODE entra un perfil de campo.
  */
 import React, { useState } from 'react'
 import {
@@ -14,7 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { claimsDe, DEMO_MODE, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
+import { claimsDe, DEMO_MODE, PERFIL_DEMO, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
+import { requierePasoTotp } from '../lib/mfa'
+import { resetColaDemo } from '../lib/colaStore'
 
 interface Props {
   onLogin: (perfil: Perfil) => void
@@ -23,31 +24,79 @@ interface Props {
 export default function LoginScreen({ onLogin }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [factorId, setFactorId] = useState<string | null>(null)
+  const [challengeId, setChallengeId] = useState<string | null>(null)
+  const [paso, setPaso] = useState<'password' | 'totp'>('password')
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
 
-  async function handleLogin() {
+  async function entrarDemo() {
+    resetColaDemo()
+    onLogin(PERFIL_DEMO)
+  }
+
+  async function handlePassword() {
     setError(null)
     setCargando(true)
     try {
       if (DEMO_MODE) {
-        throw new Error('GC-AUTH-020: modo demo — configura EXPO_PUBLIC_SUPABASE_URL/ANON_KEY')
+        await entrarDemo()
+        return
       }
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
       if (error) throw error
-      const claims = claimsDe(data.session.access_token)
-      if (!claims) throw new Error('GC-AUTH-021: usuario sin tenant asignado')
-      const perfil = await cargarPerfil(data.user.id, claims.tenantId, claims.rol)
-      if (!perfil) throw new Error('GC-AUTH-022: no se pudo leer el perfil')
-      onLogin(perfil)
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (requierePasoTotp(aal)) {
+        const { data: factors, error: errF } = await supabase.auth.mfa.listFactors()
+        if (errF) throw errF
+        const totp = factors?.totp?.[0]
+        if (!totp) throw new Error('GC-AUTH-002: MFA requerido sin factor TOTP')
+        const { data: challenge, error: errC } = await supabase.auth.mfa.challenge({ factorId: totp.id })
+        if (errC) throw errC
+        setFactorId(totp.id)
+        setChallengeId(challenge.id)
+        setPaso('totp')
+        return
+      }
+      await hidratarSesion(data.session.access_token, data.user.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error de autenticación')
     } finally {
       setCargando(false)
     }
+  }
+
+  async function handleTotp() {
+    setError(null)
+    setCargando(true)
+    try {
+      if (!factorId || !challengeId) throw new Error('GC-AUTH-002: desafío MFA incompleto')
+      const { error } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId,
+        code: codigo.trim(),
+      })
+      if (error) throw error
+      const { data } = await supabase.auth.getSession()
+      if (!data.session) throw new Error('GC-AUTH-021: sesión MFA incompleta')
+      await hidratarSesion(data.session.access_token, data.session.user.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Código MFA inválido')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  async function hidratarSesion(accessToken: string, userId: string) {
+    const claims = claimsDe(accessToken)
+    if (!claims) throw new Error('GC-AUTH-021: usuario sin tenant asignado')
+    const perfil = await cargarPerfil(userId, claims.tenantId, claims.rol)
+    if (!perfil) throw new Error('GC-AUTH-022: no se pudo leer el perfil')
+    onLogin(perfil)
   }
 
   return (
@@ -56,51 +105,76 @@ export default function LoginScreen({ onLogin }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.tarjeta}>
+        <Text style={styles.eyebrow}>M-01 · Campo</Text>
         <Text style={styles.titulo}>Gestiones Comerciales</Text>
-        <Text style={styles.subtitulo}>Asesor de campo</Text>
+        <Text style={styles.subtitulo}>
+          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Asesor de campo'}
+        </Text>
 
         {DEMO_MODE && (
           <View style={styles.demo}>
             <Text style={styles.demoTexto}>
-              Modo demo: configura EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY para
-              conectar.
+              Preview sin backend: el ingreso abre la jornada con datos de demostración.
             </Text>
           </View>
         )}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#9CA3AF"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          onSubmitEditing={handleLogin}
-        />
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <TouchableOpacity
-          style={[styles.boton, cargando && styles.botonDeshabilitado]}
-          onPress={handleLogin}
-          disabled={cargando || !email || !password}
-        >
-          {cargando ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.botonTexto}>Ingresar</Text>
-          )}
-        </TouchableOpacity>
+        {paso === 'password' ? (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Contraseña"
+              placeholderTextColor="#9CA3AF"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              onSubmitEditing={() => void handlePassword()}
+            />
+            {error && <Text style={styles.error}>{error}</Text>}
+            <TouchableOpacity
+              style={[styles.boton, cargando && styles.botonDeshabilitado]}
+              onPress={() => void handlePassword()}
+              disabled={cargando || (!DEMO_MODE && (!email || !password))}
+            >
+              {cargando ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.botonTexto}>{DEMO_MODE ? 'Entrar al tablero' : 'Ingresar'}</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Código MFA"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              value={codigo}
+              onChangeText={setCodigo}
+              onSubmitEditing={() => void handleTotp()}
+            />
+            {error && <Text style={styles.error}>{error}</Text>}
+            <TouchableOpacity
+              style={[styles.boton, cargando && styles.botonDeshabilitado]}
+              onPress={() => void handleTotp()}
+              disabled={cargando || !codigo}
+            >
+              {cargando ? <ActivityIndicator color="#fff" /> : <Text style={styles.botonTexto}>Verificar</Text>}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </KeyboardAvoidingView>
   )
@@ -117,7 +191,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  titulo: { fontSize: 22, fontWeight: '700', color: '#1D4ED8', textAlign: 'center' },
+  eyebrow: { fontSize: 11, color: '#1D4ED8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: 1.4 },
+  titulo: { fontSize: 22, fontWeight: '700', color: '#1D4ED8', textAlign: 'center', marginTop: 4 },
   subtitulo: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20, marginTop: 2 },
   demo: {
     backgroundColor: '#FFFBEB',

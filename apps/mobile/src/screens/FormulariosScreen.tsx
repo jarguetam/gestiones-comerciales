@@ -19,6 +19,8 @@ import {
   type CampoEsquema,
 } from '../lib/formulario'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { encolarYSync } from '../lib/colaStore'
+import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 
 interface Plantilla {
   id: string
@@ -138,22 +140,19 @@ export default function FormulariosScreen({ perfil }: Props) {
     }
     setEnviando(true)
     try {
-      if (DEMO_MODE) {
-        Alert.alert('Envío demo', `Guardado localmente. Score ${score ?? '—'}%.`)
-        setValores({})
-        return
-      }
-      const { error } = await supabase.rpc('formulario_enviar', {
-        p_plantilla_id: Number(plantilla.id),
-        p_respuestas: valores,
-        p_visita_id: null,
-        p_cliente_key: undefined,
-      })
-      if (error) {
-        Alert.alert('No se pudo enviar', error.message)
-        return
-      }
-      Alert.alert('Enviado', `Score ${score ?? '—'}%.`)
+      await encolarYSync(
+        {
+          tipo: 'formulario_enviar',
+          payload: {
+            plantillaId: Number.isFinite(Number(plantilla.id)) ? Number(plantilla.id) : plantilla.id,
+            respuestas: valores,
+            visitaId: null,
+          },
+          clienteKey: `formulario:${plantilla.id}:${Date.now()}`,
+        },
+        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+      )
+      Alert.alert(DEMO_MODE ? 'Encolado (demo)' : 'Encolado', `Score ${score ?? '—'}%. Ver M-09.`)
       setValores({})
     } finally {
       setEnviando(false)

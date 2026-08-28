@@ -14,6 +14,8 @@ import {
   View,
 } from 'react-native'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { encolarYSync } from '../lib/colaStore'
+import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 
 interface DepoRow {
   id: number
@@ -58,6 +60,14 @@ export default function DepositosScreen({ perfil }: Props) {
       return
     }
     if (DEMO_MODE) {
+      await encolarYSync(
+        {
+          tipo: 'deposito',
+          payload: { monto: n, referencia: ref || (foto ? 'boleta.jpg' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+          clienteKey: `deposito:${n}:${Date.now()}`,
+        },
+        ejecutarDemo,
+      )
       setItems((prev) => [
         { id: Date.now(), monto: n, referencia: ref || (foto ? 'boleta.jpg' : null), estado: 'pendiente' },
         ...prev,
@@ -65,17 +75,14 @@ export default function DepositosScreen({ perfil }: Props) {
       setMostrar(false)
       return
     }
-    const { error } = await supabase.from('deposito').insert({
-      tenant_id: perfil.tenantId,
-      asesor_id: perfil.id,
-      monto: n,
-      referencia: ref.trim() || (foto ? 'boleta' : null),
-      estado: 'pendiente',
-    })
-    if (error) {
-      Alert.alert('No se pudo registrar', error.message)
-      return
-    }
+    await encolarYSync(
+      {
+        tipo: 'deposito',
+        payload: { monto: n, referencia: ref.trim() || (foto ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+        clienteKey: `deposito:${n}:${Date.now()}`,
+      },
+      ejecutarMutacion(supabase),
+    )
     setMostrar(false)
     setMonto('')
     setRef('')

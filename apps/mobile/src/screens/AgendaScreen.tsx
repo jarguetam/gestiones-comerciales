@@ -17,6 +17,8 @@ import {
 import * as Location from 'expo-location'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import type { PuntoGps, Visita } from '../lib/tipos'
+import { encolarYSync } from '../lib/colaStore'
+import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -30,23 +32,46 @@ const ESTILO_ESTADO: Record<string, { bg: string; fg: string; texto: string }> =
   anulada: { bg: '#F3F4F6', fg: '#6B7280', texto: 'Anulada' },
 }
 
+const DEMO_VISITAS: Visita[] = [
+  {
+    id: 201,
+    persona_nombre: 'Agropecuaria El Triunfo',
+    direccion: 'Km 56 Carretera a Puerto San José',
+    fecha_visita: '2026-08-28',
+    hora_inicio: '08:30:00',
+    estado: 'programada',
+    actividad: 'Verificación de garantías',
+  },
+  {
+    id: 202,
+    persona_nombre: 'Agrícola El Roble S.A.',
+    direccion: 'Zona 1, Escuintla',
+    fecha_visita: '2026-08-28',
+    hora_inicio: '11:00:00',
+    estado: 'programada',
+    actividad: 'Seguimiento de crédito',
+  },
+]
+
 interface Props {
   perfil: Perfil
 }
 
 export default function AgendaScreen({ perfil }: Props) {
-  const [visitas, setVisitas] = useState<Visita[]>([])
-  const [cargando, setCargando] = useState(true)
+  const [visitas, setVisitas] = useState<Visita[]>(DEMO_MODE ? DEMO_VISITAS : [])
+  const [cargando, setCargando] = useState(!DEMO_MODE)
   const [refrescando, setRefrescando] = useState(false)
   const [checkinDe, setCheckinDe] = useState<number | null>(null)
+  const [checkins, setCheckins] = useState<Set<number>>(new Set())
   const [mensaje, setMensaje] = useState<string | null>(null)
   const colaRastreo = useRef<PuntoGps[]>([])
   const timerRastreo = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
-      setVisitas([])
+      setVisitas(DEMO_VISITAS)
       setCargando(false)
+      setRefrescando(false)
       return
     }
     const { data, error } = await supabase.rpc('visitas_del_dia')
@@ -119,27 +144,56 @@ export default function AgendaScreen({ perfil }: Props) {
     }
   }, [])
 
-  // ----- M-04: check-in GPS -----
+  async function gps(): Promise<{ lat: number; lng: number }> {
+    if (DEMO_MODE) return { lat: 14.6349, lng: -90.5069 }
+    const { status } = await Location.requestForegroundPermissionsAsync()
+    if (status !== 'granted') throw new Error('GC-RAS-010: permiso de ubicación denegado')
+    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude }
+  }
+
+  // ----- M-04: check-in / completar GPS (cola offline) -----
   async function handleCheckin(visita: Visita) {
     setMensaje(null)
     setCheckinDe(visita.id)
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== 'granted') throw new Error('GC-RAS-010: permiso de ubicación denegado')
-
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      })
-      const { error } = await supabase.rpc('visita_checkin', {
-        p_visita_id: visita.id,
-        p_latitud: pos.coords.latitude,
-        p_longitud: pos.coords.longitude,
-      })
-      if (error) throw error
-      setMensaje(`Check-in registrado en ${visita.persona_nombre}`)
-      await cargar()
+      const pos = await gps()
+      await encolarYSync(
+        {
+          tipo: 'visita_checkin',
+          payload: { visitaId: visita.id, latitud: pos.lat, longitud: pos.lng },
+          clienteKey: `visita_checkin:${visita.id}`,
+        },
+        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+      )
+      setCheckins((prev) => new Set(prev).add(visita.id))
+      setMensaje(`Check-in encolado en ${visita.persona_nombre}`)
+      if (!DEMO_MODE) await cargar()
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'No se pudo registrar el check-in')
+    } finally {
+      setCheckinDe(null)
+    }
+  }
+
+  async function handleCompletar(visita: Visita) {
+    setMensaje(null)
+    setCheckinDe(visita.id)
+    try {
+      const pos = await gps()
+      await encolarYSync(
+        {
+          tipo: 'visita_completar',
+          payload: { visitaId: visita.id, latitud: pos.lat, longitud: pos.lng },
+          clienteKey: `visita_completar:${visita.id}`,
+        },
+        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+      )
+      setVisitas((prev) => prev.map((v) => (v.id === visita.id ? { ...v, estado: 'completada' } : v)))
+      setMensaje(`Visita completada · ${visita.persona_nombre}`)
+      if (!DEMO_MODE) await cargar()
+    } catch (e) {
+      setMensaje(e instanceof Error ? e.message : 'No se pudo completar')
     } finally {
       setCheckinDe(null)
     }
@@ -160,7 +214,7 @@ export default function AgendaScreen({ perfil }: Props) {
             <Text style={[styles.badgeTexto, { color: estilo.fg }]}>{estilo.texto}</Text>
           </View>
         </View>
-        {item.estado === 'programada' && (
+        {item.estado === 'programada' && !checkins.has(item.id) && (
           <TouchableOpacity
             style={styles.botonCheckin}
             onPress={() => handleCheckin(item)}
@@ -171,6 +225,15 @@ export default function AgendaScreen({ perfil }: Props) {
             ) : (
               <Text style={styles.botonCheckinTexto}>Check-in GPS</Text>
             )}
+          </TouchableOpacity>
+        )}
+        {item.estado === 'programada' && checkins.has(item.id) && (
+          <TouchableOpacity
+            style={[styles.botonCheckin, { backgroundColor: '#1D4ED8' }]}
+            onPress={() => handleCompletar(item)}
+            disabled={checkinDe === item.id}
+          >
+            <Text style={styles.botonCheckinTexto}>Completar visita</Text>
           </TouchableOpacity>
         )}
       </View>

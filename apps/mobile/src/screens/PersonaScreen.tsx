@@ -13,7 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { DEMO_MODE, supabase } from '../lib/supabase'
+import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { encolarYSync } from '../lib/colaStore'
+import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import type { Persona } from '../lib/tipos'
 
 const CATEGORIAS = [
@@ -25,7 +27,7 @@ const CATEGORIAS = [
   'farmacia',
 ] as const
 
-export default function PersonaScreen() {
+export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -42,7 +44,16 @@ export default function PersonaScreen() {
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
-      setPersonas([])
+      setPersonas([
+        {
+          id: 1,
+          nombre: 'Agropecuaria El Triunfo',
+          documento: 'NIT-1044',
+          documento_tipo: 'NIT',
+          direccion: 'Km 56 Carretera a Puerto San José',
+          categoria: 'agricultor',
+        },
+      ])
       setCargando(false)
       return
     }
@@ -87,15 +98,34 @@ export default function PersonaScreen() {
     }
     setGuardando(true)
     try {
-      const { error } = await supabase.from('persona').insert({
-        nombre: nombre.trim(),
-        documento: documento.trim() || null,
-        documento_tipo: 'DPI',
-        direccion: direccion.trim() || null,
-        categoria,
-        detalles: telefono.trim() ? { telefono: telefono.trim() } : {},
-      })
-      if (error) throw error
+      await encolarYSync(
+        {
+          tipo: 'persona',
+          payload: {
+            nombre: nombre.trim(),
+            documento: documento.trim() || null,
+            documentoTipo: 'DPI',
+            direccion: direccion.trim() || null,
+            categoria,
+            detalles: telefono.trim() ? { telefono: telefono.trim() } : {},
+          },
+          clienteKey: `persona:${documento.trim() || nombre.trim()}:${Date.now()}`,
+        },
+        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+      )
+      if (DEMO_MODE) {
+        setPersonas((prev) => [
+          {
+            id: Date.now(),
+            nombre: nombre.trim(),
+            documento: documento.trim() || null,
+            documento_tipo: 'DPI',
+            direccion: direccion.trim() || null,
+            categoria,
+          },
+          ...prev,
+        ])
+      }
       setNombre('')
       setDocumento('')
       setTelefono('')
