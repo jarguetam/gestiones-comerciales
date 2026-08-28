@@ -112,6 +112,7 @@ jobs:
         run: |
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
+          pnpm --filter @gc/backoffice test
 
   deploy:
     name: Despliegue en GitHub Pages

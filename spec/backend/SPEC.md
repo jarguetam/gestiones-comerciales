@@ -143,6 +143,11 @@ Las tablas del núcleo y módulos se publican vía PostgREST con los siguientes 
 | `admin_usuario_invitar(tenant_id, email, rol, jefe_id?)` | invitación | usuario creado + email enviado | plataforma o admin del tenant |
 | `admin_usuario_gestionar(id, accion, datos)` | acción | usuario modificado | plataforma o admin del tenant |
 | `admin_modulo_activar(tenant_id, modulo, activo, config?)` | módulo | tenant_modulo actualizado | plataforma |
+| `admin_departamento_guardar(id?, nombre)` | geografía | departamento creado/renombrado | plataforma |
+| `admin_municipio_guardar(id?, departamento_id, nombre)` | geografía | municipio creado/renombrado | plataforma |
+| `admin_geografia_importar(filas jsonb)` | CSV parseado | {filas, departamentos, municipios} creados | plataforma |
+| `admin_modulo_catalogo_guardar(codigo, nombre, nucleo)` | catálogo | módulo upsert | plataforma |
+| `admin_plantilla_guardar(id?, rubro, tipo, nombre, payload, activo)` | plantilla base | catalogo_plantilla upsert | plataforma |
 | `admin_importar_personas(tenant_id, jsonb)` | lote | resumen {insertados, actualizados, errores[]} | plataforma o admin |
 | `admin_importar_cuentas(tenant_id, jsonb)` | lote | resumen {insertados, actualizados, errores[]} | plataforma o admin; exige módulo creditos |
 | `admin_importar_catalogos(tenant_id, jsonb)` | lote | resumen {insertados, actualizados, errores[]} | plataforma o admin |

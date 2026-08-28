@@ -228,6 +228,17 @@ create table public.municipio (
   nombre          text not null,
   unique (departamento_id, nombre)
 );
+
+-- plantillas base por rubro (P-05): se copian al tenant en admin_tenant_crear
+create table public.catalogo_plantilla (
+  id      bigint generated always as identity primary key,
+  rubro   text not null,
+  tipo    text not null check (tipo in ('actividad','formulario','hora')),
+  nombre  text not null,
+  payload jsonb not null default '{}',
+  activo  boolean not null default true,
+  unique (rubro, tipo, nombre)
+);
 ```
 
 ### 4.4 Personas (ex `cliente`)
@@ -685,6 +696,11 @@ create table public.kilometraje (
 | `admin_usuario_invitar(tenant_id, email, rol, jefe_id?)` | Invitación de usuario de empresa (auth user + `usuario` + claims) con email. | — |
 | `admin_usuario_gestionar(id, accion, datos)` | Activar/desactivar, cambiar rol/jefe/zona de un usuario de tenant. | — |
 | `admin_modulo_activar(tenant_id, modulo, activo, config?)` | Activación de módulos por empresa. | — |
+| `admin_departamento_guardar(id?, nombre)` | Alta/edición de departamento compartido (P-05). | — |
+| `admin_municipio_guardar(id?, departamento_id, nombre)` | Alta/edición de municipio compartido (P-05). | — |
+| `admin_geografia_importar(filas jsonb)` | Importación masiva departamento/municipio. | — |
+| `admin_modulo_catalogo_guardar(codigo, nombre, nucleo)` | Upsert del catálogo global de módulos. | — |
+| `admin_plantilla_guardar(...)` | Upsert de plantilla base por rubro (actividad/formulario/hora). | — |
 | `admin_importar_personas(tenant_id, jsonb)` | Carga masiva de clientes por admin de empresa o plataforma. | — |
 | `modulo_activo(tenant, codigo)` | Helper usado por RLS de módulos. | — |
 

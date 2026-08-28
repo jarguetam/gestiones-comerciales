@@ -29,6 +29,14 @@ export function BackofficeShell() {
           >
             Empresas
           </NavLink>
+          <NavLink
+            to="/catalogos"
+            className={({ isActive }) =>
+              `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-teal-700 text-white' : 'text-slate-300 hover:bg-white/5'}`
+            }
+          >
+            Catálogos
+          </NavLink>
         </nav>
         <div className="px-5 py-4 border-t border-white/10 text-[11px] text-slate-400">
           <p className="truncate">{email}</p>
@@ -38,9 +46,12 @@ export function BackofficeShell() {
         </div>
       </aside>
       <div className="flex-1 min-w-0">
-        <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-          <span className="font-semibold">GC Platform</span>
-          <span className="text-xs text-slate-300 truncate max-w-[12rem]">{email}</span>
+        <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-3">
+          <span className="font-semibold shrink-0">GC Platform</span>
+          <nav className="flex gap-3 text-xs">
+            <NavLink to="/" end className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Empresas</NavLink>
+            <NavLink to="/catalogos" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Catálogos</NavLink>
+          </nav>
         </header>
         <Outlet />
       </div>
