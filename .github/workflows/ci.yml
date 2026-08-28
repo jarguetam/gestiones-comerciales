@@ -108,14 +108,17 @@ jobs:
       - name: Tests unitarios web (dashboard, auditoría, MFA, branding)
         run: pnpm --filter @gc/web test
 
-      - name: Tests unitarios backoffice (P-06 salud)
+      - name: Tests unitarios backoffice (P-05 + P-06)
         run: pnpm --filter @gc/backoffice test
 
-      - name: Typecheck + build apps (web + backoffice)
+      - name: Tests unitarios móvil (cola offline, MFA, notifs)
+        run: pnpm --filter @gc/mobile test
+
+      - name: Typecheck + build apps (web + backoffice + mobile)
         run: |
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
-          pnpm --filter @gc/backoffice test
+          pnpm --filter @gc/mobile typecheck
 
   deploy:
     name: Despliegue en GitHub Pages
