@@ -66,3 +66,8 @@ export function mostrarConfiguracion(rol: string | undefined, demo: boolean): bo
 export function mostrarUsuarios(rol: string | undefined, demo: boolean): boolean {
   return demo || rol === 'admin' || rol === 'gerente'
 }
+
+/** W-14: mapa de asesores (última posición + recorrido). */
+export function mostrarMapa(rol: string | undefined, demo: boolean): boolean {
+  return demo || rol === 'admin' || rol === 'gerente' || rol === 'supervisor'
+}

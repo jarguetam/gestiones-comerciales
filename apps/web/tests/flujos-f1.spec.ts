@@ -14,6 +14,7 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page).toHaveTitle(/gestiones/i)
     await expect(page.getByRole('link', { name: /dashboard/i }).first()).toBeVisible()
     await expect(page.getByRole('link', { name: /^formularios$/i }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: /^mapa$/i }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /nueva visita/i }).first()).toBeVisible()
   })
 
@@ -83,6 +84,20 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByText(/W-08/i).first()).toBeVisible()
     await page.getByRole('link', { name: /^kilometraje$/i }).first().click()
     await expect(page.getByText(/W-09/i).first()).toBeVisible()
+  })
+
+  test('W-14: mapa muestra última posición, recorrido y filtro de equipo', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^mapa$/i }).first().click()
+    await expect(page.getByText(/W-14/i).first()).toBeVisible()
+    await expect(page.getByRole('application', { name: /mapa de asesores/i })).toBeVisible()
+    await expect(page.getByText(/luisa asesora/i).first()).toBeVisible()
+    await expect(page.getByText(/ana asesora/i).first()).toBeVisible()
+    await page.getByLabel(/^equipo$/i).selectOption({ label: 'Erick Supervisor' })
+    await expect(page.getByText(/luisa asesora/i).first()).toBeVisible()
+    await expect(page.getByText(/ana asesora/i)).toHaveCount(0)
+    await page.getByRole('cell', { name: /luisa asesora/i }).click()
+    await expect(page.getByText(/puntos/i).first()).toBeVisible()
   })
 
   test('W-10 y W-11: configuración y usuarios están en la navegación', async ({ page }) => {
