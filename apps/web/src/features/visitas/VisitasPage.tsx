@@ -85,7 +85,7 @@ export function VisitasPage() {
 
       <JornadaHeader fecha={fecha} pct={jornada.pct} hechas={jornada.hechas} total={jornada.total} />
 
-      <div className="grid gap-3 rounded-2xl border border-line bg-surface p-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="hidden gap-3 rounded-2xl border border-line bg-surface p-4 md:grid md:grid-cols-2 lg:grid-cols-4">
         <Select
           id="filtro-estado"
           label="Estado"

@@ -64,7 +64,7 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(campo.getByRole('link', { name: /cartera/i })).toBeVisible()
     await expect(campo.getByRole('link', { name: /^crm$/i })).toBeVisible()
     await expect(campo.getByRole('button', { name: /^más$/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /nueva visita/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Nueva visita', exact: true })).toBeVisible()
     await campo.getByRole('button', { name: /^más$/i }).click()
     await expect(page.getByRole('link', { name: /^formularios$/i }).first()).toBeVisible()
   })
