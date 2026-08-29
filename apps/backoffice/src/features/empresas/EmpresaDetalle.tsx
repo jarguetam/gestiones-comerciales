@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
-import { ejemploCurlWebhook, urlWebhookTenant } from './webhook'
+import {
+  ejemploCurlWebhook,
+  urlWebhookTenant,
+  webhookSecretRotadoDeRpc,
+  webhookSecretStatusDeRpc,
+  type WebhookSecretStatus,
+} from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
 import {
   Alert,
@@ -34,7 +40,7 @@ interface TenantDetalle {
   plan: string
   activo: boolean
   branding: { color_primario?: string } | null
-  configuracion: { dominios_cors?: string[]; webhook_secret?: string } | null
+  configuracion: { dominios_cors?: string[] } | null
 }
 
 interface ModuloTenant {
@@ -95,6 +101,7 @@ export function EmpresaDetalle() {
   const [rol, setRol] = useState('asesor')
   const [password, setPassword] = useState('')
   const [webhookSecret, setWebhookSecret] = useState<string | null>(null)
+  const [webhookStatus, setWebhookStatus] = useState<WebhookSecretStatus | null>(null)
   const [rotando, setRotando] = useState(false)
   const webhookUrl = urlWebhookTenant(SUPABASE_URL)
 
@@ -110,18 +117,27 @@ export function EmpresaDetalle() {
   const cargar = useCallback(async () => {
     if (!id) return
     setError(null)
+    setWebhookSecret(null)
+    setWebhookStatus(null)
     if (!live) {
       setTenant(DEMO_DETALLE[id] ?? DEMO_DETALLE.demo)
       setModulos(MODULOS.map((m) => ({ codigo: m.codigo, activo: m.codigo === 'crm' })))
       setCatalogoModulos(MODULOS)
       setUsuarios(DEMO_USERS)
+      setWebhookStatus({
+        tenantId: id,
+        configurado: false,
+        rotadoEn: null,
+        last4: null,
+      })
       return
     }
-    const [tRes, mRes, uRes, catRes] = await Promise.all([
+    const [tRes, mRes, uRes, catRes, webhookRes] = await Promise.all([
       supabase.from('tenant').select('id, codigo, nombre, rubro, plan, activo, branding, configuracion').eq('id', id).maybeSingle(),
       supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('tenant_id', id),
       supabase.rpc('admin_usuarios_tenant', { p_tenant_id: id }),
       supabase.from('modulo').select('codigo, nombre, nucleo').order('codigo'),
+      supabase.rpc('admin_webhook_secret_estado', { p_tenant_id: id }),
     ])
     if (tRes.error) {
       setError(tRes.error.message)
@@ -140,6 +156,15 @@ export function EmpresaDetalle() {
       setCatalogoModulos(
         (catRes.data as Array<{ codigo: string; nombre: string; nucleo: boolean }>).filter((m) => !m.nucleo),
       )
+    }
+    if (webhookRes.error) {
+      setError(webhookRes.error.message)
+    } else {
+      try {
+        setWebhookStatus(webhookSecretStatusDeRpc(webhookRes.data))
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No se pudo interpretar el estado del webhook')
+      }
     }
   }, [id, live])
 
@@ -230,10 +255,18 @@ export function EmpresaDetalle() {
     if (!tenant) return
     setError(null)
     setAviso(null)
+    setWebhookSecret(null)
     setRotando(true)
     try {
       if (!live) {
-        setWebhookSecret('demo-webhook-secret-no-persistido')
+        const secret = 'demo-webhook-secret-no-persistido'
+        setWebhookSecret(secret)
+        setWebhookStatus({
+          tenantId: tenant.id,
+          configurado: true,
+          rotadoEn: new Date().toISOString(),
+          last4: secret.slice(-4),
+        })
         setAviso('Preview: secreto de demostración (no se persiste)')
         return
       }
@@ -241,7 +274,9 @@ export function EmpresaDetalle() {
         p_tenant_id: tenant.id,
       })
       if (error) throw error
-      setWebhookSecret(String(data))
+      const rotacion = webhookSecretRotadoDeRpc(data)
+      setWebhookSecret(rotacion.secret)
+      setWebhookStatus(rotacion.status)
       setAviso('Secreto rotado. Cópialo ahora; no se vuelve a mostrar.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo rotar el secreto')
@@ -416,13 +451,30 @@ export function EmpresaDetalle() {
                 Copiar
               </Button>
             </div>
-            <p className="text-xs text-muted">
-              {tenant.configuracion?.webhook_secret
-                ? 'Hay un secreto configurado. Rotarlo invalida el anterior.'
-                : 'Aún no hay secreto. Generá uno para habilitar el webhook.'}
-            </p>
+            <dl className="grid gap-2 text-xs text-muted sm:grid-cols-3">
+              <div>
+                <dt className="font-medium text-ink">Configurado</dt>
+                <dd>{webhookStatus ? (webhookStatus.configurado ? 'Sí' : 'No') : 'Consultando…'}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">Última rotación</dt>
+                <dd>
+                  {webhookStatus?.rotadoEn
+                    ? new Date(webhookStatus.rotadoEn).toLocaleString('es-GT')
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">Últimos 4</dt>
+                <dd className="font-mono">{webhookStatus?.last4 ? `••••${webhookStatus.last4}` : '—'}</dd>
+              </div>
+            </dl>
             <Button variant="secondary" onClick={() => void rotarWebhook()} disabled={rotando}>
-              {rotando ? 'Rotando…' : 'Rotar secreto HMAC'}
+              {rotando
+                ? 'Rotando…'
+                : webhookStatus?.configurado
+                  ? 'Rotar secreto HMAC'
+                  : 'Crear secreto HMAC'}
             </Button>
             {webhookSecret && (
               <div>
