@@ -28,7 +28,10 @@ Object.defineProperty(Deno, "serve", {
   writable: true,
 });
 
-await import("./index.ts");
+// Ejecuta el adaptador real sin incorporar los tipos Node transitivos de
+// supabase-js al grafo estático del test. index.ts se valida con deno check.
+const importerIndexUrl = new URL("./index.ts", import.meta.url).href;
+await import(importerIndexUrl);
 
 Object.defineProperty(Deno, "serve", {
   configurable: true,
