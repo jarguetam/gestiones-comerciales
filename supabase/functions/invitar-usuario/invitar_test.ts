@@ -6,6 +6,7 @@ import {
   invitarUsuario,
   type InviteDeps,
   type InviteLogEntry,
+  requireActorFromBearer,
 } from "./invitar.ts";
 
 const validBody = {
@@ -92,24 +93,6 @@ Deno.test("superadmin con AAL1 no consulta membresía ni crea usuarios", async (
 });
 
 Deno.test("el bearer AAL2 se verifica explícitamente y llega a la orquestación", async () => {
-  type RequireActorFromBearer = (
-    req: Request,
-    auth: {
-      getUser: (jwt: string) => Promise<{
-        data: { user: { id: string } | null };
-        error: Error | null;
-      }>;
-      getAuthenticatorAssuranceLevel: (jwt: string) => Promise<{
-        data: { currentLevel: string | null } | null;
-        error: Error | null;
-      }>;
-    },
-  ) => Promise<{ userId: string; aal: string }>;
-
-  const inviteModule = await import("./invitar.ts");
-  const requireActorFromBearer = (inviteModule as unknown as {
-    requireActorFromBearer: RequireActorFromBearer;
-  }).requireActorFromBearer;
   const authCalls: string[] = [];
   const orchestrationCalls: string[] = [];
   const req = request();
