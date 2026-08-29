@@ -73,13 +73,13 @@ MODULOS OPTATIVOS (por tenant)
 | Móvil | React Native + Expo + SQLite offline + expo-location + FCM |
 | Jobs | pg_cron + pg_net → Edge `notify-jobs` |
 
-## Estado del proyecto (2026-08-26)
+## Estado del proyecto (2026-08-29)
 
 | Recurso | Detalle |
 |---|---|
 | Repo | `jarguetam/gestiones-comerciales` (privado) |
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
-| Fase actual | **F3 cerrada**. En `main`: P-05/P-06 backoffice, web W-01 MFA · W-02b · W-12 · W-13 · theming, móvil M-08/M-09 cola. Pendiente operativo: `db push` al proyecto Supabase, deploy Edge, HMAC; issues #9 y #11 (ya implementadas). |
+| Fase actual | **F3 cerrada**. Las 24 migraciones de `main` están aplicadas en el proyecto remoto. Edge Functions vivas salvo `pdf-solicitud` (404) y con código desfasado vs `main` (p. ej. `webhook-tenant` aún responde `GC-INT-*`). CI despliega Edge en push a `main` si existe el secret `SUPABASE_ACCESS_TOKEN`. HMAC se rota en P-03. |
 
 ### Quickstart
 
@@ -109,5 +109,5 @@ apps/               → web / mobile / backoffice (scaffold en F1)
 
 ## Próximos pasos (según tasks.md)
 
-1. **Operación:** aplicar migraciones pendientes en el proyecto Supabase (`supabase db push`) y desplegar Edge `importer` + `webhook-tenant`; rotar el secreto HMAC en P-03.
-2. **Fuera de código en `main`:** enrolamiento MFA en backoffice, persistencia SQLite de la cola móvil, Detox, Storybook. Issues #9 y #11 cubren F1.11 y F1.3 — se pueden cerrar.
+1. **Operación:** cargar el secret `SUPABASE_ACCESS_TOKEN` (token de supabase.com) para que CI redepliegue Edge (`pdf-solicitud` + código actual de `webhook-tenant`/`importer`). Rotar HMAC por tenant en P-03 (detalle de empresa). Issues #9 y #11 están implementadas; ciérralas en GitHub (el token del agente no tiene `issues:write`).
+2. **Fuera de código en `main`:** Detox/EAS y Storybook. MFA backoffice (P-01 enrolamiento) y persistencia SQLite de la cola M-09 ya van en esta rama.

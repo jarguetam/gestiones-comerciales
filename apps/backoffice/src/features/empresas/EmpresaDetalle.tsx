@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
+import { ejemploCurlWebhook, urlWebhookTenant } from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
 
 interface TenantDetalle {
@@ -73,6 +74,16 @@ export function EmpresaDetalle() {
   const [password, setPassword] = useState('')
   const [webhookSecret, setWebhookSecret] = useState<string | null>(null)
   const [rotando, setRotando] = useState(false)
+  const webhookUrl = urlWebhookTenant(SUPABASE_URL)
+
+  async function copiar(texto: string, etiqueta: string) {
+    try {
+      await navigator.clipboard.writeText(texto)
+      setAviso(`${etiqueta} copiado.`)
+    } catch {
+      setError('No se pudo copiar al portapapeles')
+    }
+  }
 
   const cargar = useCallback(async () => {
     if (!id) return
@@ -366,11 +377,16 @@ export function EmpresaDetalle() {
               {' '}<code className="text-xs">X-GC-Signature</code> + <code className="text-xs">X-GC-Tenant-Id</code>.
             </p>
             <label className="block text-xs font-medium text-slate-500">URL</label>
-            <input
-              readOnly
-              value={SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/webhook-tenant` : 'https://<proyecto>.supabase.co/functions/v1/webhook-tenant'}
-              className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-mono"
-            />
+            <div className="flex gap-2">
+              <input
+                readOnly
+                value={webhookUrl}
+                className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-mono"
+              />
+              <button type="button" onClick={() => void copiar(webhookUrl, 'URL')} className="shrink-0 rounded-md border px-3 py-2 text-xs">
+                Copiar
+              </button>
+            </div>
             <p className="text-xs text-slate-500">
               {tenant.configuracion?.webhook_secret
                 ? 'Hay un secreto configurado. Rotarlo invalida el anterior.'
@@ -387,13 +403,24 @@ export function EmpresaDetalle() {
             {webhookSecret && (
               <div>
                 <label className="block text-xs font-medium text-slate-500">Secreto (una sola vez)</label>
-                <input
-                  readOnly
-                  value={webhookSecret}
-                  className="mt-1 w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-mono"
-                />
+                <div className="mt-1 flex gap-2">
+                  <input
+                    readOnly
+                    value={webhookSecret}
+                    className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-mono"
+                  />
+                  <button type="button" onClick={() => void copiar(webhookSecret, 'Secreto')} className="shrink-0 rounded-md border px-3 py-2 text-xs">
+                    Copiar
+                  </button>
+                </div>
               </div>
             )}
+            <details className="text-xs text-slate-600">
+              <summary className="cursor-pointer font-medium">Ejemplo curl</summary>
+              <pre className="mt-2 overflow-x-auto rounded-md bg-slate-900 p-3 text-[11px] text-slate-100">
+                {ejemploCurlWebhook(SUPABASE_URL ?? 'https://ejemplo.supabase.co', tenant.id)}
+              </pre>
+            </details>
           </div>
         </div>
       )}

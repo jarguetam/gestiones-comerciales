@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Login } from '../features/auth/Login'
+import { MfaPage } from '../features/auth/MfaPage'
 import { Empresas } from '../features/empresas/Empresas'
 import { EmpresaDetalle } from '../features/empresas/EmpresaDetalle'
 import { CatalogosPage } from '../features/catalogos/CatalogosPage'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/empresas/:id" element={<EmpresaDetalle />} />
         <Route path="/catalogos" element={<CatalogosPage />} />
         <Route path="/salud" element={<SaludPage />} />
+        <Route path="/seguridad" element={<MfaPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

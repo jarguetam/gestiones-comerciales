@@ -19,7 +19,8 @@ import { claimsDe, DEMO_MODE, supabase, type Perfil, cargarPerfil } from './lib/
 import { colorPrimario } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { demoNotificaciones, contarNoLeidas } from './lib/notificaciones'
-import { sincronizarAhora } from './lib/colaStore'
+import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
+import { abrirPersistenciaCola } from './lib/abrirCola'
 import { ejecutarDemo, ejecutarMutacion } from './lib/sync'
 
 type Tab =
@@ -51,6 +52,14 @@ export default function App() {
   const [listo, setListo] = useState(false)
   const { pendientes } = useCola()
   const noLeidas = contarNoLeidas(demoNotificaciones())
+
+  useEffect(() => {
+    void (async () => {
+      const persist = await abrirPersistenciaCola()
+      configurarPersistencia(persist)
+      await hidratarDesdePersistencia()
+    })()
+  }, [])
 
   useEffect(() => {
     if (DEMO_MODE) {
