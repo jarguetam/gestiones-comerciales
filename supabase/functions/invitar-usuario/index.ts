@@ -14,6 +14,20 @@ import {
   invitarUsuario,
 } from "./invitar.ts";
 
+type InviteRpcClient = {
+  rpc: (
+    name: "admin_usuario_invitar",
+    args: {
+      p_tenant_id: string;
+      p_email: string;
+      p_rol: string;
+      p_jefe_id: string | null;
+      p_nombre: string;
+      p_zona_id: number | null;
+    },
+  ) => Promise<{ error: { message: string } | null }>;
+};
+
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);
   if (preflight) return preflight;
@@ -96,14 +110,17 @@ Deno.serve(async (req) => {
       if (!userClient) {
         throw new InviteError("GC-AUTH-001: sin autorización", 401);
       }
-      const { error } = await userClient.rpc("admin_usuario_invitar", {
-        p_tenant_id: tenantId,
-        p_email: email,
-        p_rol: rol,
-        p_jefe_id: jefeId,
-        p_nombre: nombre,
-        p_zona_id: zonaId,
-      });
+      const { error } = await (userClient as unknown as InviteRpcClient).rpc(
+        "admin_usuario_invitar",
+        {
+          p_tenant_id: tenantId,
+          p_email: email,
+          p_rol: rol,
+          p_jefe_id: jefeId,
+          p_nombre: nombre,
+          p_zona_id: zonaId,
+        },
+      );
       if (error) throw new Error(error.message);
     },
     deleteUser: async (id) => {
