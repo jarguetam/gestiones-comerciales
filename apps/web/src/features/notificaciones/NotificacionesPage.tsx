@@ -1,4 +1,3 @@
-import { useCallback, useEffect } from 'react'
 import { DEMO_MODE } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { useNotificaciones } from './useNotificaciones'
@@ -8,18 +7,7 @@ import { cn } from '../../lib/cn'
 export function NotificacionesPage() {
   const { fuente } = useDominio()
   const live = !DEMO_MODE && fuente === 'supabase'
-  const { items, pendientes, error, leer, refetch } = useNotificaciones(live)
-
-  useEffect(() => {
-    void refetch()
-  }, [refetch])
-
-  const marcar = useCallback(
-    (id: string) => {
-      leer(id)
-    },
-    [leer],
-  )
+  const { items, pendientes, error, leer } = useNotificaciones(live)
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4">
@@ -44,7 +32,7 @@ export function NotificacionesPage() {
                   <p className="text-[11px] text-muted mt-2">{new Date(n.creado_en).toLocaleString()}</p>
                 </div>
                 {!n.leida && (
-                  <Button variant="ghost" size="sm" onClick={() => marcar(n.id)}>
+                  <Button variant="ghost" size="sm" onClick={() => leer(n.id)}>
                     Marcar leída
                   </Button>
                 )}

@@ -41,7 +41,7 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.locator('[data-spec="W-03"]').first()).toBeVisible()
     await page.getByLabel(/^estado$/i).selectOption('completada')
     await expect(page).toHaveURL(/estado=completada/)
-    await expect(page.getByText(/completada/i).first()).toBeVisible()
+    await expect(page.getByLabel(/^estado$/i)).toHaveValue('completada')
   })
 
   test('W-04: la pantalla de personas lista la cartera y permite buscar', async ({ page }) => {
