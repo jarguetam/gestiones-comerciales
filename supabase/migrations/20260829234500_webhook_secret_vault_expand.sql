@@ -1,9 +1,9 @@
 -- ============================================================
--- Gate 1 / Task 4 — sacar webhook_secret de tenant.configuracion
+-- Gate 1 / Task 4 — EXPAND
+-- Vault privado, capture de compatibilidad y RPCs dual-read.
+-- Esta migración confirma antes de iniciar el backfill.
 -- ============================================================
 
--- Supabase Vault está habilitado por defecto. CASCADE instala sus dependencias
--- cuando esta migración corre en una base local nueva.
 create extension if not exists supabase_vault cascade;
 
 revoke all on schema vault from public;
@@ -45,101 +45,114 @@ comment on table private.tenant_webhook_secret is
 comment on column private.tenant_webhook_secret.vault_secret_id is
   'UUID retornado por vault.create_secret().';
 
--- Rutina privada e idempotente. También toma un lock de tabla incompatible
--- con UPDATE; al invocarse debajo, PostgreSQL lo conserva hasta el commit de
--- esta migración, después de instalar los RPC nuevos.
-create function private.migrar_webhook_secrets_legacy()
-returns integer
+-- Guard permanente para el intervalo expand→contract y defensa en profundidad.
+-- Es AFTER para que también pueda capturar INSERT sin violar el FK al tenant.
+-- La fila pública y el secreto Vault cambian en la misma transacción: ningún
+-- webhook_secret llega a commit en tenant.configuracion.
+create function private.capture_tenant_webhook_secret()
+returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_tenant_id uuid;
   v_secret_json jsonb;
   v_secret text;
   v_vault_secret_id uuid;
-  v_migrados integer := 0;
+  v_es_superadmin boolean;
+  v_es_backfill boolean;
 begin
-  lock table public.tenant in share row exclusive mode;
+  if new.configuracion is null
+     or not (new.configuracion ? 'webhook_secret') then
+    return null;
+  end if;
 
-  for v_tenant_id, v_secret_json in
-    select t.id, t.configuracion -> 'webhook_secret'
-      from public.tenant t
-     where t.configuracion ? 'webhook_secret'
-     for update
-  loop
-    v_secret := case
-      when jsonb_typeof(v_secret_json) = 'string'
-        then v_secret_json #>> '{}'
-      else null
-    end;
+  select count(*) = 1
+    into v_es_superadmin
+    from public.usuario_plataforma up
+   where up.id = auth.uid()
+     and up.es_superadmin
+     and up.activo;
 
-    if v_secret is not null and v_secret <> '' then
-      select tws.vault_secret_id
-        into v_vault_secret_id
-        from private.tenant_webhook_secret tws
-       where tws.tenant_id = v_tenant_id
-       for update;
+  v_es_backfill := (
+    auth.uid() is null
+    and session_user = 'postgres'
+    and current_setting('app.webhook_secret_backfill', true) = '1'
+    and current_setting('role', true) in ('none', 'postgres')
+  );
 
-      if v_vault_secret_id is null then
-        select vault.create_secret(
-          v_secret,
-          null,
-          'Webhook HMAC de tenant ' || v_tenant_id::text
-        )
-          into v_vault_secret_id;
+  if not (v_es_superadmin or v_es_backfill) then
+    raise exception 'GC-AUTH-001: requiere superadmin activo de plataforma';
+  end if;
 
-        insert into private.tenant_webhook_secret (
-          tenant_id,
-          vault_secret_id,
-          secret_last4,
-          rotated_at
-        )
-        values (
-          v_tenant_id,
-          v_vault_secret_id,
-          right(v_secret, 4),
-          now()
-        );
-      else
-        perform vault.update_secret(v_vault_secret_id, v_secret);
+  v_secret_json := new.configuracion -> 'webhook_secret';
+  v_secret := case
+    when jsonb_typeof(v_secret_json) = 'string'
+      then v_secret_json #>> '{}'
+    else null
+  end;
 
-        update private.tenant_webhook_secret
-           set secret_last4 = right(v_secret, 4),
-               rotated_at = now()
-         where tenant_id = v_tenant_id;
-      end if;
+  if v_secret is not null and v_secret <> '' then
+    select tws.vault_secret_id
+      into v_vault_secret_id
+      from private.tenant_webhook_secret tws
+     where tws.tenant_id = new.id
+     for update;
 
-      v_migrados := v_migrados + 1;
+    if v_vault_secret_id is null then
+      select vault.create_secret(
+        v_secret,
+        null,
+        'Webhook HMAC de tenant ' || new.id::text
+      )
+        into v_vault_secret_id;
+
+      insert into private.tenant_webhook_secret (
+        tenant_id,
+        vault_secret_id,
+        secret_last4,
+        rotated_at
+      )
+      values (
+        new.id,
+        v_vault_secret_id,
+        right(v_secret, 4),
+        now()
+      );
+    else
+      perform vault.update_secret(v_vault_secret_id, v_secret);
+
+      update private.tenant_webhook_secret
+         set secret_last4 = right(v_secret, 4),
+             rotated_at = now()
+       where tenant_id = new.id;
     end if;
+  end if;
 
-    update public.tenant
-       set configuracion = coalesce(configuracion, '{}'::jsonb)
-                           - 'webhook_secret'
-     where id = v_tenant_id;
-  end loop;
+  update public.tenant
+     set configuracion = coalesce(configuracion, '{}'::jsonb)
+                         - 'webhook_secret'
+   where id = new.id;
 
-  return v_migrados;
+  return null;
 end;
 $$;
 
-revoke all on function private.migrar_webhook_secrets_legacy() from public;
-revoke all on function private.migrar_webhook_secrets_legacy() from anon;
-revoke all on function private.migrar_webhook_secrets_legacy() from authenticated;
+revoke all on function private.capture_tenant_webhook_secret() from public;
+revoke all on function private.capture_tenant_webhook_secret() from anon;
+revoke all on function private.capture_tenant_webhook_secret() from authenticated;
+revoke all on function private.capture_tenant_webhook_secret() from service_role;
 
--- Expand/data migration/contract: el lock adquirido por la función permanece
--- activo hasta que toda esta migración (incluidos los RPC de abajo) confirme.
-select private.migrar_webhook_secrets_legacy();
+comment on function private.capture_tenant_webhook_secret() is
+  'Solo trigger: captura writes legacy durante despliegue y queda como defensa; EXECUTE está revocado para roles API.';
 
-alter table public.tenant
-  add constraint tenant_configuracion_sin_webhook_secret
-  check (not (configuracion ? 'webhook_secret'));
+create trigger capture_tenant_webhook_secret
+  after insert or update of configuracion on public.tenant
+  for each row
+  execute function private.capture_tenant_webhook_secret();
 
--- Mantiene nombre, parámetro y RETURNS text para clientes existentes.
-drop function public.admin_webhook_rotar_secret(uuid);
-
-create function public.admin_webhook_rotar_secret(p_tenant_id uuid)
+-- Conserva nombre, parámetro y RETURNS text del contrato histórico.
+create or replace function public.admin_webhook_rotar_secret(p_tenant_id uuid)
 returns text
 language plpgsql
 security definer
@@ -161,7 +174,6 @@ begin
     raise exception 'GC-AUTH-001: requiere superadmin activo de plataforma';
   end if;
 
-  -- El lock serializa dos rotaciones simultáneas del mismo tenant.
   perform 1
     from public.tenant
    where id = p_tenant_id
@@ -208,9 +220,9 @@ begin
      where tenant_id = p_tenant_id;
   end if;
 
-  -- Defensa adicional para tenants creados/actualizados por clientes antiguos.
   update public.tenant
-     set configuracion = coalesce(configuracion, '{}'::jsonb) - 'webhook_secret'
+     set configuracion = coalesce(configuracion, '{}'::jsonb)
+                         - 'webhook_secret'
    where id = p_tenant_id;
 
   perform public.registrar_auditoria(
@@ -231,7 +243,7 @@ grant execute on function public.admin_webhook_rotar_secret(uuid) to authenticat
 comment on function public.admin_webhook_rotar_secret(uuid) is
   'Rota el secreto Vault y retorna el plaintext una única vez.';
 
-create function public.admin_webhook_secret_estado(p_tenant_id uuid)
+create or replace function public.admin_webhook_secret_estado(p_tenant_id uuid)
 returns jsonb
 language plpgsql
 stable
@@ -280,8 +292,8 @@ grant execute on function public.admin_webhook_secret_estado(uuid) to authentica
 comment on function public.admin_webhook_secret_estado(uuid) is
   'Estado canónico del secreto HMAC; nunca retorna plaintext ni UUID de Vault.';
 
--- Conserva contrato, permisos y comparación actual. Task 6 reemplazará la
--- comparación de strings; aquí solo cambia el origen del secreto a Vault.
+-- Dual-read temporal: Vault primero, configuracion solo para filas aún no
+-- procesadas por BACKFILL. CONTRACT reemplaza esta función sin fallback.
 create or replace function public.integracion_recibir(
   p_tenant_id uuid,
   p_origen text,
@@ -324,6 +336,18 @@ begin
     from private.tenant_webhook_secret tws
     join vault.decrypted_secrets ds on ds.id = tws.vault_secret_id
    where tws.tenant_id = p_tenant_id;
+
+  if v_secret is null or v_secret = '' then
+    select case
+      when jsonb_typeof(t.configuracion -> 'webhook_secret') = 'string'
+        then t.configuracion ->> 'webhook_secret'
+      else null
+    end
+      into v_secret
+      from public.tenant t
+     where t.id = p_tenant_id;
+  end if;
+
   if v_secret is null or v_secret = '' then
     raise exception 'GC-IMP-011: webhook no configurado para este tenant';
   end if;
