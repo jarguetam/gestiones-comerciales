@@ -157,9 +157,12 @@ export async function invitarUsuario(
     const nombre = typeof body.nombre === "string" && body.nombre.trim()
       ? body.nombre.trim()
       : email;
-    const generado = typeof body.password !== "string" ||
-      body.password.length < 8;
-    const password = generado ? generarPassword() : body.password;
+    const suppliedPassword =
+      typeof body.password === "string" && body.password.length >= 8
+        ? body.password
+        : null;
+    const generado = suppliedPassword === null;
+    const password = suppliedPassword ?? generarPassword();
     const jefeId = typeof body.jefe_id === "string" ? body.jefe_id : null;
     const zonaId = typeof body.zona_id === "number" ? body.zona_id : null;
 
