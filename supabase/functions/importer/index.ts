@@ -9,7 +9,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
-import { importar, type ImporterDeps, ImporterError } from "./importer.ts";
+import {
+  importar,
+  type ImporterDeps,
+  ImporterError,
+  requireImporterActorFromBearer,
+} from "./importer.ts";
 
 type ImporterRpcClient = {
   rpc: (
@@ -36,41 +41,24 @@ Deno.serve(async (req) => {
   let userClient: ReturnType<typeof createClient> | undefined;
 
   const deps: ImporterDeps = {
-    requireActor: async (request) => {
-      const authorization = request.headers.get("Authorization");
-      const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
-      if (!bearer) {
-        throw new ImporterError(
-          "GC-IMP-051: autenticación requerida",
-          401,
-        );
-      }
-
-      userClient = createClient(url, anon, {
-        global: { headers: { Authorization: `Bearer ${bearer}` } },
-      });
-      const { data: userData, error: userError } = await userClient.auth
-        .getUser(bearer);
-      if (userError || !userData.user) {
-        throw new ImporterError(
-          "GC-IMP-051: autenticación requerida",
-          401,
-        );
-      }
-
-      const { data: assurance, error: assuranceError } = await userClient.auth
-        .mfa.getAuthenticatorAssuranceLevel(bearer);
-      if (assuranceError || !assurance) {
-        throw new ImporterError(
-          "GC-AUTH-012: no se pudo verificar el nivel de seguridad",
-          500,
-        );
-      }
-      return {
-        userId: userData.user.id,
-        aal: assurance.currentLevel ?? "aal1",
-      };
-    },
+    requireActor: (request) =>
+      requireImporterActorFromBearer(request, {
+        getUser: (bearer) => {
+          userClient = createClient(url, anon, {
+            global: { headers: { Authorization: `Bearer ${bearer}` } },
+          });
+          return userClient.auth.getUser(bearer);
+        },
+        getAuthenticatorAssuranceLevel: (bearer) => {
+          if (!userClient) {
+            throw new ImporterError(
+              "GC-IMP-051: autenticación requerida",
+              401,
+            );
+          }
+          return userClient.auth.mfa.getAuthenticatorAssuranceLevel(bearer);
+        },
+      }),
     isPlatformSuperadmin: async (userId) => {
       const { data, error } = await admin
         .from("usuario_plataforma")

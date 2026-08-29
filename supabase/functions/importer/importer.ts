@@ -5,6 +5,17 @@ export type ImporterActor = {
   aal: string;
 };
 
+export type ImporterActorAuth = {
+  getUser: (bearer: string) => Promise<{
+    data: { user: { id: string } | null };
+    error: unknown;
+  }>;
+  getAuthenticatorAssuranceLevel: (bearer: string) => Promise<{
+    data: { currentLevel: string | null } | null;
+    error: unknown;
+  }>;
+};
+
 export type ImporterBatchResult = {
   insertados?: number;
   actualizados?: number;
@@ -48,6 +59,42 @@ export class ImporterError extends Error {
     super(message);
     this.name = "ImporterError";
   }
+}
+
+export async function requireImporterActorFromBearer(
+  request: Request,
+  auth: ImporterActorAuth,
+): Promise<ImporterActor> {
+  const authorization = request.headers.get("Authorization");
+  const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (!bearer) {
+    throw new ImporterError(
+      "GC-IMP-051: autenticación requerida",
+      401,
+    );
+  }
+
+  const { data: userData, error: userError } = await auth.getUser(bearer);
+  if (userError || !userData.user) {
+    throw new ImporterError(
+      "GC-IMP-051: autenticación requerida",
+      401,
+    );
+  }
+
+  const { data: assurance, error: assuranceError } = await auth
+    .getAuthenticatorAssuranceLevel(bearer);
+  if (assuranceError || !assurance) {
+    throw new ImporterError(
+      "GC-AUTH-012: no se pudo verificar el nivel de seguridad",
+      500,
+    );
+  }
+
+  return {
+    userId: userData.user.id,
+    aal: assurance.currentLevel ?? "aal1",
+  };
 }
 
 type ParsedImport = {
