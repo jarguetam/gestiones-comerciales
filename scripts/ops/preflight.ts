@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   diffMigrations,
+  preflightMessage,
   summarizePreflight,
   type PreflightCode,
   type PreflightReport,
@@ -174,12 +175,13 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
 
   const projectRes = await safeGetJson(`${API}/projects/${projectRef}`, token)
   if (projectRes.status === 401) {
+    const code = createCheck.code ?? 'GC-OPS-002'
     const report: PreflightReport = {
       ...base,
       canCreateProject: createCheck.canCreateProject,
-      code: createCheck.code ?? 'GC-OPS-002',
+      code,
       ok: false,
-      message: 'GC-OPS-002: token inválido',
+      message: preflightMessage(code),
     }
     await writeInventory(finalizePreflight(report))
     return finalizePreflight(report)
@@ -201,12 +203,13 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
     token,
   )
   if (migrationsRes.status === 401) {
+    const code = createCheck.code ?? 'GC-OPS-002'
     const report: PreflightReport = {
       ...base,
       canCreateProject: createCheck.canCreateProject,
-      code: createCheck.code ?? 'GC-OPS-002',
+      code,
       ok: false,
-      message: 'GC-OPS-002: token inválido',
+      message: preflightMessage(code),
     }
     await writeInventory(finalizePreflight(report))
     return finalizePreflight(report)
@@ -225,12 +228,13 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
 
   const functionsRes = await safeGetJson(`${API}/projects/${projectRef}/functions`, token)
   if (functionsRes.status === 401) {
+    const code = createCheck.code ?? 'GC-OPS-002'
     const report: PreflightReport = {
       ...base,
       canCreateProject: createCheck.canCreateProject,
-      code: createCheck.code ?? 'GC-OPS-002',
+      code,
       ok: false,
-      message: 'GC-OPS-002: token inválido',
+      message: preflightMessage(code),
     }
     await writeInventory(finalizePreflight(report))
     return finalizePreflight(report)

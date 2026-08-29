@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { diffMigrations, summarizePreflight } from './preflight-types.ts'
+import { diffMigrations, preflightMessage, summarizePreflight } from './preflight-types.ts'
 
 test('diffMigrations detecta locales no aplicadas', () => {
   const d = diffMigrations(
@@ -9,6 +9,20 @@ test('diffMigrations detecta locales no aplicadas', () => {
   )
   assert.deepEqual(d.missing, ['20260829100000_persona_visita_rls_claims.sql'])
   assert.deepEqual(d.extraRemote, [])
+})
+
+test('summarizePreflight preserva ok:false con GC-OPS-002 sin drift', () => {
+  const r = summarizePreflight({
+    ok: false,
+    code: 'GC-OPS-002',
+    message: preflightMessage('GC-OPS-002'),
+    local: { migrations: [], functions: [] },
+    missing: [],
+    extraRemote: [],
+    canCreateProject: false,
+  })
+  assert.equal(r.ok, false)
+  assert.equal(r.code, 'GC-OPS-002')
 })
 
 test('summarizePreflight falla con GC-OPS-007 si hay drift', () => {
