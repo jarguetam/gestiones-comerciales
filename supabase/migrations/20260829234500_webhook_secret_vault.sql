@@ -45,56 +45,102 @@ comment on table private.tenant_webhook_secret is
 comment on column private.tenant_webhook_secret.vault_secret_id is
   'UUID retornado por vault.create_secret().';
 
--- Expand/data migration/contract: crear primero las referencias Vault, mover
--- cada secreto legado y quitar únicamente esa key del JSON en la misma tx.
-do $$
+-- Rutina privada e idempotente. También toma un lock de tabla incompatible
+-- con UPDATE; al invocarse debajo, PostgreSQL lo conserva hasta el commit de
+-- esta migración, después de instalar los RPC nuevos.
+create function private.migrar_webhook_secrets_legacy()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
 declare
   v_tenant_id uuid;
+  v_secret_json jsonb;
   v_secret text;
   v_vault_secret_id uuid;
+  v_migrados integer := 0;
 begin
-  for v_tenant_id, v_secret in
-    select t.id, t.configuracion ->> 'webhook_secret'
+  lock table public.tenant in share row exclusive mode;
+
+  for v_tenant_id, v_secret_json in
+    select t.id, t.configuracion -> 'webhook_secret'
       from public.tenant t
      where t.configuracion ? 'webhook_secret'
+     for update
   loop
-    select vault.create_secret(
-      v_secret,
-      null,
-      'Webhook HMAC de tenant ' || v_tenant_id::text
-    )
-      into v_vault_secret_id;
+    v_secret := case
+      when jsonb_typeof(v_secret_json) = 'string'
+        then v_secret_json #>> '{}'
+      else null
+    end;
 
-    insert into private.tenant_webhook_secret (
-      tenant_id,
-      vault_secret_id,
-      secret_last4,
-      rotated_at
-    )
-    values (
-      v_tenant_id,
-      v_vault_secret_id,
-      right(v_secret, 4),
-      now()
-    );
+    if v_secret is not null and v_secret <> '' then
+      select tws.vault_secret_id
+        into v_vault_secret_id
+        from private.tenant_webhook_secret tws
+       where tws.tenant_id = v_tenant_id
+       for update;
+
+      if v_vault_secret_id is null then
+        select vault.create_secret(
+          v_secret,
+          null,
+          'Webhook HMAC de tenant ' || v_tenant_id::text
+        )
+          into v_vault_secret_id;
+
+        insert into private.tenant_webhook_secret (
+          tenant_id,
+          vault_secret_id,
+          secret_last4,
+          rotated_at
+        )
+        values (
+          v_tenant_id,
+          v_vault_secret_id,
+          right(v_secret, 4),
+          now()
+        );
+      else
+        perform vault.update_secret(v_vault_secret_id, v_secret);
+
+        update private.tenant_webhook_secret
+           set secret_last4 = right(v_secret, 4),
+               rotated_at = now()
+         where tenant_id = v_tenant_id;
+      end if;
+
+      v_migrados := v_migrados + 1;
+    end if;
+
+    update public.tenant
+       set configuracion = coalesce(configuracion, '{}'::jsonb)
+                           - 'webhook_secret'
+     where id = v_tenant_id;
   end loop;
 
-  update public.tenant
-     set configuracion = coalesce(configuracion, '{}'::jsonb) - 'webhook_secret'
-   where configuracion ? 'webhook_secret';
-end
+  return v_migrados;
+end;
 $$;
+
+revoke all on function private.migrar_webhook_secrets_legacy() from public;
+revoke all on function private.migrar_webhook_secrets_legacy() from anon;
+revoke all on function private.migrar_webhook_secrets_legacy() from authenticated;
+
+-- Expand/data migration/contract: el lock adquirido por la función permanece
+-- activo hasta que toda esta migración (incluidos los RPC de abajo) confirme.
+select private.migrar_webhook_secrets_legacy();
 
 alter table public.tenant
   add constraint tenant_configuracion_sin_webhook_secret
   check (not (configuracion ? 'webhook_secret'));
 
--- Mantiene nombre y parámetro para clientes existentes; el retorno ahora es
--- JSON canónico y el plaintext solo existe en esta respuesta inmediata.
+-- Mantiene nombre, parámetro y RETURNS text para clientes existentes.
 drop function public.admin_webhook_rotar_secret(uuid);
 
 create function public.admin_webhook_rotar_secret(p_tenant_id uuid)
-returns jsonb
+returns text
 language plpgsql
 security definer
 set search_path = ''
@@ -105,11 +151,14 @@ declare
   v_last4 text;
   v_rotated_at timestamptz := clock_timestamp();
 begin
-  if not (
-    public.es_superadmin()
-    or public.plataforma_puede_operar(p_tenant_id)
-  ) then
-    raise exception 'GC-AUTH-001: requiere rol de plataforma';
+  if (
+    select count(*)
+      from public.usuario_plataforma up
+     where up.id = auth.uid()
+       and up.es_superadmin
+       and up.activo
+  ) <> 1 then
+    raise exception 'GC-AUTH-001: requiere superadmin activo de plataforma';
   end if;
 
   -- El lock serializa dos rotaciones simultáneas del mismo tenant.
@@ -172,13 +221,7 @@ begin
     jsonb_build_object('estado', 'rotado', 'last4', v_last4)
   );
 
-  return jsonb_build_object(
-    'tenantId', p_tenant_id,
-    'configurado', true,
-    'rotadoEn', v_rotated_at,
-    'last4', v_last4,
-    'secret', v_secret
-  );
+  return v_secret;
 end;
 $$;
 
@@ -186,7 +229,7 @@ revoke all on function public.admin_webhook_rotar_secret(uuid) from public;
 grant execute on function public.admin_webhook_rotar_secret(uuid) to authenticated;
 
 comment on function public.admin_webhook_rotar_secret(uuid) is
-  'Rota el secreto Vault. Solo esta respuesta contiene el plaintext.';
+  'Rota el secreto Vault y retorna el plaintext una única vez.';
 
 create function public.admin_webhook_secret_estado(p_tenant_id uuid)
 returns jsonb
@@ -199,11 +242,14 @@ declare
   v_last4 text;
   v_rotated_at timestamptz;
 begin
-  if not (
-    public.es_superadmin()
-    or public.plataforma_puede_operar(p_tenant_id)
-  ) then
-    raise exception 'GC-AUTH-001: requiere rol de plataforma';
+  if (
+    select count(*)
+      from public.usuario_plataforma up
+     where up.id = auth.uid()
+       and up.es_superadmin
+       and up.activo
+  ) <> 1 then
+    raise exception 'GC-AUTH-001: requiere superadmin activo de plataforma';
   end if;
 
   if not exists (

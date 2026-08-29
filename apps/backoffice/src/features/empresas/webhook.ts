@@ -5,10 +5,20 @@ export interface WebhookSecretStatus {
   last4: string | null
 }
 
-export interface WebhookSecretRotado {
+export interface WebhookSecretRevelado {
+  tenantId: string
   secret: string
-  status: WebhookSecretStatus
 }
+
+export type WebhookSecretRevealAction =
+  | {
+      tipo: 'rotacion_exitosa'
+      tenantId: string
+      respuesta: unknown
+    }
+  | {
+      tipo: 'rotacion_iniciada' | 'descartado' | 'tenant_cambiado'
+    }
 
 function objetoRpc(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -37,17 +47,24 @@ export function webhookSecretStatusDeRpc(value: unknown): WebhookSecretStatus {
   }
 }
 
-export function webhookSecretRotadoDeRpc(value: unknown): WebhookSecretRotado {
-  const data = objetoRpc(value)
-  if (typeof data.secret !== 'string' || data.secret.length === 0) {
+export function webhookSecretRotadoDeRpc(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0) {
     throw new Error('Respuesta de rotación de webhook inválida')
   }
+  return value
+}
 
-  const { secret, ...statusData } = data
-  return {
-    secret,
-    status: webhookSecretStatusDeRpc(statusData),
+export function actualizarWebhookSecretRevelado(
+  _actual: WebhookSecretRevelado | null,
+  accion: WebhookSecretRevealAction,
+): WebhookSecretRevelado | null {
+  if (accion.tipo === 'rotacion_exitosa') {
+    return {
+      tenantId: accion.tenantId,
+      secret: webhookSecretRotadoDeRpc(accion.respuesta),
+    }
   }
+  return null
 }
 
 export function urlWebhookTenant(base: string | undefined): string {

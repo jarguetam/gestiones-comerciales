@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
 import {
+  actualizarWebhookSecretRevelado,
   ejemploCurlWebhook,
   urlWebhookTenant,
-  webhookSecretRotadoDeRpc,
   webhookSecretStatusDeRpc,
+  type WebhookSecretRevelado,
   type WebhookSecretStatus,
 } from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
@@ -100,9 +101,10 @@ export function EmpresaDetalle() {
   const [nombre, setNombre] = useState('')
   const [rol, setRol] = useState('asesor')
   const [password, setPassword] = useState('')
-  const [webhookSecret, setWebhookSecret] = useState<string | null>(null)
+  const [webhookSecretRevelado, setWebhookSecretRevelado] = useState<WebhookSecretRevelado | null>(null)
   const [webhookStatus, setWebhookStatus] = useState<WebhookSecretStatus | null>(null)
   const [rotando, setRotando] = useState(false)
+  const tenantIdActualRef = useRef<string | undefined>(id)
   const webhookUrl = urlWebhookTenant(SUPABASE_URL)
 
   async function copiar(texto: string, etiqueta: string) {
@@ -117,7 +119,6 @@ export function EmpresaDetalle() {
   const cargar = useCallback(async () => {
     if (!id) return
     setError(null)
-    setWebhookSecret(null)
     setWebhookStatus(null)
     if (!live) {
       setTenant(DEMO_DETALLE[id] ?? DEMO_DETALLE.demo)
@@ -167,6 +168,19 @@ export function EmpresaDetalle() {
       }
     }
   }, [id, live])
+
+  useEffect(() => {
+    tenantIdActualRef.current = id
+    setWebhookSecretRevelado((actual) =>
+      actualizarWebhookSecretRevelado(actual, { tipo: 'tenant_cambiado' }),
+    )
+
+    return () => {
+      // El estado React se destruye al desmontar; el ref evita que una
+      // respuesta asíncrona tardía vuelva a revelar el secreto.
+      tenantIdActualRef.current = undefined
+    }
+  }, [id])
 
   useEffect(() => {
     void cargar()
@@ -255,12 +269,20 @@ export function EmpresaDetalle() {
     if (!tenant) return
     setError(null)
     setAviso(null)
-    setWebhookSecret(null)
+    setWebhookSecretRevelado((actual) =>
+      actualizarWebhookSecretRevelado(actual, { tipo: 'rotacion_iniciada' }),
+    )
     setRotando(true)
     try {
       if (!live) {
         const secret = 'demo-webhook-secret-no-persistido'
-        setWebhookSecret(secret)
+        setWebhookSecretRevelado((actual) =>
+          actualizarWebhookSecretRevelado(actual, {
+            tipo: 'rotacion_exitosa',
+            tenantId: tenant.id,
+            respuesta: secret,
+          }),
+        )
         setWebhookStatus({
           tenantId: tenant.id,
           configurado: true,
@@ -274,10 +296,26 @@ export function EmpresaDetalle() {
         p_tenant_id: tenant.id,
       })
       if (error) throw error
-      const rotacion = webhookSecretRotadoDeRpc(data)
-      setWebhookSecret(rotacion.secret)
-      setWebhookStatus(rotacion.status)
+      if (tenantIdActualRef.current !== tenant.id) return
+
+      setWebhookSecretRevelado((actual) =>
+        actualizarWebhookSecretRevelado(actual, {
+          tipo: 'rotacion_exitosa',
+          tenantId: tenant.id,
+          respuesta: data,
+        }),
+      )
       setAviso('Secreto rotado. Cópialo ahora; no se vuelve a mostrar.')
+
+      const statusRes = await supabase.rpc('admin_webhook_secret_estado', {
+        p_tenant_id: tenant.id,
+      })
+      if (tenantIdActualRef.current !== tenant.id) return
+      if (statusRes.error) {
+        setError(`El secreto se rotó, pero no se pudo actualizar el estado: ${statusRes.error.message}`)
+        return
+      }
+      setWebhookStatus(webhookSecretStatusDeRpc(statusRes.data))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo rotar el secreto')
     } finally {
@@ -332,6 +370,10 @@ export function EmpresaDetalle() {
   }
 
   const moduloActivo = (codigo: string) => modulos.find((m) => m.codigo === codigo)?.activo ?? false
+  const webhookSecret =
+    webhookSecretRevelado?.tenantId === tenant.id
+      ? webhookSecretRevelado.secret
+      : null
 
   return (
     <main className={PAGE}>
@@ -488,6 +530,16 @@ export function EmpresaDetalle() {
                   />
                   <Button variant="secondary" size="sm" onClick={() => void copiar(webhookSecret, 'Secreto')}>
                     Copiar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setWebhookSecretRevelado((actual) =>
+                        actualizarWebhookSecretRevelado(actual, { tipo: 'descartado' }),
+                      )}
+                  >
+                    Descartar
                   </Button>
                 </div>
               </div>
