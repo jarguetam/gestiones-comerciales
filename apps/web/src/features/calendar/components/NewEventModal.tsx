@@ -4,8 +4,7 @@ import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_ATTENDEES } from '../even
 import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
 import type { CatalogoActividad, CatalogoHora } from '../../../lib/catalogos'
 import { errorAltaPersona, mensajeGc } from '../../../lib/persistirHelpers'
-import { Dialog } from '../../../components/ui/Dialog'
-import { Button } from '../../../components/ui/Button'
+import { Alert, Button, Dialog, Input, Select, Textarea, fieldClass } from '../../../components/ui'
 
 interface NewEventModalProps {
   onClose: () => void
@@ -183,301 +182,229 @@ export function NewEventModal({
   return (
     <Dialog title="Nueva Visita / Gestión" onClose={onClose} className="max-w-md">
       <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-sm">
-          {/* Tipo de Actividad (dropdown) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Tipo de Actividad *
+        <Select
+          id="visita-actividad"
+          label="Tipo de Actividad *"
+          value={actividadId}
+          onChange={(e) => handleActividadChange(e.target.value)}
+        >
+          <option value="">— Selecciona el tipo de actividad —</option>
+          {catalogo.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.nombre}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          id="visita-subactividad"
+          label="Sub Actividad *"
+          value={subActividadId}
+          onChange={(e) => setSubActividadId(e.target.value === '' ? '' : Number(e.target.value))}
+          disabled={!actividadSeleccionada}
+        >
+          <option value="">
+            {actividadSeleccionada ? '— Selecciona la sub actividad —' : 'Primero elige el tipo de actividad'}
+          </option>
+          {actividadSeleccionada?.sub_actividades.map((sa) => (
+            <option key={sa.id} value={sa.id}>
+              {sa.nombre}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          id="visita-duracion"
+          label="Duración estimada"
+          value={horaId}
+          onChange={(e) => setHoraId(Number(e.target.value))}
+        >
+          {catalogoHoras.map((h) => (
+            <option key={h.id} value={h.id}>
+              {h.nombre}
+            </option>
+          ))}
+        </Select>
+
+        <div className="relative">
+          <Input
+            id="visita-titulo"
+            label="Título de la visita *"
+            required
+            placeholder={
+              actividadSeleccionada && subActividadSeleccionada
+                ? `${actividadSeleccionada.nombre} — ${subActividadSeleccionada.nombre}`
+                : 'Ej. Verificación de garantías — Finca Las Palmas'
+            }
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="pr-28"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-1.5 bottom-1.5"
+            onClick={() =>
+              actividadSeleccionada &&
+              subActividadSeleccionada &&
+              setTitle(`${actividadSeleccionada.nombre} — ${subActividadSeleccionada.nombre}`)
+            }
+            disabled={!actividadSeleccionada || !subActividadSeleccionada}
+          >
+            Autocompletar
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <Input id="visita-fecha" label="Fecha" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input
+            id="visita-inicio"
+            label="Inicio"
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+          />
+          <Input id="visita-fin" label="Fin" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="visita-cliente" className="block text-sm font-medium text-ink">
+              Cliente *
             </label>
-            <select
-              value={actividadId}
-              onChange={(e) => handleActividadChange(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-            >
-              <option value="">— Selecciona el tipo de actividad —</option>
-              {catalogo.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sub Actividad (dropdown dependiente) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Sub Actividad *
-            </label>
-            <select
-              value={subActividadId}
-              onChange={(e) => setSubActividadId(e.target.value === '' ? '' : Number(e.target.value))}
-              disabled={!actividadSeleccionada}
-              className={`w-full rounded-xl border px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white ${
-                !actividadSeleccionada ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              <option value="">
-                {actividadSeleccionada ? '— Selecciona la sub actividad —' : 'Primero elige el tipo de actividad'}
-              </option>
-              {actividadSeleccionada?.sub_actividades.map((sa) => (
-                <option key={sa.id} value={sa.id}>
-                  {sa.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Duración estimada (catálogo actividad_hora) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Duración estimada
-            </label>
-            <select
-              value={horaId}
-              onChange={(e) => setHoraId(Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-            >
-              {catalogoHoras.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Título autogenerado de la visita */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Título de la visita *
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                placeholder={
-                  actividadSeleccionada && subActividadSeleccionada
-                    ? `${actividadSeleccionada.nombre} — ${subActividadSeleccionada.nombre}`
-                    : 'Ej. Verificación de garantías — Finca Las Palmas'
-                }
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 pr-24 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  actividadSeleccionada &&
-                  subActividadSeleccionada &&
-                  setTitle(
-                    `${actividadSeleccionada.nombre} — ${subActividadSeleccionada.nombre}`
-                  )
-                }
-                disabled={!actividadSeleccionada || !subActividadSeleccionada}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-purple-50 text-brand-700 text-[11px] font-semibold hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Autocompletar
-              </button>
-            </div>
-          </div>
-
-          {/* Date & Times */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-1">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Inicio</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Fin</label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-              />
-            </div>
-          </div>
-
-          {/* Persona / Cliente (dropdown de la cartera + alta inline) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="visita-cliente" className="block text-xs font-semibold text-slate-700">
-                Cliente *
-              </label>
-              <button
-                type="button"
-                onClick={() => setMostrarAlta((v) => !v)}
-                className="text-[11px] font-semibold text-brand-700 hover:text-brand-800 flex items-center gap-1"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                {mostrarAlta ? 'Usar listado' : 'Nuevo cliente'}
-              </button>
-            </div>
-
-            {!mostrarAlta ? (
-              <>
-                <select
-                  id="visita-cliente"
-                  value={personaId}
-                  onChange={(e) => setPersonaId(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-                >
-                  <option value="">— Selecciona el cliente de tu cartera —</option>
-                  {personas.map((p) => (
-                    <option key={p.id} value={p.nombre}>
-                      {p.nombre} · {p.documento}
-                    </option>
-                  ))}
-                </select>
-                {personaSeleccionada && (
-                  <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
-                    {personaSeleccionada.categoria}
-                    {personaSeleccionada.saldo ? ` · Saldo ${personaSeleccionada.saldo}` : ''}
-                    <br />
-                    {personaSeleccionada.direccion}
-                  </p>
-                )}
-              </>
-            ) : (
-              <div className="space-y-2 rounded-xl border border-dashed border-brand-300 bg-purple-50/40 p-3">
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Nombre del cliente o negocio *"
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="NIT / DPI / Cédula"
-                    value={nuevoDocumento}
-                    onChange={(e) => setNuevoDocumento(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Teléfono"
-                    value={nuevoTelefono}
-                    onChange={(e) => setNuevoTelefono(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-                  />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Dirección del negocio"
-                  value={nuevaDireccion}
-                  onChange={(e) => setNuevaDireccion(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-                />
-                <select
-                  value={nuevaCategoria}
-                  onChange={(e) => setNuevaCategoria(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-                >
-                  <option>Prospecto — En evaluación</option>
-                  <option>Cliente — Crédito activo</option>
-                  <option>Cliente — Crédito agrícola activo</option>
-                  <option>Cliente — Crédito de consumo activo</option>
-                  <option>Punto de venta / Distribuidor</option>
-                  <option>Referido</option>
-                </select>
-                {errorPersona && (
-                  <p className="text-[11px] font-semibold text-rose-600">{errorPersona}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void handleRegistrarPersona()}
-                  className="w-full py-2 rounded-lg bg-primary hover:opacity-90 text-white text-xs font-semibold transition-colors"
-                >
-                  Registrar y usar en esta visita
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Location */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Ubicación / Dirección</label>
-            <input
-              type="text"
-              placeholder="Ej. Km 42 Carretera al Pacífico, Escuintla"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-
-          {/* Video Call */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Enlace / Videollamada (Meet / Zoom)</label>
-            <input
-              type="text"
-              placeholder="Ej. meet.google.com/gc-visita-123"
-              value={videoCall}
-              onChange={(e) => setVideoCall(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Notas / Instrucciones</label>
-            <textarea
-              rows={2}
-              placeholder="Ej. Llevar cámara para el registro fotográfico de las garantías"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-
-          {/* Reminder */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Recordatorio</label>
-            <select
-              value={reminder}
-              onChange={(e) => setReminder(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
-            >
-              <option value="10 mins before">10 mins before</option>
-              <option value="20 mins before">20 mins before</option>
-              <option value="30 mins before">30 mins before</option>
-              <option value="1 hour before">1 hour before</option>
-              <option value="1 day before">1 day before</option>
-            </select>
-          </div>
-
-          {/* Error de validación (integridad actividad → sub_actividad) */}
-          {error && (
-            <p className="text-xs font-semibold text-rose-600 bg-rose-50 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
-
-          <div className="pt-2 flex justify-end gap-3">
-            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar visita'}
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMostrarAlta((v) => !v)}>
+              {mostrarAlta ? 'Usar listado' : 'Nuevo cliente'}
             </Button>
           </div>
-        </form>
+
+          {!mostrarAlta ? (
+            <>
+              <select
+                id="visita-cliente"
+                value={personaId}
+                onChange={(e) => setPersonaId(e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">— Selecciona el cliente de tu cartera —</option>
+                {personas.map((p) => (
+                  <option key={p.id} value={p.nombre}>
+                    {p.nombre} · {p.documento}
+                  </option>
+                ))}
+              </select>
+              {personaSeleccionada && (
+                <p className="mt-1.5 text-[11px] text-muted leading-relaxed">
+                  {personaSeleccionada.categoria}
+                  {personaSeleccionada.saldo ? ` · Saldo ${personaSeleccionada.saldo}` : ''}
+                  <br />
+                  {personaSeleccionada.direccion}
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="space-y-2 rounded-xl border border-dashed border-primary/40 bg-canvas p-3">
+              <Input
+                id="alta-nombre"
+                label="Nombre del cliente o negocio *"
+                autoFocus
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  id="alta-documento"
+                  label="NIT / DPI / Cédula"
+                  value={nuevoDocumento}
+                  onChange={(e) => setNuevoDocumento(e.target.value)}
+                />
+                <Input
+                  id="alta-telefono"
+                  label="Teléfono"
+                  type="tel"
+                  value={nuevoTelefono}
+                  onChange={(e) => setNuevoTelefono(e.target.value)}
+                />
+              </div>
+              <Input
+                id="alta-direccion"
+                label="Dirección del negocio"
+                value={nuevaDireccion}
+                onChange={(e) => setNuevaDireccion(e.target.value)}
+              />
+              <Select
+                id="alta-categoria"
+                label="Categoría"
+                value={nuevaCategoria}
+                onChange={(e) => setNuevaCategoria(e.target.value)}
+              >
+                <option>Prospecto — En evaluación</option>
+                <option>Cliente — Crédito activo</option>
+                <option>Cliente — Crédito agrícola activo</option>
+                <option>Cliente — Crédito de consumo activo</option>
+                <option>Punto de venta / Distribuidor</option>
+                <option>Referido</option>
+              </Select>
+              {errorPersona ? (
+                <Alert tone="danger" role="alert">
+                  {errorPersona}
+                </Alert>
+              ) : null}
+              <Button type="button" className="w-full" onClick={() => void handleRegistrarPersona()}>
+                Registrar y usar en esta visita
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <Input
+          id="visita-ubicacion"
+          label="Ubicación / Dirección"
+          placeholder="Ej. Km 42 Carretera al Pacífico, Escuintla"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
+
+        <Input
+          id="visita-video"
+          label="Enlace / Videollamada (Meet / Zoom)"
+          placeholder="Ej. meet.google.com/gc-visita-123"
+          value={videoCall}
+          onChange={(e) => setVideoCall(e.target.value)}
+        />
+
+        <Textarea
+          id="visita-notas"
+          label="Notas / Instrucciones"
+          rows={2}
+          placeholder="Ej. Llevar cámara para el registro fotográfico de las garantías"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+
+        <Select id="visita-recordatorio" label="Recordatorio" value={reminder} onChange={(e) => setReminder(e.target.value)}>
+          <option value="10 mins before">10 mins before</option>
+          <option value="20 mins before">20 mins before</option>
+          <option value="30 mins before">30 mins before</option>
+          <option value="1 hour before">1 hour before</option>
+          <option value="1 day before">1 day before</option>
+        </Select>
+
+        {error ? (
+          <Alert tone="danger" role="alert">
+            {error}
+          </Alert>
+        ) : null}
+
+        <div className="pt-2 flex justify-end gap-3">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Guardar visita'}
+          </Button>
+        </div>
+      </form>
     </Dialog>
   )
 }

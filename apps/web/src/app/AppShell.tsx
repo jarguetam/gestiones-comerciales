@@ -79,7 +79,7 @@ export function AppShell({
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-      isActive ? 'bg-primary text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white',
+      isActive ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/5 hover:text-white',
     )
 
   return (
@@ -89,7 +89,7 @@ export function AppShell({
           <BrandMark nombre={marca} logoUrl={branding.logo_url} variant="dark" />
           <div className="min-w-0">
             <h1 className="font-serif text-xl leading-tight truncate">Gestiones Comerciales</h1>
-            <p className="mt-1 text-xs text-slate-400 truncate">{marca}</p>
+            <p className="mt-1 text-xs text-white/50 truncate">{marca}</p>
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Principal">
@@ -99,7 +99,7 @@ export function AppShell({
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-slate-400">
+        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/50">
           <p className="truncate">{email}</p>
           <p className="mt-1 uppercase tracking-wide">{fuente === 'demo' ? 'Modo demo' : 'Supabase'}</p>
         </div>
@@ -132,7 +132,7 @@ export function AppShell({
           <div className="flex items-center gap-2 ml-auto">
             <NavLink
               to="/notificaciones"
-              className="relative rounded-lg border border-white/20 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-white/10"
+              className="relative rounded-lg border border-white/20 px-2.5 py-1.5 text-xs text-white/80 hover:bg-white/10"
               aria-label={`Notificaciones${noLeidas ? `, ${noLeidas} sin leer` : ''}`}
             >
               Campana
@@ -146,7 +146,7 @@ export function AppShell({
               Nueva visita
             </Button>
             {!demo && (
-              <Button variant="ghost" size="sm" className="text-slate-200 hover:bg-white/10" onClick={() => void cerrarSesion()}>
+              <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 hover:text-white" onClick={() => void cerrarSesion()}>
                 Salir
               </Button>
             )}

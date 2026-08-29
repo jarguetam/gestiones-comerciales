@@ -190,7 +190,7 @@ export function FormulariosPage() {
               }`}
             >
               <p className="text-sm font-semibold">{p.nombre}</p>
-              <p className={`mt-1 text-xs ${p.id === plantilla?.id ? 'text-white/80' : 'text-slate-500'}`}>
+              <p className={`mt-1 text-xs ${p.id === plantilla?.id ? 'text-white/80' : 'text-muted'}`}>
                 {p.descripcion}
               </p>
             </button>
@@ -202,7 +202,7 @@ export function FormulariosPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="font-serif text-2xl">{plantilla.nombre}</h3>
-                <p className="text-sm text-slate-600">{plantilla.descripcion}</p>
+                <p className="text-sm text-muted">{plantilla.descripcion}</p>
               </div>
               {score !== null && (
                 <p aria-live="polite" className="rounded-full bg-[var(--gc-thead)] px-3 py-1 text-sm font-semibold text-primary">

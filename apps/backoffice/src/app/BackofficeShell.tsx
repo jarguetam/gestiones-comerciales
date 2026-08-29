@@ -31,17 +31,17 @@ export function BackofficeShell() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       'block rounded-lg px-3 py-2 text-sm font-medium',
-      isActive ? 'bg-primary text-white' : 'text-slate-300 hover:bg-white/5',
+      isActive ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/5',
     )
 
   return (
     <div className="min-h-screen bg-canvas text-ink flex">
-      <aside className="hidden md:flex w-56 shrink-0 flex-col bg-ink text-slate-100">
+      <aside className="hidden md:flex w-56 shrink-0 flex-col bg-ink text-white/90">
         <div className="px-5 py-5 border-b border-white/10 flex items-center gap-2">
           <BrandMark nombre="GC Backoffice" variant="dark" compact />
           <div>
             <p className="text-lg font-bold leading-tight">GC Backoffice</p>
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">Plataforma</p>
+            <p className="text-[10px] uppercase tracking-wide text-white/50">Plataforma</p>
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Principal">
@@ -51,9 +51,9 @@ export function BackofficeShell() {
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-slate-400">
+        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/50">
           <p className="truncate">{email}</p>
-          <button type="button" onClick={() => void cerrarSesion()} className="mt-2 text-slate-200 hover:text-white">
+          <button type="button" onClick={() => void cerrarSesion()} className="mt-2 text-white/80 hover:text-white">
             Salir
           </button>
         </div>

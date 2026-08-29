@@ -4,7 +4,23 @@ import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { CatalogoActividad, CatalogoHora, ZonaCatalogo } from '../../lib/catalogos'
 import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS } from '../calendar/eventsData'
 import { useDominio } from '../../app/DominioContext'
-import { Alert, BrandMark, Button, Input, PageHeader, PAGE, Tabs, TabPanel } from '../../components/ui'
+import {
+  Alert,
+  Badge,
+  BrandMark,
+  Button,
+  Input,
+  PageHeader,
+  PAGE,
+  Table,
+  Tabs,
+  TabPanel,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui'
 import { useToast } from '../../components/ui/Toast'
 import { colorCssValido, logoUrlValido, type BrandingTenant } from '../../lib/branding'
 import { fieldClass } from '../../components/ui'
@@ -153,12 +169,12 @@ function BrandingPanel({
         <Button onClick={() => void guardar()}>Guardar branding</Button>
       </div>
       <div className="rounded-2xl border border-line bg-ink p-5 text-canvas">
-        <p className="text-xs uppercase tracking-wide text-slate-400">Vista previa</p>
+        <p className="text-xs uppercase tracking-wide text-white/50">Vista previa</p>
         <div className="mt-4 flex items-center gap-3">
           <BrandMark nombre={nombre || 'GC'} logoUrl={preview.logo_url} variant="dark" />
           <div>
             <p className="font-serif text-xl">{nombre || 'Gestiones Comerciales'}</p>
-            <p className="text-xs text-slate-400">Sidebar y login usan este logo y el primario.</p>
+            <p className="text-xs text-white/60">Sidebar y login usan este logo y el primario.</p>
           </div>
         </div>
         <div className="mt-6 h-10 rounded-lg" style={{ background: colorCssValido(color) ?? '#6D28D9' }} />
@@ -271,14 +287,16 @@ function ActividadesPanel({
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-4">
         <input
+          id="nueva-actividad"
+          aria-label="Nueva actividad"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Nueva actividad"
-          className="flex-1 min-w-[12rem] rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className={`flex-1 min-w-[12rem] ${fieldClass}`}
         />
-        <button type="button" onClick={() => void altaActividad()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+        <Button type="button" onClick={() => void altaActividad()}>
           Agregar
-        </button>
+        </Button>
       </div>
       {actividades.map((a) => (
         <div key={a.id} className="rounded-2xl border border-line bg-surface p-4">
@@ -287,19 +305,21 @@ function ActividadesPanel({
             <button
               type="button"
               onClick={() => void toggleActivo('actividad', a.id, !(a.activo ?? true))}
-              className="text-xs rounded-full px-2 py-1 bg-slate-100"
+              className="text-xs"
             >
-              {(a.activo ?? true) ? 'Activa' : 'Inactiva'}
+              <Badge tone={(a.activo ?? true) ? 'success' : 'neutral'}>
+                {(a.activo ?? true) ? 'Activa' : 'Inactiva'}
+              </Badge>
             </button>
           </div>
-          <ul className="mt-3 space-y-1 text-sm text-slate-600">
+          <ul className="mt-3 space-y-1 text-sm text-muted">
             {a.sub_actividades.map((s) => (
               <li key={s.id} className="flex justify-between gap-2">
                 <span>{s.nombre}</span>
                 <button
                   type="button"
                   onClick={() => void toggleActivo('sub_actividad', s.id, !(s.activo ?? true))}
-                  className="text-[11px] text-slate-500"
+                  className="text-[11px] text-muted"
                 >
                   {(s.activo ?? true) ? 'activa' : 'inactiva'}
                 </button>
@@ -308,14 +328,16 @@ function ActividadesPanel({
           </ul>
           <div className="mt-3 flex gap-2">
             <input
+              id={`sub-${a.id}`}
+              aria-label={`Nueva subactividad de ${a.nombre}`}
               value={subNombre[a.id] ?? ''}
               onChange={(e) => setSubNombre((s) => ({ ...s, [a.id]: e.target.value }))}
               placeholder="Nueva subactividad"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+              className={`flex-1 ${fieldClass}`}
             />
-            <button type="button" onClick={() => void altaSub(a.id)} className="rounded-lg border border-primary px-3 py-1.5 text-xs font-semibold text-primary">
+            <Button type="button" variant="secondary" size="sm" onClick={() => void altaSub(a.id)}>
               Añadir
-            </button>
+            </Button>
           </div>
         </div>
       ))}
@@ -368,32 +390,44 @@ function ZonasPanel({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-4">
-        <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Código" className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre de zona" className="flex-1 min-w-[10rem] rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <button type="button" onClick={() => void alta()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+        <input
+          id="zona-codigo"
+          aria-label="Código de zona"
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value)}
+          placeholder="Código"
+          className={`w-28 ${fieldClass}`}
+        />
+        <input
+          id="zona-nombre"
+          aria-label="Nombre de zona"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Nombre de zona"
+          className={`flex-1 min-w-[10rem] ${fieldClass}`}
+        />
+        <Button type="button" onClick={() => void alta()}>
           Agregar
-        </button>
+        </Button>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[var(--gc-thead)] text-[11px] uppercase tracking-wide text-muted">
-            <tr>
-              <th className="px-4 py-3">Código</th>
-              <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {zonas.map((z) => (
-              <tr key={z.id}>
-                <td className="px-4 py-3 font-mono text-xs">{z.codigo}</td>
-                <td className="px-4 py-3">{z.nombre}</td>
-                <td className="px-4 py-3">{(z.activo ?? true) ? 'activa' : 'inactiva'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <THead>
+          <tr>
+            <Th>Código</Th>
+            <Th>Nombre</Th>
+            <Th>Estado</Th>
+          </tr>
+        </THead>
+        <TBody>
+          {zonas.map((z) => (
+            <Tr key={z.id}>
+              <Td className="font-mono text-xs">{z.codigo}</Td>
+              <Td>{z.nombre}</Td>
+              <Td>{(z.activo ?? true) ? 'activa' : 'inactiva'}</Td>
+            </Tr>
+          ))}
+        </TBody>
+      </Table>
     </div>
   )
 }
@@ -443,17 +477,33 @@ function HorasPanel({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-4">
-        <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (ej. 2 horas)" className="flex-1 min-w-[10rem] rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <input value={cantidad} onChange={(e) => setCantidad(e.target.value)} type="number" step="0.5" min="0.5" className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <button type="button" onClick={() => void alta()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+        <input
+          id="hora-nombre"
+          aria-label="Nombre de duración"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Nombre (ej. 2 horas)"
+          className={`flex-1 min-w-[10rem] ${fieldClass}`}
+        />
+        <input
+          id="hora-cantidad"
+          aria-label="Cantidad de horas"
+          value={cantidad}
+          onChange={(e) => setCantidad(e.target.value)}
+          type="number"
+          step="0.5"
+          min="0.5"
+          className={`w-24 ${fieldClass}`}
+        />
+        <Button type="button" onClick={() => void alta()}>
           Agregar
-        </button>
+        </Button>
       </div>
-      <ul className="rounded-2xl border border-line bg-surface divide-y divide-slate-100">
+      <ul className="rounded-2xl border border-line bg-surface divide-y divide-line">
         {horas.map((h) => (
           <li key={h.id} className="px-4 py-3 text-sm flex justify-between">
             <span>{h.nombre}</span>
-            <span className="text-slate-500">{h.cantidad} h</span>
+            <span className="text-muted">{h.cantidad} h</span>
           </li>
         ))}
       </ul>
