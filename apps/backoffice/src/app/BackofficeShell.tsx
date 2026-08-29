@@ -45,6 +45,14 @@ export function BackofficeShell() {
           >
             Salud
           </NavLink>
+          <NavLink
+            to="/seguridad"
+            className={({ isActive }) =>
+              `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-teal-700 text-white' : 'text-slate-300 hover:bg-white/5'}`
+            }
+          >
+            MFA
+          </NavLink>
         </nav>
         <div className="px-5 py-4 border-t border-white/10 text-[11px] text-slate-400">
           <p className="truncate">{email}</p>
@@ -60,6 +68,7 @@ export function BackofficeShell() {
             <NavLink to="/" end className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Empresas</NavLink>
             <NavLink to="/catalogos" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Catálogos</NavLink>
             <NavLink to="/salud" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Salud</NavLink>
+            <NavLink to="/seguridad" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>MFA</NavLink>
           </nav>
         </header>
         <Outlet />
