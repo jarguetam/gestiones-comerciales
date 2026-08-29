@@ -138,35 +138,35 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const masActivo = extras.some((e) => e.id === tab)
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: t.primary }]}>
-      <View style={[styles.header, { backgroundColor: t.primary, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 8) : 8 }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: t.canvas }]}>
+      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.line, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 8) : 8 }]}>
         <Marca nombre={marca} logoUrl={perfil.branding.logo_url} compact />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitulo, { color: t.onPrimary }]}>{TITULOS[tab]}</Text>
-          <Text style={[styles.headerSub, { color: t.onPrimaryMuted }]}>{marca}</Text>
+          <Text style={[styles.headerTitulo, { color: t.ink }]}>{TITULOS[tab]}</Text>
+          <Text style={[styles.headerSub, { color: t.muted }]}>{marca}</Text>
         </View>
         <TouchableOpacity
-          style={styles.headerBtn}
+          style={[styles.headerBtn, { borderColor: t.line }]}
           onPress={() => setTab('notificaciones')}
           accessibilityLabel="Notificaciones"
           accessibilityState={{ selected: tab === 'notificaciones' }}
         >
-          <Text style={styles.headerBtnTexto}>🔔</Text>
+          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Inbox</Text>
           {noLeidas > 0 ? (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: t.primary }]}>
               <Text style={styles.badgeTexto}>{noLeidas}</Text>
             </View>
           ) : null}
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.headerBtn}
+          style={[styles.headerBtn, { borderColor: t.line }]}
           onPress={() => setTab('sync')}
           accessibilityLabel="Sincronización"
           accessibilityState={{ selected: tab === 'sync' }}
         >
-          <Text style={styles.headerBtnTexto}>Cola</Text>
+          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Cola</Text>
           {pendientes > 0 ? (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: t.warn }]}>
               <Text style={styles.badgeTexto}>{pendientes}</Text>
             </View>
           ) : null}
@@ -249,7 +249,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           </View>
         </TouchableOpacity>
       </Modal>
-      <ExpoStatusBar style="light" />
+      <ExpoStatusBar style="dark" />
     </SafeAreaView>
   )
 }
@@ -257,32 +257,35 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: {
-    paddingBottom: 14,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+    borderBottomWidth: 1,
   },
-  headerTitulo: { fontSize: 20, fontWeight: '700' },
+  headerTitulo: { fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
   headerSub: { fontSize: 12, marginTop: 2 },
   headerBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerBtnTexto: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  headerBtnTexto: { fontSize: 11, fontWeight: '700' },
   badge: {
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: '#F59E0B',
     borderRadius: 999,
     minWidth: 16,
     paddingHorizontal: 4,
   },
-  badgeTexto: { color: '#1B2430', fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  badgeTexto: { color: '#fff', fontSize: 10, fontWeight: '700', textAlign: 'center' },
   offline: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
   offlineTexto: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   body: { flex: 1 },
@@ -291,8 +294,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingBottom: 8,
   },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2 },
-  tabTexto: { fontSize: 10 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 52, paddingVertical: 8, gap: 2 },
+  tabTexto: { fontSize: 11 },
   masFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   masHoja: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 28, gap: 4 },
   masItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },

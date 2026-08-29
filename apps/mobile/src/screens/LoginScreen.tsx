@@ -108,9 +108,9 @@ export default function LoginScreen({ onLogin }: Props) {
         <View style={styles.marca}>
           <Marca nombre="Gestiones Comerciales" />
         </View>
-        <Text style={[styles.titulo, { color: t.primary }]}>Gestiones Comerciales</Text>
+        <Text style={[styles.titulo, { color: t.ink }]}>Ruta de campo</Text>
         <Text style={[styles.subtitulo, { color: t.muted }]}>
-          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Asesor de campo'}
+          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Jornada del asesor'}
         </Text>
 
         {DEMO_MODE && (
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   marca: { alignItems: 'center', marginBottom: 8 },
-  titulo: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginTop: 4 },
+  titulo: { fontSize: 28, fontWeight: '800', letterSpacing: -0.8, textAlign: 'center', marginTop: 4 },
   subtitulo: { fontSize: 13, textAlign: 'center', marginBottom: 20, marginTop: 2 },
   demo: {
     borderWidth: 1,

@@ -229,8 +229,8 @@ export function CrmPipelineView({
                         }}
                         onClick={() => setSeleccionado(lead)}
                         className={cn(
-                          'w-full rounded-xl border border-line bg-canvas p-3 text-left hover:border-primary',
-                          seleccionado?.id === lead.id && 'ring-2 ring-primary',
+                          'rail w-full rounded-xl border border-line bg-surface p-3 text-left transition-colors duration-campo hover:bg-canvas',
+                          seleccionado?.id === lead.id && 'border-primary',
                         )}
                       >
                         <p className="text-sm font-semibold leading-tight">{lead.nombre}</p>
@@ -355,7 +355,7 @@ function FichaLead({
 
   return (
     <div>
-      <h2 className="font-serif text-xl">{lead.nombre}</h2>
+      <h2 className="font-display text-xl tracking-tight">{lead.nombre}</h2>
       <p className="mt-0.5 text-xs text-muted">
         {lead.telefono}
         {lead.documento ? ` · ${lead.documento}` : ''}

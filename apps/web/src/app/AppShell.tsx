@@ -36,41 +36,47 @@ export function AppShell({
   const { session, demo, rol } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [menuAbierto, setMenuAbierto] = useState(false)
+  const [masAbierto, setMasAbierto] = useState(false)
   const [campanaAbierta, setCampanaAbierta] = useState(false)
   const live = !DEMO_MODE && fuente === 'supabase'
   const inbox = useNotificaciones(live)
   const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
   const marca = nombreComercial(branding, tenantNombre)
   const noLeidas = inbox.pendientes
-  const coreNav: NavItem[] = [
-    { to: '/', label: 'Dashboard', end: true },
-    { to: '/visitas', label: etiquetaVocab(branding, 'visita', 'Visitas') },
-    { to: '/personas', label: etiquetaVocab(branding, 'persona', 'Personas') },
+
+  const campoNav: NavItem[] = [
+    { to: '/', label: 'Hoy', end: true },
+    { to: '/visitas', label: etiquetaVocab(branding, 'visita', 'Jornada') },
+    { to: '/personas', label: etiquetaVocab(branding, 'persona', 'Cartera') },
     { to: '/crm', label: 'CRM' },
+  ]
+  const masNav: NavItem[] = [
     { to: '/formularios', label: 'Formularios' },
     { to: '/notificaciones', label: 'Notificaciones' },
-  ]
-  const modulosNav: NavItem[] = [
     { to: '/solicitudes', label: etiquetaVocab(branding, 'solicitud', 'Solicitudes'), codigo: 'solicitudes' },
     { to: '/depositos', label: 'Depósitos', codigo: 'depositos' },
     { to: '/cuentas', label: 'Cuentas', codigo: 'creditos' },
     { to: '/kilometraje', label: 'Kilometraje', codigo: 'kilometraje' },
-  ]
-  const adminNav: NavItem[] = [
     ...(mostrarMapa(rol, DEMO_MODE) ? [{ to: '/mapa', label: 'Mapa' }] : []),
     ...(mostrarConfiguracion(rol, DEMO_MODE) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
     ...(mostrarUsuarios(rol, DEMO_MODE) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
     ...(mostrarAuditoria(rol, DEMO_MODE) ? [{ to: '/auditoria', label: 'Auditoría' }] : []),
-  ]
-  const nav = [
-    ...coreNav,
-    ...adminNav,
-    ...modulosNav.filter((item) => DEMO_MODE || (item.codigo != null && modulos.includes(item.codigo))),
+  ].filter((item) => !item.codigo || DEMO_MODE || modulos.includes(item.codigo))
+
+  const desktopNav: NavItem[] = [
+    { to: '/', label: 'Dashboard', end: true },
+    { to: '/visitas', label: etiquetaVocab(branding, 'visita', 'Visitas') },
+    { to: '/personas', label: etiquetaVocab(branding, 'persona', 'Personas') },
+    { to: '/crm', label: 'CRM' },
+    ...masNav,
   ]
 
+  const masActivo = masNav.some((item) =>
+    item.end ? location.pathname === item.to : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  )
+
   useEffect(() => {
-    setMenuAbierto(false)
+    setMasAbierto(false)
     setCampanaAbierta(false)
   }, [location.pathname])
 
@@ -79,10 +85,16 @@ export function AppShell({
     navigate('/login', { replace: true })
   }
 
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
+  const desktopLink = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-      isActive ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/5 hover:text-white',
+      'block rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-campo',
+      isActive ? 'bg-primary text-white' : 'text-ink hover:bg-canvas',
+    )
+
+  const campoLink = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      'flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold transition-colors duration-campo',
+      isActive ? 'text-primary' : 'text-muted',
     )
 
   function abrirCampana() {
@@ -91,57 +103,39 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-ink flex">
-      <aside className="hidden md:flex w-60 shrink-0 flex-col bg-ink text-canvas">
-        <div className="px-5 pt-6 pb-5 border-b border-white/10 flex items-start gap-3">
-          <BrandMark nombre={marca} logoUrl={branding.logo_url} variant="dark" />
+    <div className="flex min-h-screen bg-canvas text-ink">
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-line bg-surface md:flex">
+        <div className="flex items-start gap-2.5 border-b border-line px-4 pb-4 pt-5">
+          <BrandMark nombre={marca} logoUrl={branding.logo_url} />
           <div className="min-w-0">
-            <h1 className="font-serif text-xl leading-tight truncate">Gestiones Comerciales</h1>
-            <p className="mt-1 text-xs text-white/50 truncate">{marca}</p>
+            <h1 className="font-display truncate text-base leading-tight tracking-tight">Gestiones</h1>
+            <p className="mt-0.5 truncate text-xs text-muted">{marca}</p>
           </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Principal">
-          {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
+        <nav className="flex-1 space-y-0.5 px-2 py-3" aria-label="Principal">
+          {desktopNav.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={desktopLink}>
               {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/50">
+        <div className="border-t border-line px-4 py-4 text-[11px] text-muted">
           <p className="truncate">{email}</p>
           <p className="mt-1 uppercase tracking-wide">{fuente === 'demo' ? 'Modo demo' : 'Supabase'}</p>
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 bg-ink text-white px-4 py-3 flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              type="button"
-              className="rounded-lg border border-white/20 px-2.5 py-1.5 text-sm"
-              aria-expanded={menuAbierto}
-              aria-controls="nav-movil"
-              onClick={() => setMenuAbierto((v) => !v)}
-            >
-              Menú
-            </button>
-            <BrandMark nombre={marca} logoUrl={branding.logo_url} variant="dark" compact />
-            <p className="text-sm font-semibold truncate max-w-[10rem]">{marca}</p>
+      <div className="flex min-w-0 flex-1 flex-col pb-[4.5rem] md:pb-0">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-surface/95 px-4 py-3 backdrop-blur">
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
+            <BrandMark nombre={marca} logoUrl={branding.logo_url} compact />
+            <p className="truncate text-sm font-semibold">{marca}</p>
           </div>
-          {menuAbierto && (
-            <nav id="nav-movil" className="w-full md:hidden flex flex-col gap-1 pb-2" aria-label="Móvil">
-              {nav.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-          )}
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="ml-auto flex items-center gap-2">
             <div className="relative">
               <button
                 type="button"
-                className="relative rounded-lg border border-white/20 px-2.5 py-1.5 text-white/80 hover:bg-white/10"
+                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-line text-ink hover:bg-canvas"
                 aria-label={`Notificaciones${noLeidas ? `, ${noLeidas} sin leer` : ''}`}
                 aria-expanded={campanaAbierta}
                 aria-haspopup="dialog"
@@ -157,7 +151,7 @@ export function AppShell({
                   <path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
                 {noLeidas > 0 ? (
-                  <span className="absolute -top-1 -right-1 min-w-[1rem] rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+                  <span className="absolute -right-1 -top-1 min-w-[1rem] rounded-full bg-primary px-1 text-[10px] font-bold text-white">
                     {noLeidas}
                   </span>
                 ) : null}
@@ -168,19 +162,15 @@ export function AppShell({
                   aria-label="Bandeja de notificaciones"
                   className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-xl border border-line bg-surface p-3 text-ink shadow-xl"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    {noLeidas} sin leer
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">{noLeidas} sin leer</p>
                   <ul className="mt-2 max-h-64 space-y-2 overflow-y-auto">
                     {inbox.items.slice(0, 5).map((n) => (
                       <li key={n.id} className="rounded-lg border border-line px-2 py-1.5">
                         <p className="text-sm font-medium leading-tight">{n.titulo}</p>
-                        <p className="text-[11px] text-muted line-clamp-2">{n.cuerpo}</p>
+                        <p className="line-clamp-2 text-[11px] text-muted">{n.cuerpo}</p>
                       </li>
                     ))}
-                    {inbox.items.length === 0 && (
-                      <li className="text-sm text-muted">No hay avisos.</li>
-                    )}
+                    {inbox.items.length === 0 && <li className="text-sm text-muted">No hay avisos.</li>}
                   </ul>
                   <NavLink
                     to="/notificaciones"
@@ -192,11 +182,11 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <Button size="sm" onClick={onNuevaVisita}>
+            <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita}>
               Nueva visita
             </Button>
             {!demo && (
-              <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 hover:text-white" onClick={() => void cerrarSesion()}>
+              <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => void cerrarSesion()}>
                 Salir
               </Button>
             )}
@@ -209,8 +199,61 @@ export function AppShell({
           </div>
         )}
 
-        <main className="flex-1 p-4 md:p-6 relative min-h-0">{children}</main>
+        <main className="relative min-h-0 flex-1 p-4 md:p-6">{children}</main>
       </div>
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-line bg-surface md:hidden"
+        aria-label="Campo"
+      >
+        {campoNav.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end} className={campoLink}>
+            {item.label}
+          </NavLink>
+        ))}
+        <button
+          type="button"
+          className={cn(
+            'flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold',
+            masActivo || masAbierto ? 'text-primary' : 'text-muted',
+          )}
+          aria-expanded={masAbierto}
+          aria-controls="nav-mas"
+          onClick={() => setMasAbierto((v) => !v)}
+        >
+          Más
+        </button>
+      </nav>
+
+      {masAbierto && (
+        <div className="fixed inset-0 z-50 md:hidden" id="nav-mas">
+          <button type="button" className="absolute inset-0 bg-ink/40" aria-label="Cerrar menú" onClick={() => setMasAbierto(false)} />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-line bg-surface p-4 pb-8">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Más</p>
+            <div className="grid gap-1">
+              {masNav.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-ink hover:bg-canvas"
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onNuevaVisita}
+        className="fixed bottom-16 right-4 z-40 inline-flex min-h-14 min-w-14 items-center justify-center rounded-full bg-primary text-2xl font-semibold text-white shadow-fab md:hidden"
+        aria-label="Nueva visita"
+      >
+        +
+      </button>
     </div>
   )
 }

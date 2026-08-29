@@ -21,17 +21,18 @@ import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import { BadgeEstado, Cargando, Vacio } from '../components/ui'
 import { NEUTROS, useTheme } from '../theme'
+import { formatearFechaJornada, progresoJornada } from '../lib/jornada'
 
 declare const process: { env: Record<string, string | undefined> }
 
 const SUPABASE_FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v1`
 
-const ESTILO_ESTADO: Record<string, { bg: string; fg: string; texto: string }> = {
-  programada: { bg: '#DBEAFE', fg: '#1D4ED8', texto: 'Programada' },
-  completada: { bg: '#D1FAE5', fg: '#047857', texto: 'Completada' },
-  aprobada: { bg: '#CCFBF1', fg: '#0F766E', texto: 'Aprobada' },
-  rechazada: { bg: '#FEE2E2', fg: '#B91C1C', texto: 'Rechazada' },
-  anulada: { bg: '#F3F4F6', fg: '#6B7280', texto: 'Anulada' },
+const ETIQUETA_ESTADO: Record<string, string> = {
+  programada: 'Programada',
+  completada: 'Completada',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  anulada: 'Anulada',
 }
 
 const DEMO_VISITAS: Visita[] = [
@@ -203,21 +204,21 @@ export default function AgendaScreen({ perfil }: Props) {
   }
 
   function renderVisita({ item }: { item: Visita }) {
-    const estilo = ESTILO_ESTADO[item.estado] ?? ESTILO_ESTADO.programada
     return (
-      <View style={styles.tarjeta}>
+      <View style={[styles.tarjeta, { borderColor: t.line, backgroundColor: t.surface }]}>
+        <View style={[styles.rail, { backgroundColor: t.primary }]} />
         <View style={styles.tarjetaFila}>
+          <Text style={[styles.hora, { color: t.ink }]}>{item.hora_inicio ? item.hora_inicio.slice(0, 5) : '--:--'}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.nombre}>{item.persona_nombre}</Text>
-            {item.actividad && <Text style={styles.actividad}>{item.actividad}</Text>}
-            {item.direccion && <Text style={styles.direccion}>{item.direccion}</Text>}
-            {item.hora_inicio && <Text style={styles.hora}>{item.hora_inicio.slice(0, 5)}</Text>}
+            <Text style={[styles.nombre, { color: t.ink }]}>{item.persona_nombre}</Text>
+            {item.actividad ? <Text style={[styles.actividad, { color: t.muted }]}>{item.actividad}</Text> : null}
+            <Text style={[styles.direccion, { color: t.muted }]}>{item.direccion ?? 'Sin zona'}</Text>
           </View>
-          <BadgeEstado estado={estilo.texto} />
+          <BadgeEstado estado={ETIQUETA_ESTADO[item.estado] ?? item.estado} />
         </View>
         {item.estado === 'programada' && !checkins.has(item.id) && (
           <TouchableOpacity
-            style={[styles.botonCheckin, { backgroundColor: t.success }]}
+            style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => handleCheckin(item)}
             disabled={checkinDe === item.id}
             accessibilityRole="button"
@@ -250,9 +251,12 @@ export default function AgendaScreen({ perfil }: Props) {
     return <Cargando etiqueta="Cargando agenda…" />
   }
 
+  const jornada = progresoJornada(visitas)
+  const fechaHero = visitas[0]?.fecha_visita ?? '2026-08-29'
+
   return (
     <View style={[styles.contenedor, { backgroundColor: t.canvas }]}>
-      {mensaje && <Text style={styles.mensaje}>{mensaje}</Text>}
+      {mensaje && <Text style={[styles.mensaje, { color: t.success }]}>{mensaje}</Text>}
       <FlatList
         data={visitas}
         keyExtractor={(v) => String(v.id)}
@@ -266,6 +270,20 @@ export default function AgendaScreen({ perfil }: Props) {
             }}
           />
         }
+        ListHeaderComponent={
+          <View style={[styles.hero, { backgroundColor: t.surface, borderColor: t.line }]}>
+            <Text style={[styles.heroFecha, { color: t.ink }]}>{formatearFechaJornada(fechaHero)}</Text>
+            <View style={styles.heroLinea}>
+              <Text style={[styles.heroPct, { color: t.ink }]}>{jornada.pct}%</Text>
+              <Text style={[styles.heroMeta, { color: t.muted }]}>
+                {jornada.hechas} de {jornada.total} completadas
+              </Text>
+            </View>
+            <View style={[styles.barra, { backgroundColor: t.canvas }]}>
+              <View style={[styles.barraFill, { width: `${jornada.pct}%`, backgroundColor: t.primary }]} />
+            </View>
+          </View>
+        }
         ListEmptyComponent={
           <Vacio
             titulo={DEMO_MODE ? 'Agenda de demostración vacía' : 'Sin visitas programadas para hoy'}
@@ -276,9 +294,9 @@ export default function AgendaScreen({ perfil }: Props) {
             }
           />
         }
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
       />
-      <Text style={styles.pie}>Asesor: {perfil.nombre}</Text>
+      <Text style={[styles.pie, { color: t.muted }]}>Asesor: {perfil.nombre}</Text>
     </View>
   )
 }
@@ -286,31 +304,39 @@ export default function AgendaScreen({ perfil }: Props) {
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  mensaje: { margin: 12, color: '#047857', fontSize: 13 },
+  mensaje: { marginHorizontal: 16, marginTop: 12, fontSize: 13, fontWeight: '600' },
+  hero: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 14 },
+  heroFecha: { fontSize: 28, fontWeight: '800', letterSpacing: -0.8 },
+  heroLinea: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 8 },
+  heroPct: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  heroMeta: { fontSize: 13 },
+  barra: { height: 6, borderRadius: 999, overflow: 'hidden', marginTop: 10 },
+  barraFill: { height: '100%', borderRadius: 999 },
   tarjeta: {
-    backgroundColor: NEUTROS.surface,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     padding: 14,
+    paddingLeft: 16,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    overflow: 'hidden',
   },
-  tarjetaFila: { flexDirection: 'row', alignItems: 'flex-start' },
-  nombre: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  actividad: { fontSize: 13, color: '#4B5563', marginTop: 2 },
-  direccion: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  hora: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  rail: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  tarjetaFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  nombre: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  actividad: { fontSize: 13, marginTop: 2 },
+  direccion: { fontSize: 12, marginTop: 2 },
+  hora: { fontSize: 18, fontWeight: '800', letterSpacing: -0.6, width: 56 },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8 },
   badgeTexto: { fontSize: 11, fontWeight: '600' },
   botonCheckin: {
-    marginTop: 10,
-    borderRadius: 10,
-    paddingVertical: 10,
+    marginTop: 12,
+    borderRadius: 12,
+    minHeight: 52,
+    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  botonCheckinTexto: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  vacio: { textAlign: 'center', color: '#6B7280', marginTop: 40 },
-  pie: { textAlign: 'center', color: '#9CA3AF', fontSize: 11, padding: 8 },
+  botonCheckinTexto: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  vacio: { textAlign: 'center', color: NEUTROS.muted, marginTop: 40 },
+  pie: { textAlign: 'center', fontSize: 11, padding: 8 },
 })

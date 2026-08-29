@@ -27,7 +27,7 @@ function RequiereAdmin({ children }: { children: ReactNode }) {
   if (!mostrarAuditoria(rol, DEMO_MODE)) {
     return (
       <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-12">
-        <h2 className="font-serif text-2xl mt-1">Solo administradores</h2>
+        <h2 className="font-display text-2xl tracking-tight mt-1">Solo administradores</h2>
         <p className="text-sm text-muted mt-2">La bitácora de auditoría es exclusiva del admin de la empresa.</p>
       </div>
     )
@@ -40,7 +40,7 @@ function RequiereModulo({ codigo, children }: { codigo: string; children: ReactN
   if (DEMO_MODE || fuente === 'demo' || modulos.includes(codigo)) return <>{children}</>
   return (
     <div className="max-w-lg rounded-2xl border border-line bg-surface p-6">
-      <h2 className="font-serif text-2xl mt-1">Este módulo no está activo</h2>
+      <h2 className="font-display text-2xl tracking-tight mt-1">Este módulo no está activo</h2>
       <p className="text-sm text-muted mt-2">
         Tu empresa no tiene habilitado el módulo <code>{codigo}</code>. Un admin de plataforma puede activarlo.
       </p>

@@ -27,9 +27,9 @@ export function BrandMark({
     <span
       aria-hidden
       className={cn(
-        'inline-flex items-center justify-center rounded-lg font-serif font-semibold',
+        'inline-flex items-center justify-center rounded-lg font-display tracking-tight',
         compact ? 'h-8 w-8 text-sm' : 'h-9 w-9 text-base',
-        onDark ? 'bg-white/10 text-[#F3EEE4]' : 'bg-primary text-white',
+        onDark ? 'bg-white/10 text-white' : 'bg-primary text-white',
       )}
     >
       {monograma(nombre)}

@@ -44,6 +44,31 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByLabel(/^estado$/i)).toHaveValue('completada')
   })
 
+  test('W-03: jornada de campo muestra fecha y % (sin Playfair)', async ({ page }) => {
+    await page.goto('/#/visitas')
+    await expect(page.locator('[data-spec="W-03"]').first()).toBeVisible()
+    await expect(page.locator('[data-jornada="header"]')).toBeVisible()
+    await expect(page.getByText(/% completado/i)).toBeVisible()
+    const family = await page.locator('[data-spec="W-03"] h2').evaluate((el) => getComputedStyle(el).fontFamily)
+    expect(family.toLowerCase()).not.toMatch(/playfair|georgia|times/)
+    expect(family.toLowerCase()).toMatch(/jakarta|sans/)
+  })
+
+  test('campo < md: 4 destinos + Más, sin chips saturados', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    const campo = page.getByRole('navigation', { name: /campo/i })
+    await expect(campo).toBeVisible()
+    await expect(campo.getByRole('link', { name: /^hoy$/i })).toBeVisible()
+    await expect(campo.getByRole('link', { name: /jornada/i })).toBeVisible()
+    await expect(campo.getByRole('link', { name: /cartera/i })).toBeVisible()
+    await expect(campo.getByRole('link', { name: /^crm$/i })).toBeVisible()
+    await expect(campo.getByRole('button', { name: /^más$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Nueva visita', exact: true })).toBeVisible()
+    await campo.getByRole('button', { name: /^más$/i }).click()
+    await expect(page.getByRole('link', { name: /^formularios$/i }).first()).toBeVisible()
+  })
+
   test('W-04: la pantalla de personas lista la cartera y permite buscar', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: /personas/i }).first().click()

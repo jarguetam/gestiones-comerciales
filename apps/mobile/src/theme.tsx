@@ -1,19 +1,8 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { colorPrimario, tintaSobrePrimario, type BrandingTenant } from './lib/branding'
+import { NEUTROS } from './themeTokens'
 
-/** Neutros fijos (D-UI-2). Solo el primario viene del tenant. */
-export const NEUTROS = {
-  canvas: '#F3F4F6',
-  surface: '#FFFFFF',
-  line: '#E5E7EB',
-  ink: '#111827',
-  muted: '#6B7280',
-  danger: '#DC2626',
-  success: '#047857',
-  warningBg: '#FFFBEB',
-  warningBorder: '#FDE68A',
-  warningText: '#92400E',
-} as const
+export { NEUTROS } from './themeTokens'
 
 export interface Tema {
   primary: string
@@ -26,6 +15,7 @@ export interface Tema {
   muted: string
   danger: string
   success: string
+  warn: string
   warningBg: string
   warningBorder: string
   warningText: string

@@ -3,7 +3,7 @@ import { cn } from '../../lib/cn'
 
 export function Table({ className, children, ...rest }: TableHTMLAttributes<HTMLTableElement> & { children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
       <table className={cn('w-full text-left text-sm', className)} {...rest}>
         {children}
       </table>
@@ -20,17 +20,17 @@ export function THead({ children }: { children: ReactNode }) {
 }
 
 export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn('px-4 py-3 font-semibold', className)} {...rest} />
+  return <th className={cn('px-3 py-2.5 font-semibold', className)} {...rest} />
 }
 
 export function Td({ className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('px-4 py-3', className)} {...rest} />
+  return <td className={cn('px-3 py-2.5', className)} {...rest} />
 }
 
 export function TBody({ children }: { children: ReactNode }) {
-  return <tbody className="divide-y divide-line/70">{children}</tbody>
+  return <tbody className="divide-y divide-line">{children}</tbody>
 }
 
 export function Tr({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn('hover:bg-canvas/80', className)} {...rest} />
+  return <tr className={cn('transition-colors duration-campo hover:bg-canvas', className)} {...rest} />
 }

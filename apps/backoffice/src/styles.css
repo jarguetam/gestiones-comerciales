@@ -3,18 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --gc-canvas: #f8fafc;
+  --gc-canvas: #fafaf8;
   --gc-surface: #ffffff;
-  --gc-border: #e2e8f0;
-  --gc-ink: #0f172a;
-  --gc-muted: #475569;
-  --gc-primary: #0f172a;
-  --gc-secondary: #64748b;
-  --gc-thead: #f1f5f9;
+  --gc-border: #e6e4df;
+  --gc-ink: #111111;
+  --gc-muted: #52525b;
+  --gc-primary: #111111;
+  --gc-secondary: #52525b;
+  --gc-thead: #f0efea;
+  --gc-ok: #047857;
+  --gc-warn: #b45309;
+  --gc-danger: #b91c1c;
+  --gc-ease: 150ms ease;
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+  }
+
   body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--gc-canvas);
     color: var(--gc-ink);
   }
@@ -22,5 +31,17 @@
   :focus-visible {
     outline: 2px solid var(--gc-primary);
     outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+
+  .rail {
+    box-shadow: inset 4px 0 0 var(--gc-primary);
   }
 }

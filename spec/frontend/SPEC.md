@@ -164,6 +164,7 @@ Tokens por tenant derivados de `tenant.branding`:
 - **Móvil:** `ThemeProvider` + primitivos RN (`Boton`, `Campo`, `Card`, `Vacio`, `FirmaPad`).
 - **IDs de spec:** `data-spec="W-03"` (etc.), nunca eyebrows visibles `W-xx`/`P-xx`/`M-xx`.
 - **CRM/Personas desktop (D-UI-1):** kanban y ficha a ancho completo; sin PhoneMockup.
+- **Campo 2026:** Plus Jakarta Sans, canvas `#FAFAF8`, rail 4px del primario, jornada (fecha + % + hora/cliente/estado). Sin Playfair, sin crema `#F3EEE4`, sin pasteles de evento.
 - **Vocabulario por rubro:** `branding.vocabulario` permite renombrar entidades en UI
   (`persona` → "Cliente"/"Punto de venta"/"Asegurado") sin tocar código.
 - Fallback a tokens default si el tenant no define branding completo.

@@ -11,9 +11,13 @@ export function EmptyState({
   descripcion?: string
   cta?: { etiqueta: string; onClick: () => void }
 }) {
+  const marca = titulo.trim().slice(0, 1).toUpperCase() || '—'
   return (
     <div className={EMPTY_STATE_ROOT}>
-      <h3 className="font-serif text-xl text-ink">{titulo}</h3>
+      <p className="font-display text-6xl tracking-tighter text-ink/15" aria-hidden>
+        {marca}
+      </p>
+      <h3 className="mt-3 font-display text-xl tracking-tight text-ink">{titulo}</h3>
       {descripcion ? <p className="mt-2 text-sm text-muted">{descripcion}</p> : null}
       {cta ? (
         <div className="mt-4">

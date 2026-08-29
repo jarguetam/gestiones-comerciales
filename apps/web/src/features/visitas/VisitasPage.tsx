@@ -7,6 +7,7 @@ import {
   EmptyState,
   FilterChips,
   Input,
+  JornadaHeader,
   PageHeader,
   PAGE,
   Select,
@@ -36,6 +37,7 @@ import { DEMO_MODE } from '../../lib/supabase'
 import { etiquetaVocab } from '../../lib/vocabulario'
 import type { CalendarEvent } from '../calendar/types'
 import { cn } from '../../lib/cn'
+import { etiquetaLugar, fechaJornada, progresoJornada, visitasDelDia } from '../../lib/jornada'
 
 export function VisitasPage() {
   const { eventos, abrirNuevaVisita, fuente, asesores, zonas, branding } = useDominio()
@@ -60,6 +62,9 @@ export function VisitasPage() {
     : demoPagina.paginas
   const detalleId = params.get('id')
   const detalle = items.find((v) => v.id === detalleId) ?? items[0] ?? null
+  const fecha = fechaJornada(eventos)
+  const delDia = visitasDelDia(eventos, fecha)
+  const jornada = progresoJornada(delDia)
 
   function setFiltros(next: Partial<FiltrosVisita>) {
     const merged = { ...filtros, ...next, pagina: next.pagina ?? 1 }
@@ -75,10 +80,12 @@ export function VisitasPage() {
         spec="W-03"
         title={titulo}
         description={`${total} registros`}
-        actions={<Button onClick={() => abrirNuevaVisita()}>Nueva visita</Button>}
+        actions={<Button className="hidden md:inline-flex" onClick={() => abrirNuevaVisita()}>Nueva visita</Button>}
       />
 
-      <div className="grid gap-3 rounded-2xl border border-line bg-surface p-4 md:grid-cols-2 lg:grid-cols-4">
+      <JornadaHeader fecha={fecha} pct={jornada.pct} hechas={jornada.hechas} total={jornada.total} />
+
+      <div className="hidden gap-3 rounded-2xl border border-line bg-surface p-4 md:grid md:grid-cols-2 lg:grid-cols-4">
         <Select
           id="filtro-estado"
           label="Estado"
@@ -151,7 +158,32 @@ export function VisitasPage() {
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-          <div>
+          <ul className="space-y-2 md:hidden">
+            {items.map((v) => (
+              <li key={v.id}>
+                <button
+                  type="button"
+                  className={cn(
+                    'rail w-full min-h-11 rounded-xl border border-line bg-surface px-4 py-3 text-left transition-colors duration-campo',
+                    detalle?.id === v.id && 'bg-canvas',
+                  )}
+                  onClick={() => {
+                    const qn = serializarFiltrosVisita(filtros)
+                    qn.set('id', v.id)
+                    setParams(qn, { replace: true })
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-display text-lg tracking-tight tabular-nums">{v.startTime}</p>
+                    <Badge tone={toneDeEstado(v.estado)}>{v.estado ?? 'programada'}</Badge>
+                  </div>
+                  <p className="mt-1 font-semibold">{v.personaName ?? v.title}</p>
+                  <p className="mt-0.5 text-sm text-muted">{etiquetaLugar(v)}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block">
             <Table>
               <THead>
                 <tr>
@@ -215,7 +247,7 @@ export function VisitasPage() {
           <aside className="rounded-2xl border border-line bg-surface p-5 h-fit">
             {detalle ? (
               <>
-                <h3 className="font-serif text-xl">{detalle.title}</h3>
+                <h3 className="font-display text-xl tracking-tight">{detalle.title}</h3>
                 <p className="mt-1 text-sm text-muted">
                   {detalle.personaName ?? 'Sin cliente'} · {detalle.date} {detalle.startTime}
                 </p>
