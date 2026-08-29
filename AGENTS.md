@@ -3,6 +3,25 @@
 Monorepo: `apps/web` (empresa), `apps/backoffice` (plataforma), `apps/mobile` (campo),
 `supabase/` (SQL + Edge). Specs en `spec/` y `docs/`.
 
+## Gobernanza de ramas y PRs
+
+Antes de escribir código, SIEMPRE:
+
+1. `git fetch origin main` y revisar el estado real del remoto. El checkout local
+   puede estar horas desactualizado.
+2. `gh pr list --state open` — si ya existe un PR abierto del mismo tema o módulo,
+   **continuar sobre esa rama** (`git fetch origin <rama> && git checkout <rama>`),
+   no crear una rama ni un PR nuevos. Un tema = una rama = un PR.
+3. Si la rama del PR quedó atrás de `main` (otros PRs tocaron los mismos archivos),
+   mergear `origin/main` a la rama y resolver conflictos ANTES de agregar trabajo.
+   Nunca dejar un PR en estado `CONFLICTING`.
+4. Buscar en el árbol si ya existe una implementación de lo que se va a construir
+   (p. ej. `rg -l cola apps/mobile/src/lib`). No duplicar libs que ya están en
+   `main` o en un PR abierto.
+
+Al terminar: si el PR se mergea, borrar la rama remota
+(`git push origin --delete <rama>`). No dejar ramas huérfanas.
+
 ## UI de campo 2026
 
 Toda pantalla o control nuevo usa el kit en `src/components/ui` (web/backoffice) o
