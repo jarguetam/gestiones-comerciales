@@ -8,6 +8,7 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
+import { credencialesPublicasValidas, mensajePreviewSinBackend, varsFaltantesSupabase } from './supabaseEnv'
 
 // Base64 URL-safe sin Buffer (Hermes no lo incluye por defecto)
 function base64UrlDecode(input: string): string {
@@ -32,11 +33,24 @@ declare const process: { env: Record<string, string | undefined> }
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined
 
-export const DEMO_MODE = !supabaseUrl || !supabaseAnonKey
+export const BACKEND_CONFIGURADO = credencialesPublicasValidas(supabaseUrl, supabaseAnonKey)
+export const FALTANTES_BACKEND = varsFaltantesSupabase(supabaseUrl, supabaseAnonKey)
+export const MENSAJE_BACKEND = mensajePreviewSinBackend(FALTANTES_BACKEND)
 
-export const supabase: SupabaseClient = DEMO_MODE
-  ? ({} as SupabaseClient)
-  : createClient(supabaseUrl!, supabaseAnonKey!)
+/** Sin keys reales, o el asesor eligió demostración. Mutar solo desde Login. */
+export let DEMO_MODE = !BACKEND_CONFIGURADO
+
+export function activarSesionDemo() {
+  DEMO_MODE = true
+}
+
+export function desactivarSesionDemo() {
+  DEMO_MODE = !BACKEND_CONFIGURADO
+}
+
+export const supabase: SupabaseClient = BACKEND_CONFIGURADO
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : ({} as SupabaseClient)
 
 export type Rol = 'admin' | 'gerente' | 'supervisor' | 'asesor'
 

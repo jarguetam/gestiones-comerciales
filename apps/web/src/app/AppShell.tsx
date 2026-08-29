@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { mostrarAuditoria, mostrarConfiguracion, mostrarMapa, mostrarUsuarios } from '../lib/claims'
-import { DEMO_MODE, supabase } from '../lib/supabase'
+import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { useNotificaciones } from '../features/notificaciones/useNotificaciones'
 import { Button } from '../components/ui/Button'
@@ -81,7 +81,8 @@ export function AppShell({
   }, [location.pathname])
 
   async function cerrarSesion() {
-    if (!DEMO_MODE) await supabase.auth.signOut()
+    desactivarSesionDemo()
+    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     navigate('/login', { replace: true })
   }
 
@@ -185,7 +186,7 @@ export function AppShell({
             <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita}>
               Nueva visita
             </Button>
-            {!demo && (
+            {(BACKEND_CONFIGURADO || !demo) && (
               <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => void cerrarSesion()}>
                 Salir
               </Button>

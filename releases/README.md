@@ -6,7 +6,15 @@
 
 - Firmado con el **keystore de debug** de Android, no con un keystore de producción.
 - **No** está publicado en Google Play ni listo para distribución de tienda.
-- Sirve para instalar a mano y revisar el flujo de campo (demo).
+- Sirve para instalar a mano y revisar el flujo de campo.
+- Si el build **no** recibió `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY`, la app avisa que es preview DEMO y qué variable faltó. Si las recibió, el cliente apunta a Supabase y el login real está habilitado; **Entrar al tablero** sigue abriendo la jornada de demostración.
+
+Recompilar:
+
+```bash
+# con URL+anon en el entorno, .env o VITE_SUPABASE_*
+bash apps/mobile/scripts/build-apk.sh
+```
 
 ## Instalar con `adb`
 

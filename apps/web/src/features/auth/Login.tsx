@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import {
+  activarSesionDemo,
+  BACKEND_CONFIGURADO,
+  DEMO_MODE,
+  desactivarSesionDemo,
+  SUPABASE_ANON_KEY,
+  SUPABASE_URL,
+  supabase,
+} from '../../lib/supabase'
+import { varsFaltantesSupabase } from '../../lib/supabaseEnv'
 import { BRANDING_DEMO, nombreComercial, varsDeBranding } from '../../lib/branding'
 import { brandingPreLogin } from '../../lib/brandingPreLogin'
 import { requierePasoTotp } from './mfa'
@@ -16,6 +25,9 @@ import type { CSSProperties } from 'react'
  * Gap: no hay RPC público host/codigo → tenant.branding (RLS tenant_select es
  * authenticated). No se enumeran tenants al cliente. Pre-sesión: ?tenant=,
  * localStorage de la última sesión (host/codigo) y DEMO.
+ *
+ * El botón de demostración es type=button: type=email + submit HTML5 bloqueaba
+ * el ingreso si el usuario escribía "demo" u otro valor que no es un email.
  */
 export function Login() {
   const [email, setEmail] = useState('')
@@ -30,7 +42,7 @@ export function Login() {
   const branding = useMemo(
     () =>
       brandingPreLogin({
-        demo: DEMO_MODE,
+        demo: DEMO_MODE && !BACKEND_CONFIGURADO,
         host: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
         search: typeof window !== 'undefined' ? window.location.search : '',
         hash: typeof window !== 'undefined' ? window.location.hash : '',
@@ -38,16 +50,26 @@ export function Login() {
     [],
   )
   const marca = nombreComercial(branding, DEMO_MODE ? nombreComercial(BRANDING_DEMO, 'Gestiones Comerciales') : 'Gestiones Comerciales')
+  const faltantes = varsFaltantesSupabase(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    url: 'VITE_SUPABASE_URL',
+    key: 'VITE_SUPABASE_ANON_KEY',
+  })
+
+  function entrarDemo() {
+    activarSesionDemo()
+    navigate('/', { replace: true })
+  }
 
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
+    if (!BACKEND_CONFIGURADO) {
+      entrarDemo()
+      return
+    }
     setError(null)
     setLoading(true)
     try {
-      if (DEMO_MODE) {
-        navigate('/', { replace: true })
-        return
-      }
+      desactivarSesionDemo()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -102,19 +124,26 @@ export function Login() {
         <p className="mt-3 text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Entrá a la jornada de tu empresa.'}
         </p>
-        {DEMO_MODE && (
-          <div className="mt-4">
-            <Alert tone="warning">Preview sin backend: el ingreso abre el tablero con datos de demostración.</Alert>
-          </div>
-        )}
+        <div className="mt-4">
+          {BACKEND_CONFIGURADO ? (
+            <Alert tone="info">
+              Backend conectado. Ingresá con tu cuenta o usá «Entrar al tablero» para el preview de demostración.
+            </Alert>
+          ) : (
+            <Alert tone="warning">
+              Preview sin backend: faltan {faltantes.join(' y ') || 'VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY'}.
+              El botón «Entrar al tablero» abre datos de demostración.
+            </Alert>
+          )}
+        </div>
         {paso === 'password' ? (
-          <form onSubmit={(e) => void handlePassword(e)} className="mt-6 space-y-4">
+          <form onSubmit={(e) => void handlePassword(e)} className="mt-6 space-y-4" noValidate={!BACKEND_CONFIGURADO}>
             <Input
               id="email"
               label="Email"
-              type="email"
+              type={BACKEND_CONFIGURADO ? 'email' : 'text'}
               autoComplete="username"
-              required={!DEMO_MODE}
+              required={BACKEND_CONFIGURADO}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -123,13 +152,18 @@ export function Login() {
               label="Contraseña"
               type="password"
               autoComplete="current-password"
-              required={!DEMO_MODE}
+              required={BACKEND_CONFIGURADO}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             {error && <Alert tone="danger" role="alert">{error}</Alert>}
-            <Button type="submit" size="lg" disabled={loading}>
-              {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar a la jornada' : 'Ingresar'}
+            {BACKEND_CONFIGURADO && (
+              <Button type="submit" size="lg" disabled={loading}>
+                {loading ? 'Ingresando…' : 'Ingresar'}
+              </Button>
+            )}
+            <Button type="button" size="lg" variant={BACKEND_CONFIGURADO ? 'secondary' : 'primary'} disabled={loading} onClick={entrarDemo}>
+              Entrar al tablero
             </Button>
           </form>
         ) : (

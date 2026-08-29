@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { activarSesionDemo, BACKEND_CONFIGURADO, desactivarSesionDemo, supabase } from '../../lib/supabase'
 import { requierePasoTotp } from './mfa'
 import { Alert, BrandMark, Button, Input } from '../../components/ui'
 
@@ -15,15 +15,21 @@ export function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  function entrarDemo() {
+    activarSesionDemo()
+    navigate('/', { replace: true })
+  }
+
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
+    if (!BACKEND_CONFIGURADO) {
+      entrarDemo()
+      return
+    }
     setError(null)
     setLoading(true)
     try {
-      if (DEMO_MODE) {
-        navigate('/', { replace: true })
-        return
-      }
+      desactivarSesionDemo()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -73,18 +79,25 @@ export function Login() {
         <p className="mb-6 text-center text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Backoffice de plataforma'}
         </p>
-        {DEMO_MODE && (
-          <div className="mb-4">
-            <Alert tone="warning">Modo demo: preview estático sin backend.</Alert>
-          </div>
-        )}
+        <div className="mb-4">
+          {BACKEND_CONFIGURADO ? (
+            <Alert tone="info">Backend conectado. Ingresá con tu cuenta o «Entrar al backoffice» para el preview.</Alert>
+          ) : (
+            <Alert tone="warning">Modo demo: faltan VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY. Preview estático.</Alert>
+          )}
+        </div>
         {paso === 'password' ? (
-          <form onSubmit={(e) => void handlePassword(e)} className="space-y-4">
-            <Input id="email" label="Email" type="email" autoComplete="username" required={!DEMO_MODE} value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Input id="password" label="Contraseña" type="password" autoComplete="current-password" required={!DEMO_MODE} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <form onSubmit={(e) => void handlePassword(e)} className="space-y-4" noValidate={!BACKEND_CONFIGURADO}>
+            <Input id="email" label="Email" type={BACKEND_CONFIGURADO ? 'email' : 'text'} autoComplete="username" required={BACKEND_CONFIGURADO} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input id="password" label="Contraseña" type="password" autoComplete="current-password" required={BACKEND_CONFIGURADO} value={password} onChange={(e) => setPassword(e.target.value)} />
             {error && <Alert tone="danger" role="alert">{error}</Alert>}
-            <Button type="submit" size="lg" disabled={loading}>
-              {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar al backoffice' : 'Ingresar'}
+            {BACKEND_CONFIGURADO && (
+              <Button type="submit" size="lg" disabled={loading}>
+                {loading ? 'Ingresando…' : 'Ingresar'}
+              </Button>
+            )}
+            <Button type="button" size="lg" variant={BACKEND_CONFIGURADO ? 'secondary' : 'primary'} disabled={loading} onClick={entrarDemo}>
+              Entrar al backoffice
             </Button>
           </form>
         ) : (

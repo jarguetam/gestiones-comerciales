@@ -81,6 +81,16 @@ MODULOS OPTATIVOS (por tenant)
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
 | Fase actual | **F3 cerrada**. Las 24 migraciones de `main` están aplicadas en el proyecto remoto. Edge Functions vivas salvo `pdf-solicitud` (404) y con código desfasado vs `main` (p. ej. `webhook-tenant` aún responde `GC-INT-*`). CI despliega Edge en push a `main` si existe el secret `SUPABASE_ACCESS_TOKEN`. HMAC se rota en P-03. |
 
+### Cómo entrar (web y APK)
+
+| Superficie | Qué pasa si faltan keys | Qué pasa si hay URL + anon JWT |
+|---|---|---|
+| Web local (`pnpm --filter @gc/web dev`) | `DEMO_MODE`: botón **Entrar al tablero** (type=button, no lo bloquea `type=email`) | Cliente real + **Ingresar** y **Entrar al tablero** (preview) |
+| GitHub Pages | El job `deploy` inyecta `secrets.VITE_SUPABASE_URL` y `secrets.VITE_SUPABASE_ANON_KEY`. Si faltan, Pages es DEMO. | Login contra Supabase. Sin usuario confirmado (`mailer_autoconfirm` está off), usá **Entrar al tablero**. |
+| APK `releases/gestiones-campo-preview.apk` | Mensaje que lista `EXPO_PUBLIC_SUPABASE_*` faltantes. **Entrar al tablero** abre demo. | Cliente real. Mismo par de botones. Compilar: `apps/mobile/scripts/build-apk.sh` |
+
+La anon key es pública (va al bundle). Nunca commitees `service_role`.
+
 ### Quickstart
 
 ```bash

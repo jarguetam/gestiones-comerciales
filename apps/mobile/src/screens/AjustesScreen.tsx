@@ -4,7 +4,7 @@
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { BACKEND_CONFIGURADO, desactivarSesionDemo, supabase, type Perfil } from '../lib/supabase'
 import { Boton, Card } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -17,7 +17,8 @@ interface Props {
 export default function AjustesScreen({ perfil, onLogout, onAbrirCola }: Props) {
   const t = useTheme()
   async function handleLogout() {
-    if (!DEMO_MODE) await supabase.auth.signOut()
+    desactivarSesionDemo()
+    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     onLogout()
   }
 

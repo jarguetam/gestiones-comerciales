@@ -10,7 +10,17 @@ import {
   Text,
   View,
 } from 'react-native'
-import { claimsDe, DEMO_MODE, PERFIL_DEMO, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
+import {
+  activarSesionDemo,
+  BACKEND_CONFIGURADO,
+  claimsDe,
+  desactivarSesionDemo,
+  MENSAJE_BACKEND,
+  PERFIL_DEMO,
+  supabase,
+  type Perfil,
+  cargarPerfil,
+} from '../lib/supabase'
 import { requierePasoTotp } from '../lib/mfa'
 import { resetColaDemo } from '../lib/colaStore'
 import { Boton, Campo, Marca } from '../components/ui'
@@ -32,6 +42,7 @@ export default function LoginScreen({ onLogin }: Props) {
   const [cargando, setCargando] = useState(false)
 
   async function entrarDemo() {
+    activarSesionDemo()
     resetColaDemo()
     onLogin(PERFIL_DEMO)
   }
@@ -40,10 +51,11 @@ export default function LoginScreen({ onLogin }: Props) {
     setError(null)
     setCargando(true)
     try {
-      if (DEMO_MODE) {
+      if (!BACKEND_CONFIGURADO) {
         await entrarDemo()
         return
       }
+      desactivarSesionDemo()
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -113,13 +125,11 @@ export default function LoginScreen({ onLogin }: Props) {
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Jornada del asesor'}
         </Text>
 
-        {DEMO_MODE && (
-          <View style={[styles.demo, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]}>
-            <Text style={[styles.demoTexto, { color: t.warningText }]}>
-              Preview sin backend: el ingreso abre la jornada con datos de demostración.
-            </Text>
-          </View>
-        )}
+        <View style={[styles.demo, { backgroundColor: BACKEND_CONFIGURADO ? t.canvas : t.warningBg, borderColor: BACKEND_CONFIGURADO ? t.line : t.warningBorder }]}>
+          <Text style={[styles.demoTexto, { color: BACKEND_CONFIGURADO ? t.ink : t.warningText }]}>
+            {MENSAJE_BACKEND}
+          </Text>
+        </View>
 
         {paso === 'password' ? (
           <>
@@ -141,10 +151,18 @@ export default function LoginScreen({ onLogin }: Props) {
               onSubmitEditing={() => void handlePassword()}
             />
             {error && <Text style={[styles.error, { color: t.danger }]}>{error}</Text>}
+            {BACKEND_CONFIGURADO && (
+              <Boton
+                etiqueta="Ingresar"
+                onPress={() => void handlePassword()}
+                disabled={!email || !password}
+                cargando={cargando}
+              />
+            )}
             <Boton
-              etiqueta={DEMO_MODE ? 'Entrar al tablero' : 'Ingresar'}
-              onPress={() => void handlePassword()}
-              disabled={!DEMO_MODE && (!email || !password)}
+              etiqueta="Entrar al tablero"
+              variante={BACKEND_CONFIGURADO ? 'secondary' : 'primary'}
+              onPress={() => void entrarDemo()}
               cargando={cargando}
             />
           </>
