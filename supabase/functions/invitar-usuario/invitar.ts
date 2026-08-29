@@ -3,6 +3,17 @@ export type InviteActor = {
   aal: string;
 };
 
+export type InviteActorAuth = {
+  getUser: (jwt: string) => Promise<{
+    data: { user: { id: string } | null };
+    error: unknown;
+  }>;
+  getAuthenticatorAssuranceLevel: (jwt: string) => Promise<{
+    data: { currentLevel: string | null } | null;
+    error: unknown;
+  }>;
+};
+
 export type InviteLogEntry = {
   request_id: string;
   outcome: "ok" | "error";
@@ -56,6 +67,19 @@ type InviteBody = {
 };
 
 const ROLES = new Set(["admin", "gerente", "supervisor", "asesor"]);
+const DEFAULT_ERROR_CODE = "GC-AUTH-012";
+const DEFAULT_ERROR_MESSAGE =
+  "GC-AUTH-012: no se pudo completar la invitación";
+const CATALOGUED_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  "GC-AUTH-001": "GC-AUTH-001: sin autorización",
+  "GC-AUTH-002": "GC-AUTH-002: rol inválido",
+  "GC-AUTH-003": "GC-AUTH-003: usuario de auth no existe",
+  "GC-AUTH-010": "GC-AUTH-010: método no permitido",
+  "GC-AUTH-011": "GC-AUTH-011: tenant_id y email requeridos",
+  "GC-AUTH-012": DEFAULT_ERROR_MESSAGE,
+  "GC-AUTH-013": "GC-AUTH-013: payload inválido",
+  "GC-AUTH-014": "GC-AUTH-014: se requiere autenticación AAL2",
+};
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -79,15 +103,31 @@ function requestId(req: Request): string {
     : crypto.randomUUID();
 }
 
+function rawErrorMessage(error: unknown): string | null {
+  if (error instanceof Error) return error.message;
+  if (
+    error && typeof error === "object" && "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+  return null;
+}
+
+function extractedErrorCode(error: unknown): string | null {
+  const match = rawErrorMessage(error)?.match(/\bGC-[A-Z]+-\d{3}\b/);
+  return match?.[0] ?? null;
+}
+
 function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : "GC-AUTH-012: no se pudo completar la invitación";
+  if (error instanceof InviteError) return error.message;
+  const code = extractedErrorCode(error);
+  return code ? CATALOGUED_ERROR_MESSAGES[code] ?? DEFAULT_ERROR_MESSAGE : DEFAULT_ERROR_MESSAGE;
 }
 
 function errorCode(error: unknown): string {
-  const match = errorMessage(error).match(/\bGC-[A-Z]+-\d{3}\b/);
-  return match?.[0] ?? "UNCLASSIFIED";
+  const code = extractedErrorCode(error);
+  return code && CATALOGUED_ERROR_MESSAGES[code] ? code : DEFAULT_ERROR_CODE;
 }
 
 function errorStatus(error: unknown): number {
@@ -110,6 +150,36 @@ function safeLog(deps: InviteDeps, entry: InviteLogEntry): void {
   } catch {
     // El logging no debe alterar el resultado ni impedir el rollback.
   }
+}
+
+export async function requireActorFromBearer(
+  req: Request,
+  auth: InviteActorAuth,
+): Promise<InviteActor> {
+  const authorization = req.headers.get("Authorization");
+  const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (!bearer) {
+    throw new InviteError("GC-AUTH-001: sin autorización", 401);
+  }
+
+  const { data: userData, error: userError } = await auth.getUser(bearer);
+  if (userError || !userData.user) {
+    throw new InviteError("GC-AUTH-001: sin autorización", 401);
+  }
+
+  const { data: assurance, error: assuranceError } =
+    await auth.getAuthenticatorAssuranceLevel(bearer);
+  if (assuranceError || !assurance) {
+    throw new InviteError(
+      "GC-AUTH-012: no se pudo verificar el nivel de seguridad",
+      500,
+    );
+  }
+
+  return {
+    userId: userData.user.id,
+    aal: assurance.currentLevel ?? "aal1",
+  };
 }
 
 async function parseBody(req: Request): Promise<InviteBody> {
