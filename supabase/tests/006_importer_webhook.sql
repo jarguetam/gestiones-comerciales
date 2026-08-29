@@ -11,6 +11,95 @@ begin;
 set search_path = public, extensions;
 select plan(13);
 
+-- Fixture autónomo: Auth antes de perfiles por FK.
+create schema if not exists tests;
+
+create or replace function tests.set_claims(
+  p_tenant uuid,
+  p_rol text,
+  p_uid uuid
+)
+returns void
+language sql
+as $$
+  select set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'tenant_id', p_tenant::text,
+      'rol', p_rol,
+      'sub', p_uid::text
+    )::text,
+    true
+  );
+$$;
+
+create or replace function tests.reset_claims()
+returns void
+language sql
+as $$
+  select set_config('request.jwt.claims', '', true);
+$$;
+
+insert into auth.users (id, email)
+values
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'admin-t1@importer.test'),
+  ('bbbbbbbb-0000-0000-0000-000000000001', 'admin-t2@importer.test'),
+  ('bbbbbbbb-0000-0000-0000-000000000003', 'gerente-t2@importer.test'),
+  ('bbbbbbbb-0000-0000-0000-000000000004', 'supervisor-t2@importer.test'),
+  ('bbbbbbbb-0000-0000-0000-000000000002', 'asesor-t2@importer.test')
+on conflict (id) do nothing;
+
+insert into public.tenant (id, codigo, nombre, rubro, plan)
+values
+  ('11111111-1111-1111-1111-111111111111', 'IMP-T1', 'Importer T1', 'agro', 'pro'),
+  ('22222222-2222-2222-2222-222222222222', 'IMP-T2', 'Importer T2', 'consumo', 'basico')
+on conflict (id) do nothing;
+
+insert into public.usuario (id, tenant_id, nombre, rol)
+values (
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  '11111111-1111-1111-1111-111111111111',
+  'Admin T1',
+  'admin'
+)
+on conflict (id) do nothing;
+
+insert into public.usuario (id, tenant_id, nombre, rol)
+values
+  (
+    'bbbbbbbb-0000-0000-0000-000000000001',
+    '22222222-2222-2222-2222-222222222222',
+    'Admin T2',
+    'admin'
+  ),
+  (
+    'bbbbbbbb-0000-0000-0000-000000000003',
+    '22222222-2222-2222-2222-222222222222',
+    'Gerente T2',
+    'gerente'
+  )
+on conflict (id) do nothing;
+
+insert into public.usuario (id, tenant_id, nombre, rol, jefe_id)
+values (
+  'bbbbbbbb-0000-0000-0000-000000000004',
+  '22222222-2222-2222-2222-222222222222',
+  'Supervisor T2',
+  'supervisor',
+  'bbbbbbbb-0000-0000-0000-000000000003'
+)
+on conflict (id) do nothing;
+
+insert into public.usuario (id, tenant_id, nombre, rol, jefe_id)
+values (
+  'bbbbbbbb-0000-0000-0000-000000000002',
+  '22222222-2222-2222-2222-222222222222',
+  'Asesor T2',
+  'asesor',
+  'bbbbbbbb-0000-0000-0000-000000000004'
+)
+on conflict (id) do nothing;
+
 -- secret de prueba (no es un secreto real de producción)
 insert into private.tenant_webhook_secret (
   tenant_id,
@@ -36,6 +125,7 @@ set vault_secret_id = excluded.vault_secret_id,
 -- ---------- 1-2. admin T1 importa personas; reimportar actualiza ----------
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'admin', 'aaaaaaaa-0000-0000-0000-000000000001');
+set local role authenticated;
 
 select is(
   (public.admin_importar_personas(
@@ -62,9 +152,11 @@ select is(
 );
 
 -- ---------- 3. asesor T2 no importa en T1 ----------
+reset role;
 select tests.reset_claims();
 select tests.set_claims(
   '22222222-2222-2222-2222-222222222222', 'asesor', 'bbbbbbbb-0000-0000-0000-000000000002');
+set local role authenticated;
 
 select throws_ok(
   $$select public.admin_importar_personas(
@@ -75,9 +167,11 @@ select throws_ok(
 );
 
 -- ---------- 4-5. cuentas: sin módulo rechaza; con módulo upserta ----------
+reset role;
 select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'admin', 'aaaaaaaa-0000-0000-0000-000000000001');
+set local role authenticated;
 
 select throws_ok(
   $$select public.admin_importar_cuentas(
@@ -87,6 +181,7 @@ select throws_ok(
   'importar cuentas sin módulo creditos falla (GC-IMP-020)'
 );
 
+reset role;
 select tests.reset_claims();
 insert into public.modulo (codigo, nombre, nucleo) values
   ('creditos', 'Créditos y cartera', false)
@@ -98,6 +193,7 @@ on conflict (tenant_id, modulo_id) do update set activo = true;
 
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'admin', 'aaaaaaaa-0000-0000-0000-000000000001');
+set local role authenticated;
 
 select is(
   (public.admin_importar_cuentas(
@@ -128,6 +224,7 @@ select is(
 );
 
 -- ---------- 7-9. webhook HMAC ----------
+reset role;
 select tests.reset_claims();
 
 select is(
