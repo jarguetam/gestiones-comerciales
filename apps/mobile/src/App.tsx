@@ -71,8 +71,7 @@ export default function App() {
       if (data.session) {
         const claims = await resolverClaims(data.session)
         if (claims) {
-          const p = await cargarPerfil(data.session.user.id, claims.tenantId, claims.rol)
-          if (p) setPerfil(p)
+          setPerfil(await cargarPerfil(data.session, claims))
         }
       }
       setListo(true)

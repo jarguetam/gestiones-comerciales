@@ -85,8 +85,7 @@ export default function LoginScreen({ onLogin }: Props) {
   async function hidratarSesion(session: Session) {
     const claims = await resolverClaims(session)
     if (!claims) throw new Error('GC-AUTH-021: usuario sin tenant asignado')
-    const perfil = await cargarPerfil(session.user.id, claims.tenantId, claims.rol)
-    if (!perfil) throw new Error('GC-AUTH-022: no se pudo leer el perfil')
+    const perfil = await cargarPerfil(session, claims)
     onLogin(perfil)
   }
 

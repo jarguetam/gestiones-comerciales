@@ -7,11 +7,13 @@
  * En builds de desarrollo nativos, process.env se rellena en build time.
  */
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
-import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
+import { BRANDING_DEMO, brandingDeJson, nombreComercial } from './branding'
 import { claimsEmpresaDe, type Rol } from './claims'
+import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
 import { sesionStorage } from './sesionStorage'
 
 export { claimsDe, type Rol } from './claims'
+export type { Perfil } from './perfil'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -33,16 +35,6 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
     detectSessionInUrl: false,
   },
 })
-
-export interface Perfil {
-  id: string
-  tenantId: string
-  nombre: string
-  rol: Rol
-  tenantNombre?: string
-  modulos: string[]
-  branding: BrandingTenant
-}
 
 export const PERFIL_DEMO: Perfil = {
   id: 'demo-asesor',
@@ -89,30 +81,27 @@ export async function resolverClaims(session: Session): Promise<{ tenantId: stri
   return claims
 }
 
-/** Carga el perfil del usuario autenticado (tabla public.usuario vía RLS). */
-export async function cargarPerfil(userId: string, tenantId: string, rol: Rol): Promise<Perfil | null> {
-  const { data, error } = await supabase
-    .from('usuario')
-    .select('id, nombre, tenant(nombre, branding)')
-    .eq('id', userId)
-    .single()
-  if (error || !data) return null
-  const tenant = (data as unknown as { tenant?: { nombre?: string; branding?: unknown } }).tenant
-  const branding = brandingDeJson(tenant?.branding)
-  const { data: mods } = await supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true)
-  const modulos = ((mods ?? []) as Array<{ modulo: { codigo?: string } | { codigo?: string }[] | null }>)
-    .map((row) => {
-      const m = Array.isArray(row.modulo) ? row.modulo[0] : row.modulo
-      return m?.codigo
-    })
-    .filter((c): c is string => !!c)
-  return {
-    id: data.id,
-    tenantId,
-    nombre: data.nombre,
-    rol,
-    tenantNombre: nombreComercial(branding, tenant?.nombre ?? 'Gestiones Comerciales'),
-    modulos,
+/**
+ * Hidrata el perfil como la web: claims ya resueltos + tenant por id +
+ * usuario propio si RLS lo deja ver. Un embed o .single() vacío ya no
+ * bloquea el ingreso (GC-AUTH-022).
+ */
+export async function cargarPerfil(session: Session, claims: { tenantId: string; rol: Rol }): Promise<Perfil> {
+  const userId = session.user.id
+  const [usuarioRes, tenantRes, modsRes] = await Promise.all([
+    supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
+    supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
+    supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
+  ])
+  const branding = brandingDeJson(tenantRes.data?.branding)
+  return perfilDesdeFuentes({
+    userId,
+    claims,
+    usuario: usuarioRes.data as { id: string; nombre: string } | null,
+    tenantNombre: nombreComercial(branding, (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales'),
     branding,
-  }
+    modulos: modulosDeFilas(modsRes.data as Parameters<typeof modulosDeFilas>[0]),
+    email: session.user.email,
+    userMetadata: session.user.user_metadata,
+  })
 }
