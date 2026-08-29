@@ -41,6 +41,7 @@ test('brandingDeJson lee color, nombre y logo del jsonb del tenant', () => {
     color_primario: '#0f766e',
     color_secundario: undefined,
     logo_url: 'https://cdn.ejemplo/logo.png',
+    vocabulario: undefined,
   })
   assert.deepEqual(brandingDeJson(null), {})
   assert.deepEqual(brandingDeJson('x'), {})

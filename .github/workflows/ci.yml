@@ -120,6 +120,20 @@ jobs:
           pnpm --filter @gc/backoffice build
           pnpm --filter @gc/mobile typecheck
 
+      # E2E en DEMO_MODE: este job no inyecta VITE_SUPABASE_* (si CI no puede autenticar, el preview es estático).
+      - name: Instalar Chromium (Playwright)
+        run: pnpm --filter @gc/web exec playwright install --with-deps chromium
+
+      - name: E2E web + axe (DEMO)
+        run: pnpm --filter @gc/web test:e2e
+        env:
+          CI: true
+
+      - name: E2E backoffice + axe (DEMO)
+        run: pnpm --filter @gc/backoffice test:e2e
+        env:
+          CI: true
+
   deploy:
     name: Despliegue en GitHub Pages
     needs: validate

@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
-import { BRANDING_DEMO, nombreComercial } from '../../lib/branding'
+import { BRANDING_DEMO, nombreComercial, varsDeBranding } from '../../lib/branding'
+import { brandingPreLogin } from '../../lib/brandingPreLogin'
 import { requierePasoTotp } from './mfa'
 import { BrandMark } from '../../components/ui/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Field'
 import { Alert } from '../../components/ui/Alert'
 import { mensajeToast } from '../../lib/erroresUi'
+import type { CSSProperties } from 'react'
 
 /**
- * Login (W-01). El branding de tenant por dominio no se resuelve antes de sesión
- * (no hay lookup público de host → tenant). En DEMO_MODE se muestra el branding
- * de demostración. En vivo, el tema se aplica en el shell tras cargarDominio.
+ * Login (W-01).
+ * Gap: no hay RPC público host/codigo → tenant.branding (RLS tenant_select es
+ * authenticated). No se enumeran tenants al cliente. Pre-sesión: ?tenant=,
+ * localStorage de la última sesión (host/codigo) y DEMO.
  */
 export function Login() {
   const [email, setEmail] = useState('')
@@ -24,8 +27,17 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const branding = DEMO_MODE ? BRANDING_DEMO : null
-  const marca = branding ? nombreComercial(branding, 'Gestiones Comerciales') : 'Gestiones Comerciales'
+  const branding = useMemo(
+    () =>
+      brandingPreLogin({
+        demo: DEMO_MODE,
+        host: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        hash: typeof window !== 'undefined' ? window.location.hash : '',
+      }),
+    [],
+  )
+  const marca = nombreComercial(branding, DEMO_MODE ? nombreComercial(BRANDING_DEMO, 'Gestiones Comerciales') : 'Gestiones Comerciales')
 
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
@@ -78,10 +90,10 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-ink flex items-center justify-center p-6" data-spec="W-01">
+    <div className="min-h-screen bg-ink flex items-center justify-center p-6" data-spec="W-01" style={varsDeBranding(branding) as CSSProperties}>
       <div className="w-full max-w-md rounded-2xl bg-canvas p-8 shadow-xl">
         <div className="flex items-center gap-3">
-          <BrandMark nombre={marca} logoUrl={branding?.logo_url} />
+          <BrandMark nombre={marca} logoUrl={branding.logo_url} />
           <div>
             <h1 className="font-serif text-3xl text-ink">Gestiones Comerciales</h1>
             <p className="text-sm text-muted">{marca}</p>

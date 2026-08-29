@@ -22,3 +22,16 @@ export function TableSkeleton({ filas = 5, cols = 4 }: { filas?: number; cols?: 
     </div>
   )
 }
+
+export function KpiSkeleton({ n = 4 }: { n?: number }) {
+  return (
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-busy="true" aria-label="Cargando indicadores">
+      {Array.from({ length: n }).map((_, i) => (
+        <article key={i} className="rounded-2xl border border-line bg-surface p-5">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="mt-3 h-8 w-16" />
+        </article>
+      ))}
+    </section>
+  )
+}

@@ -12,14 +12,14 @@ export function FilterChips<T extends string>({
   etiquetas?: Partial<Record<T, string>>
 }) {
   return (
-    <div className="flex flex-wrap gap-2" role="group">
+    <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 md:flex-wrap" role="group">
       {opciones.map((o) => (
         <button
           key={o}
           type="button"
           onClick={() => onChange(o)}
           className={cn(
-            'rounded-full px-3 py-1 text-xs font-medium capitalize',
+            'shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize',
             valor === o ? 'bg-primary text-white' : 'bg-surface border border-line text-muted',
           )}
         >

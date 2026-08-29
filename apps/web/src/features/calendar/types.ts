@@ -34,5 +34,14 @@ export interface CalendarEvent {
     lng: number
     timestamp: string
   }
+  asesorId?: string
+  asesorNombre?: string
+  zonaId?: number
+  zonaNombre?: string
+  latitud?: number | null
+  longitud?: number | null
+  completadaEn?: string | null
+  revisadaEn?: string | null
+  creadoEn?: string | null
 }
 

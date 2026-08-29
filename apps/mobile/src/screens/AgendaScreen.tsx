@@ -20,7 +20,7 @@ import type { PuntoGps, Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import { BadgeEstado, Cargando, Vacio } from '../components/ui'
-import { useTheme } from '../theme'
+import { NEUTROS, useTheme } from '../theme'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -220,6 +220,9 @@ export default function AgendaScreen({ perfil }: Props) {
             style={[styles.botonCheckin, { backgroundColor: t.success }]}
             onPress={() => handleCheckin(item)}
             disabled={checkinDe === item.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Check-in GPS de ${item.persona_nombre}`}
+            accessibilityState={{ disabled: checkinDe === item.id, busy: checkinDe === item.id }}
           >
             {checkinDe === item.id ? (
               <ActivityIndicator color="#fff" size="small" />
@@ -233,6 +236,8 @@ export default function AgendaScreen({ perfil }: Props) {
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => handleCompletar(item)}
             disabled={checkinDe === item.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Completar visita de ${item.persona_nombre}`}
           >
             <Text style={styles.botonCheckinTexto}>Completar visita</Text>
           </TouchableOpacity>
@@ -246,7 +251,7 @@ export default function AgendaScreen({ perfil }: Props) {
   }
 
   return (
-    <View style={styles.contenedor}>
+    <View style={[styles.contenedor, { backgroundColor: t.canvas }]}>
       {mensaje && <Text style={styles.mensaje}>{mensaje}</Text>}
       <FlatList
         data={visitas}
@@ -263,7 +268,12 @@ export default function AgendaScreen({ perfil }: Props) {
         }
         ListEmptyComponent={
           <Vacio
-            titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'Sin visitas programadas para hoy.'}
+            titulo={DEMO_MODE ? 'Agenda de demostración vacía' : 'Sin visitas programadas para hoy'}
+            descripcion={
+              DEMO_MODE
+                ? 'En DEMO no hay backend. En vivo aparecen las visitas de visitas_del_dia().'
+                : 'Cuando tu supervisor asigne visitas, se listan aquí para check-in GPS.'
+            }
           />
         }
         contentContainerStyle={{ padding: 16 }}
@@ -274,11 +284,11 @@ export default function AgendaScreen({ perfil }: Props) {
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: '#F3F4F6' },
+  contenedor: { flex: 1 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   mensaje: { margin: 12, color: '#047857', fontSize: 13 },
   tarjeta: {
-    backgroundColor: '#fff',
+    backgroundColor: NEUTROS.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,

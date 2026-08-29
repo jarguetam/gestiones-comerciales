@@ -30,7 +30,7 @@ const ZONAS_DEMO: ZonaCatalogo[] = [
   { id: 2, codigo: 'Z2', nombre: 'Zona Sur', activo: true },
 ]
 
-type Tab = 'branding' | 'actividades' | 'zonas' | 'horarios'
+type Tab = 'branding' | 'actividades' | 'zonas' | 'horarios' | 'estados' | 'rastreo' | 'plantillas' | 'cors'
 
 export function CatalogosPage() {
   const { fuente } = useDominio()
@@ -73,13 +73,17 @@ export function CatalogosPage() {
 
   return (
     <div className={PAGE}>
-      <PageHeader spec="W-10" title="Configuración" description="Branding y catálogos de tu empresa: actividades, zonas y duraciones." />
+      <PageHeader spec="W-10" title="Configuración" description="Branding, catálogos, rastreo, plantillas y CORS de tu empresa." />
       <Tabs
         tabs={[
           { id: 'branding', label: 'Branding' },
           { id: 'actividades', label: 'Actividades' },
           { id: 'zonas', label: 'Zonas' },
           { id: 'horarios', label: 'Horarios' },
+          { id: 'estados', label: 'Estados de visita' },
+          { id: 'rastreo', label: 'Rastreo' },
+          { id: 'plantillas', label: 'Plantillas' },
+          { id: 'cors', label: 'CORS' },
         ]}
         valor={tab}
         onChange={(id) => setTab(id as Tab)}
@@ -99,6 +103,18 @@ export function CatalogosPage() {
       <TabPanel id="horarios" valor={tab}>
         <HorasPanel live={live} horas={horas} onChange={setHoras} onAviso={setAviso} onError={setError} />
       </TabPanel>
+      <TabPanel id="estados" valor={tab}>
+        <EstadosVisitaPanel />
+      </TabPanel>
+      <TabPanel id="rastreo" valor={tab}>
+        <RastreoPanel live={live} onAviso={setAviso} onError={setError} />
+      </TabPanel>
+      <TabPanel id="plantillas" valor={tab}>
+        <PlantillasPanel live={live} onAviso={setAviso} onError={setError} />
+      </TabPanel>
+      <TabPanel id="cors" valor={tab}>
+        <CorsPanel live={live} onAviso={setAviso} onError={setError} />
+      </TabPanel>
     </div>
   )
 }
@@ -116,13 +132,25 @@ function BrandingPanel({
   const { push } = useToast()
   const [nombre, setNombre] = useState(branding.nombre_comercial ?? tenantNombre)
   const [color, setColor] = useState(branding.color_primario ?? '#6D28D9')
+  const [secundario, setSecundario] = useState(branding.color_secundario ?? '#64748B')
   const [logo, setLogo] = useState(branding.logo_url ?? '')
-  const preview: BrandingTenant = { nombre_comercial: nombre, color_primario: color, logo_url: logo }
+  const [vocabPersona, setVocabPersona] = useState(branding.vocabulario?.persona ?? '')
+  const preview: BrandingTenant = {
+    nombre_comercial: nombre,
+    color_primario: color,
+    color_secundario: secundario,
+    logo_url: logo,
+    vocabulario: vocabPersona.trim() ? { persona: vocabPersona.trim() } : undefined,
+  }
 
   async function guardar() {
     onError(null)
     if (!colorCssValido(color)) {
       onError('El color debe ser un hex válido (#RGB o #RRGGBB)')
+      return
+    }
+    if (secundario.trim() && !colorCssValido(secundario)) {
+      onError('El color secundario debe ser un hex válido')
       return
     }
     if (logo.trim() && !logoUrlValido(logo)) {
@@ -132,7 +160,9 @@ function BrandingPanel({
     const next: BrandingTenant = {
       nombre_comercial: nombre.trim() || tenantNombre,
       color_primario: color,
+      color_secundario: secundario.trim() || undefined,
       logo_url: logo.trim() || undefined,
+      vocabulario: vocabPersona.trim() ? { ...branding.vocabulario, persona: vocabPersona.trim() } : branding.vocabulario,
     }
     setBranding(next)
     setTenantNombre(next.nombre_comercial ?? tenantNombre)
@@ -162,10 +192,18 @@ function BrandingPanel({
           <label htmlFor="brand-color" className="block text-sm font-medium text-ink">Color primario</label>
           <div className="mt-1 flex items-center gap-3">
             <input id="brand-color" type="color" value={colorCssValido(color) ?? '#6D28D9'} onChange={(e) => setColor(e.target.value)} className="h-10 w-16 rounded border border-line" />
-            <input value={color} onChange={(e) => setColor(e.target.value)} className={fieldClass} />
+            <input id="brand-color-hex" aria-label="Hex primario" value={color} onChange={(e) => setColor(e.target.value)} className={fieldClass} />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="brand-secundario" className="block text-sm font-medium text-ink">Color secundario</label>
+          <div className="mt-1 flex items-center gap-3">
+            <input id="brand-secundario" type="color" value={colorCssValido(secundario) ?? '#64748B'} onChange={(e) => setSecundario(e.target.value)} className="h-10 w-16 rounded border border-line" />
+            <input id="brand-secundario-hex" aria-label="Hex secundario" value={secundario} onChange={(e) => setSecundario(e.target.value)} className={fieldClass} />
           </div>
         </div>
         <Input id="brand-logo" label="URL del logo" value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://…" />
+        <Input id="brand-vocab-persona" label="Vocabulario: personas" hint="Renombra Personas en nav y encabezados si el JSON del tenant lo define." value={vocabPersona} onChange={(e) => setVocabPersona(e.target.value)} />
         <Button onClick={() => void guardar()}>Guardar branding</Button>
       </div>
       <div className="rounded-2xl border border-line bg-ink p-5 text-canvas">
@@ -174,10 +212,13 @@ function BrandingPanel({
           <BrandMark nombre={nombre || 'GC'} logoUrl={preview.logo_url} variant="dark" />
           <div>
             <p className="font-serif text-xl">{nombre || 'Gestiones Comerciales'}</p>
-            <p className="text-xs text-white/60">Sidebar y login usan este logo y el primario.</p>
+            <p className="text-xs text-white/60">Sidebar y login usan este logo, el primario y el secundario.</p>
           </div>
         </div>
-        <div className="mt-6 h-10 rounded-lg" style={{ background: colorCssValido(color) ?? '#6D28D9' }} />
+        <div className="mt-6 flex gap-2">
+          <div className="h-10 flex-1 rounded-lg" style={{ background: colorCssValido(color) ?? 'var(--gc-primary)' }} />
+          <div className="h-10 flex-1 rounded-lg" style={{ background: colorCssValido(secundario) ?? 'var(--gc-secondary)' }} />
+        </div>
       </div>
     </div>
   )
@@ -507,6 +548,253 @@ function HorasPanel({
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+const ESTADOS_MAQUINA = [
+  { codigo: 'programada', nombre: 'Programada', detalle: 'Estado inicial al crear la visita.' },
+  { codigo: 'completada', nombre: 'Completada', detalle: 'Check-out / visita_completar.' },
+  { codigo: 'aprobada', nombre: 'Aprobada', detalle: 'Cierre positivo (visita_revisar).' },
+  { codigo: 'rechazada', nombre: 'Rechazada', detalle: 'Cierre con comentario_rechazo.' },
+  { codigo: 'anulada', nombre: 'Anulada', detalle: 'Corta el flujo.' },
+]
+
+function EstadosVisitaPanel() {
+  return (
+    <div className="space-y-3 rounded-2xl border border-line bg-surface p-5">
+      <p className="text-sm text-muted">
+        No hay tabla <code>visita_estado</code>: la máquina vive en un CHECK de <code>visita.estado</code>.
+        Esta vista es de solo lectura.
+      </p>
+      <ul className="space-y-2">
+        {ESTADOS_MAQUINA.map((e) => (
+          <li key={e.codigo} className="flex justify-between gap-3 rounded-lg border border-line px-3 py-2">
+            <span className="font-medium capitalize">{e.nombre}</span>
+            <span className="text-sm text-muted">{e.detalle}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+interface VentanaRastreo {
+  id: number
+  dia_semana: number
+  hora_inicio: string
+  hora_fin: string
+  intervalo_min: number
+  precision_max_m: number
+}
+
+function RastreoPanel({
+  live,
+  onAviso,
+  onError,
+}: {
+  live: boolean
+  onAviso: (v: string | null) => void
+  onError: (v: string | null) => void
+}) {
+  const [filas, setFilas] = useState<VentanaRastreo[]>(
+    DIAS.map((_, i) => ({
+      id: i,
+      dia_semana: i,
+      hora_inicio: '07:00',
+      hora_fin: '18:00',
+      intervalo_min: 15,
+      precision_max_m: 100,
+    })),
+  )
+
+  useEffect(() => {
+    if (!live) return
+    void supabase
+      .from('config_rastreo')
+      .select('id, dia_semana, hora_inicio, hora_fin, intervalo_min, precision_max_m')
+      .order('dia_semana')
+      .then(({ data, error }) => {
+        if (error) {
+          onError(error.message)
+          return
+        }
+        if (data?.length) setFilas(data as VentanaRastreo[])
+      })
+  }, [live, onError])
+
+  async function guardarFila(f: VentanaRastreo) {
+    onError(null)
+    setFilas((prev) => prev.map((x) => (x.dia_semana === f.dia_semana ? f : x)))
+    if (!live) {
+      onAviso('Ventana actualizada (demo)')
+      return
+    }
+    const { error } = await supabase
+      .from('config_rastreo')
+      .update({
+        hora_inicio: f.hora_inicio,
+        hora_fin: f.hora_fin,
+        intervalo_min: f.intervalo_min,
+        precision_max_m: f.precision_max_m,
+      })
+      .eq('id', f.id)
+    if (error) onError(mensajeGc(error))
+    else onAviso('Rastreo guardado')
+  }
+
+  return (
+    <div className="space-y-3">
+      {filas.map((f) => (
+        <div key={f.dia_semana} className="grid gap-2 rounded-2xl border border-line bg-surface p-4 md:grid-cols-5">
+          <p className="text-sm font-medium self-center">{DIAS[f.dia_semana]}</p>
+          <Input
+            id={`ras-ini-${f.dia_semana}`}
+            label="Inicio"
+            type="time"
+            value={String(f.hora_inicio).slice(0, 5)}
+            onChange={(e) => setFilas((p) => p.map((x) => (x.dia_semana === f.dia_semana ? { ...x, hora_inicio: e.target.value } : x)))}
+          />
+          <Input
+            id={`ras-fin-${f.dia_semana}`}
+            label="Fin"
+            type="time"
+            value={String(f.hora_fin).slice(0, 5)}
+            onChange={(e) => setFilas((p) => p.map((x) => (x.dia_semana === f.dia_semana ? { ...x, hora_fin: e.target.value } : x)))}
+          />
+          <Input
+            id={`ras-int-${f.dia_semana}`}
+            label="Intervalo (min)"
+            type="number"
+            value={String(f.intervalo_min)}
+            onChange={(e) => setFilas((p) => p.map((x) => (x.dia_semana === f.dia_semana ? { ...x, intervalo_min: Number(e.target.value) } : x)))}
+          />
+          <Button size="sm" onClick={() => void guardarFila(filas.find((x) => x.dia_semana === f.dia_semana)!)}>
+            Guardar
+          </Button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+interface PlantillaNotif {
+  codigo: string
+  asunto: string
+  cuerpo: string
+}
+
+function PlantillasPanel({
+  live,
+  onAviso,
+  onError,
+}: {
+  live: boolean
+  onAviso: (v: string | null) => void
+  onError: (v: string | null) => void
+}) {
+  const { configuracion, setConfiguracion } = useDominio()
+  const iniciales = Array.isArray(configuracion.plantillas_notificacion)
+    ? (configuracion.plantillas_notificacion as PlantillaNotif[])
+    : [{ codigo: 'agenda', asunto: 'Recordatorio de visita', cuerpo: 'Tenés una visita programada mañana.' }]
+  const [plantillas, setPlantillas] = useState<PlantillaNotif[]>(iniciales)
+
+  async function guardar() {
+    onError(null)
+    const next = { ...configuracion, plantillas_notificacion: plantillas }
+    setConfiguracion(next)
+    if (!live) {
+      onAviso('Plantillas actualizadas (demo). No hay tabla plantilla_notificacion; se guarda en tenant.configuracion.')
+      return
+    }
+    try {
+      const { tenantId } = await contextoOperacion()
+      const { error } = await supabase.from('tenant').update({ configuracion: next }).eq('id', tenantId)
+      if (error) throw error
+      onAviso('Plantillas guardadas en tenant.configuracion')
+    } catch (e) {
+      onError(mensajeGc(e))
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted">
+        No existe tabla de plantillas. Se persisten en <code>tenant.configuracion.plantillas_notificacion</code>.
+      </p>
+      {plantillas.map((p, i) => (
+        <div key={p.codigo + i} className="space-y-2 rounded-2xl border border-line bg-surface p-4">
+          <Input
+            id={`plt-cod-${i}`}
+            label="Código"
+            value={p.codigo}
+            onChange={(e) => setPlantillas((arr) => arr.map((x, j) => (j === i ? { ...x, codigo: e.target.value } : x)))}
+          />
+          <Input
+            id={`plt-as-${i}`}
+            label="Asunto"
+            value={p.asunto}
+            onChange={(e) => setPlantillas((arr) => arr.map((x, j) => (j === i ? { ...x, asunto: e.target.value } : x)))}
+          />
+          <Input
+            id={`plt-cu-${i}`}
+            label="Cuerpo"
+            value={p.cuerpo}
+            onChange={(e) => setPlantillas((arr) => arr.map((x, j) => (j === i ? { ...x, cuerpo: e.target.value } : x)))}
+          />
+        </div>
+      ))}
+      <Button onClick={() => void guardar()}>Guardar plantillas</Button>
+    </div>
+  )
+}
+
+function CorsPanel({
+  live,
+  onAviso,
+  onError,
+}: {
+  live: boolean
+  onAviso: (v: string | null) => void
+  onError: (v: string | null) => void
+}) {
+  const { configuracion, setConfiguracion } = useDominio()
+  const inicial = Array.isArray(configuracion.dominios_cors)
+    ? (configuracion.dominios_cors as string[]).join(', ')
+    : ''
+  const [texto, setTexto] = useState(inicial)
+
+  async function guardar() {
+    onError(null)
+    const dominios = texto.split(',').map((s) => s.trim()).filter(Boolean)
+    const next = { ...configuracion, dominios_cors: dominios }
+    setConfiguracion(next)
+    if (!live) {
+      onAviso('CORS actualizado (demo)')
+      return
+    }
+    try {
+      const { tenantId } = await contextoOperacion()
+      const { error } = await supabase.from('tenant').update({ configuracion: next }).eq('id', tenantId)
+      if (error) throw error
+      onAviso('dominios_cors guardados')
+    } catch (e) {
+      onError(mensajeGc(e))
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-line bg-surface p-5">
+      <Input
+        id="cors-dominios"
+        label="Dominios CORS (separados por coma)"
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        hint="Se guardan en tenant.configuracion.dominios_cors"
+      />
+      <Button onClick={() => void guardar()}>Guardar CORS</Button>
     </div>
   )
 }

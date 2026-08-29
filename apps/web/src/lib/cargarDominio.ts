@@ -9,13 +9,21 @@ import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } f
 
 export type FuenteDominio = 'demo' | 'supabase'
 
+export interface AsesorOpcion {
+  id: string
+  nombre: string
+}
+
 export interface DominioCargado {
   fuente: FuenteDominio
   tenantNombre: string
+  tenantCodigo?: string
   branding: BrandingTenant
+  configuracion: Record<string, unknown>
   personas: PersonaItem[]
   eventos: CalendarEvent[]
   leads: LeadItem[]
+  asesores: AsesorOpcion[]
   modulos: string[]
   catalogos: CatalogoActividad[]
   horas: CatalogoHora[]
@@ -26,9 +34,36 @@ export interface DominioCargado {
 
 const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
 
-const ZONAS_DEMO: ZonaCatalogo[] = [{ id: 1, codigo: 'Z1', nombre: 'Zona Centro', activo: true }]
+const ZONAS_DEMO: ZonaCatalogo[] = [
+  { id: 1, codigo: 'Z1', nombre: 'Zona Centro', activo: true },
+  { id: 2, codigo: 'Z2', nombre: 'Zona Sur', activo: true },
+]
 
 const MODULOS_DEMO = ['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje']
+
+const ASESORES_DEMO: AsesorOpcion[] = [
+  { id: '1', nombre: 'Luisa Fernanda Roldán' },
+  { id: '2', nombre: 'Erick Bardales' },
+  { id: '3', nombre: 'Ana Lucía Perén' },
+  { id: '4', nombre: 'Marco Tulio Méndez' },
+]
+
+function eventosDemo(): CalendarEvent[] {
+  return INITIAL_EVENTS.map((e, i) => ({
+    ...e,
+    asesorId: e.asesorId ?? e.attendees?.[0]?.id,
+    asesorNombre: e.asesorNombre ?? e.attendees?.[0]?.name,
+    zonaId: e.zonaId ?? (i % 2) + 1,
+    zonaNombre: e.zonaNombre ?? ((i % 2) + 1 === 1 ? 'Zona Centro' : 'Zona Sur'),
+  }))
+}
+
+const CONFIG_DEMO: Record<string, unknown> = {
+  dominios_cors: ['app.agromoney.gt'],
+  plantillas_notificacion: [
+    { codigo: 'agenda', asunto: 'Recordatorio de visita', cuerpo: 'Tenés una visita programada mañana.' },
+  ],
+}
 
 const CATEGORIAS: CalendarEvent['category'][] = ['amber', 'lavender', 'mint', 'rose', 'sky']
 
@@ -44,10 +79,13 @@ export async function cargarDominio(): Promise<DominioCargado> {
     return {
       fuente: 'demo',
       tenantNombre: nombreComercial(BRANDING_DEMO, 'AgroMoney S.A.'),
+      tenantCodigo: 'agromoney',
       branding: BRANDING_DEMO,
+      configuracion: CONFIG_DEMO,
       personas: INITIAL_PERSONAS,
-      eventos: INITIAL_EVENTS,
+      eventos: eventosDemo(),
       leads: INITIAL_LEADS,
+      asesores: ASESORES_DEMO,
       modulos: MODULOS_DEMO,
       catalogos: CATALOGO_ACTIVIDADES,
       horas: CATALOGO_HORAS,
@@ -57,10 +95,10 @@ export async function cargarDominio(): Promise<DominioCargado> {
   }
 
   try {
-    const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes] =
+    const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes, usuarioRes] =
       await Promise.all([
       supabase.auth.getSession(),
-      supabase.from('tenant').select('id, nombre, branding').limit(50),
+      supabase.from('tenant').select('id, nombre, codigo, branding, configuracion').limit(50),
       supabase
         .from('persona')
         .select('id, nombre, categoria, documento, direccion, detalles, activo')
@@ -70,7 +108,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
       supabase
         .from('visita')
         .select(
-          'id, persona_nombre, direccion, comentario, fecha_visita, hora_inicio, estado, actividad_id, sub_actividad_id'
+          'id, persona_nombre, direccion, comentario, fecha_visita, hora_inicio, estado, actividad_id, sub_actividad_id, usuario_id, zona_id, latitud, longitud, completada_en, revisada_en, creado_en, usuario:usuario_id(nombre), zona:zona_id(nombre, codigo)'
         )
         .order('fecha_visita', { ascending: false })
         .limit(300),
@@ -88,6 +126,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
       supabase.from('zona').select('id, codigo, nombre, activo').eq('activo', true).order('nombre'),
       supabase.from('departamento').select('id').limit(1).maybeSingle(),
       supabase.from('municipio').select('id').limit(1).maybeSingle(),
+      supabase.from('usuario').select('id, nombre, rol').eq('activo', true).order('nombre'),
     ])
 
     let sesion = sessionRes.data.session
@@ -103,11 +142,26 @@ export async function cargarDominio(): Promise<DominioCargado> {
       const { data: tid } = await supabase.rpc('tenant_id_actual')
       jwtTenant = tid != null ? String(tid) : undefined
     }
-    const tenants = (tenantRes.data ?? []) as Array<{ id: string; nombre: string; branding?: unknown }>
+    const tenants = (tenantRes.data ?? []) as Array<{
+      id: string
+      nombre: string
+      codigo?: string
+      branding?: unknown
+      configuracion?: unknown
+    }>
     const tenantRow =
       tenants.find((t) => t.id === jwtTenant) ?? tenants[0] ?? null
     const branding = brandingDeJson(tenantRow?.branding)
     const tenantNombre = nombreComercial(branding, tenantRow?.nombre ?? 'Gestiones Comerciales')
+    const tenantCodigo = tenantRow?.codigo
+    const configuracion =
+      tenantRow?.configuracion && typeof tenantRow.configuracion === 'object' && !Array.isArray(tenantRow.configuracion)
+        ? (tenantRow.configuracion as Record<string, unknown>)
+        : {}
+    const asesores: AsesorOpcion[] = ((usuarioRes.data ?? []) as Array<{ id: string; nombre: string }>).map((u) => ({
+      id: u.id,
+      nombre: u.nombre,
+    }))
     const subsDb = (subRes.data ?? []) as Array<{ id: number; actividad_id: number; nombre: string; activo: boolean }>
     const catalogos: CatalogoActividad[] = ((actRes.data ?? []) as Array<{ id: number; nombre: string; activo: boolean }>).map(
       (a) => ({
@@ -152,6 +206,15 @@ export async function cargarDominio(): Promise<DominioCargado> {
       estado: string | null
       actividad_id: number | null
       sub_actividad_id: number | null
+      usuario_id?: string | null
+      zona_id?: number | null
+      latitud?: number | null
+      longitud?: number | null
+      completada_en?: string | null
+      revisada_en?: string | null
+      creado_en?: string | null
+      usuario?: { nombre?: string } | { nombre?: string }[] | null
+      zona?: { nombre?: string } | { nombre?: string }[] | null
     }>
     const leadsDb = (leadRes.data ?? []) as Array<{
       id: number | string
@@ -170,10 +233,13 @@ export async function cargarDominio(): Promise<DominioCargado> {
       return {
         fuente: 'demo',
         tenantNombre,
+        tenantCodigo,
         branding,
+        configuracion,
         personas: INITIAL_PERSONAS,
-        eventos: INITIAL_EVENTS,
+        eventos: eventosDemo(),
         leads: INITIAL_LEADS,
+        asesores: asesores.length > 0 ? asesores : ASESORES_DEMO,
         modulos: modulos.length > 0 ? modulos : MODULOS_DEMO,
         catalogos: catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES,
         horas: horas.length > 0 ? horas : CATALOGO_HORAS,
@@ -199,6 +265,10 @@ export async function cargarDominio(): Promise<DominioCargado> {
       const hora = String(v.hora_inicio ?? '08:00').slice(0, 5)
       const [hh, mm] = hora.split(':').map(Number)
       const finH = String((hh + 1) % 24).padStart(2, '0')
+      const u = Array.isArray(v.usuario) ? v.usuario[0] : v.usuario
+      const z = Array.isArray(v.zona) ? v.zona[0] : v.zona
+      const lat = v.latitud != null ? Number(v.latitud) : null
+      const lng = v.longitud != null ? Number(v.longitud) : null
       return {
         id: `vis-${v.id}`,
         title: v.comentario?.trim() || `Visita — ${v.persona_nombre}`,
@@ -212,6 +282,16 @@ export async function cargarDominio(): Promise<DominioCargado> {
         actividadId: v.actividad_id ?? undefined,
         subActividadId: v.sub_actividad_id ?? undefined,
         estado: (v.estado as CalendarEvent['estado']) ?? 'programada',
+        asesorId: v.usuario_id ?? undefined,
+        asesorNombre: u?.nombre,
+        zonaId: v.zona_id ?? undefined,
+        zonaNombre: z?.nombre,
+        latitud: lat,
+        longitud: lng,
+        completadaEn: v.completada_en ?? null,
+        revisadaEn: v.revisada_en ?? null,
+        creadoEn: v.creado_en ?? null,
+        checkinGps: lat != null && lng != null ? { lat, lng, timestamp: '' } : undefined,
       }
     })
 
@@ -235,10 +315,13 @@ export async function cargarDominio(): Promise<DominioCargado> {
     return {
       fuente: 'supabase',
       tenantNombre,
+      tenantCodigo,
       branding,
+      configuracion,
       personas,
       eventos,
       leads,
+      asesores,
       modulos,
       catalogos,
       horas,
@@ -252,10 +335,13 @@ export async function cargarDominio(): Promise<DominioCargado> {
     return {
       fuente: 'demo',
       tenantNombre: nombreComercial(BRANDING_DEMO, 'AgroMoney S.A.'),
+      tenantCodigo: 'agromoney',
       branding: BRANDING_DEMO,
+      configuracion: CONFIG_DEMO,
       personas: INITIAL_PERSONAS,
-      eventos: INITIAL_EVENTS,
+      eventos: eventosDemo(),
       leads: INITIAL_LEADS,
+      asesores: ASESORES_DEMO,
       modulos: MODULOS_DEMO,
       catalogos: CATALOGO_ACTIVIDADES,
       horas: CATALOGO_HORAS,

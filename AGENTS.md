@@ -38,3 +38,13 @@ ticket lo pida.
 
 `DEMO_MODE` (sin `VITE_` / `EXPO_PUBLIC_` de Supabase) debe seguir abriendo el preview
 estático.
+
+## Tipos de Supabase
+
+Generar tipos del schema (requiere proyecto linkeado y credenciales):
+
+```bash
+supabase gen types typescript --linked > apps/web/src/types/database.ts
+```
+
+Si no hay login/`SUPABASE_ACCESS_TOKEN`, el comando no corre: no bloquea UI ni CI.

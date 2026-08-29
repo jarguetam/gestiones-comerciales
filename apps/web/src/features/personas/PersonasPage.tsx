@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useDominio } from '../../app/DominioContext'
 import { parseCsv, PLANTILLA_PERSONAS_CSV } from '../../lib/csv'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { PersonaItem } from '../calendar/personasData'
+import { fetchPersonas } from './personasApi'
+import { QK } from '../../lib/queryClient'
+import { etiquetaVocab } from '../../lib/vocabulario'
 import {
   Alert,
   Badge,
@@ -12,6 +16,7 @@ import {
   Input,
   PageHeader,
   PAGE,
+  TableSkeleton,
 } from '../../components/ui'
 import { useToast } from '../../components/ui/Toast'
 import { cn } from '../../lib/cn'
@@ -38,7 +43,14 @@ function personaDesdeFila(row: Record<string, string>, id: string): PersonaItem 
 }
 
 export function PersonasPage() {
-  const { personas, setPersonas, abrirNuevaVisita, fuente } = useDominio()
+  const { personas: personasDominio, setPersonas, abrirNuevaVisita, fuente, branding } = useDominio()
+  const live = !DEMO_MODE && fuente === 'supabase'
+  const q = useQuery({
+    queryKey: QK.personas,
+    queryFn: fetchPersonas,
+    enabled: live,
+  })
+  const personas = live ? (q.data ?? personasDominio) : personasDominio
   const { push } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -163,7 +175,7 @@ export function PersonasPage() {
     <div className={cn(PAGE, 'max-w-none')}>
       <PageHeader
         spec="W-04"
-        title="Personas"
+        title={etiquetaVocab(branding, 'persona', 'Personas')}
         description={`${personas.length} registros`}
         actions={
           <>
@@ -202,6 +214,9 @@ export function PersonasPage() {
         </Alert>
       )}
 
+      {live && q.isLoading ? (
+        <TableSkeleton cols={3} />
+      ) : (
       <div className="grid min-h-[28rem] gap-4 lg:grid-cols-[minmax(0,22rem)_1fr]">
         <div className="flex flex-col rounded-2xl border border-line bg-surface overflow-hidden">
           <div className="border-b border-line p-3">
@@ -284,6 +299,7 @@ export function PersonasPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }
