@@ -4,7 +4,7 @@
 -- ============================================================
 begin;
 set search_path = public, extensions;
-select plan(44);
+select plan(45);
 
 create schema if not exists tests;
 
@@ -336,6 +336,17 @@ select throws_ok(
 );
 
 select tests.reset_claims();
+
+set local role service_role;
+select throws_ok(
+  $$update public.tenant
+       set configuracion = configuracion
+                           || '{"webhook_secret":"bypass-service-role"}'::jsonb
+     where id = '44444444-0000-0000-0000-000000000005'$$,
+  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'service_role sin marca de backfill no puede capturar por configuracion'
+);
+reset role;
 
 -- Owner y soporte sí pueden entrar a admin_tenant_actualizar, pero el trigger
 -- les impide usar configuracion como un RPC alternativo de rotación.

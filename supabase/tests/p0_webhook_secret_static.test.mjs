@@ -34,6 +34,8 @@ test('EXPAND instala capture, RPC compatible y fallback sin lock de backfill', a
   assert.doesNotMatch(source, /drop function public\.admin_webhook_rotar_secret/)
   assert.match(source, /t\.configuracion ->> 'webhook_secret'/)
   assert.doesNotMatch(source, /lock table/i)
+  assert.match(source, /v_es_backfill := coalesce\(/)
+  assert.match(source, /if not coalesce\(v_es_superadmin, false\)/)
   assert.match(
     source,
     /revoke all on function private\.capture_tenant_webhook_secret\(\) from service_role/,
