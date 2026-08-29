@@ -10,6 +10,7 @@ export type TipoMutacion =
   | 'solicitud'
   | 'persona'
   | 'lead'
+  | 'visita'
 
 export interface ItemCola {
   id: string

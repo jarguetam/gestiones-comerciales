@@ -20,6 +20,8 @@ import {
   View,
 } from 'react-native'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { colorPrimario } from '../lib/branding'
+import NuevaVisitaModal from './NuevaVisitaModal'
 
 interface LeadRow {
   id: number
@@ -59,6 +61,7 @@ export default function LeadsScreen({ perfil }: Props) {
   const [cargando, setCargando] = useState(true)
   const [seleccionado, setSeleccionado] = useState<LeadRow | null>(null)
   const [mostrarNuevo, setMostrarNuevo] = useState(false)
+  const [agendarLead, setAgendarLead] = useState<LeadRow | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
   // alta
@@ -124,6 +127,7 @@ export default function LeadsScreen({ perfil }: Props) {
     setOcupado(true)
     const estadoInicial = estados.find((e) => e.codigo === 'nuevo') ?? estados[0]
     const { error } = await supabase.from('lead').insert({
+      tenant_id: perfil.tenantId,
       nombre: nNombre.trim(),
       telefono: nTelefono.trim(),
       estado_id: estadoInicial?.id,
@@ -212,6 +216,15 @@ export default function LeadsScreen({ perfil }: Props) {
                     <Text style={styles.accionTexto}>WhatsApp</Text>
                   </TouchableOpacity>
                 </View>
+                <TouchableOpacity
+                  style={[styles.botonConvertir, { backgroundColor: colorPrimario(perfil.branding) }]}
+                  onPress={() => {
+                    setAgendarLead(seleccionado)
+                    setSeleccionado(null)
+                  }}
+                >
+                  <Text style={styles.botonConvertirTexto}>Agendar visita</Text>
+                </TouchableOpacity>
 
                 <Text style={styles.seccion}>Mover a</Text>
                 <View style={styles.filaWrap}>
@@ -264,6 +277,14 @@ export default function LeadsScreen({ perfil }: Props) {
           </View>
         </View>
       </Modal>
+      <NuevaVisitaModal
+        visible={!!agendarLead}
+        colorPrimario={colorPrimario(perfil.branding)}
+        personaNombre={agendarLead?.nombre}
+        direccion={agendarLead?.direccion ?? undefined}
+        onCerrar={() => setAgendarLead(null)}
+        onGuardada={() => setAgendarLead(null)}
+      />
     </View>
   )
 }

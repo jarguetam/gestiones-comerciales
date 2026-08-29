@@ -10,6 +10,7 @@ const TIPOS: TipoMutacion[] = [
   'solicitud',
   'persona',
   'lead',
+  'visita',
 ]
 const ESTADOS: EstadoCola[] = ['pendiente', 'enviado', 'error']
 

@@ -10,6 +10,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { BRANDING_DEMO, brandingDeJson, nombreComercial } from './branding'
 import { claimsEmpresaDe, type Rol } from './claims'
 import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
+import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
 
 export { claimsDe, type Rol } from './claims'
@@ -104,4 +105,24 @@ export async function cargarPerfil(session: Session, claims: { tenantId: string;
     email: session.user.email,
     userMetadata: session.user.user_metadata,
   })
+}
+
+export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
+  const err = validarVisitaNueva(b)
+  if (err) throw new Error(err)
+  const { error } = await supabase.rpc('visita_crear', {
+    p_persona_nombre: b.personaNombre!.trim(),
+    p_actividad_id: b.actividadId,
+    p_sub_actividad_id: b.subActividadId,
+    p_actividad_hora_id: b.actividadHoraId,
+    p_zona_id: b.zonaId,
+    p_departamento_id: b.departamentoId,
+    p_municipio_id: b.municipioId,
+    p_fecha: b.fecha,
+    p_hora_inicio: horaParaRpc(b.horaInicio!),
+    p_persona_id: b.personaId ?? null,
+    p_direccion: b.direccion?.trim() || null,
+    p_comentario: b.comentario?.trim() || '',
+  })
+  if (error) throw error
 }
