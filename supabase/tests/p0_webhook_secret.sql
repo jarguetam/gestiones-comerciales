@@ -3,7 +3,7 @@
 -- ============================================================
 begin;
 set search_path = public, extensions;
-select plan(19);
+select plan(22);
 
 -- La rotación debe conservar el resto de tenant.configuracion.
 update public.tenant
@@ -51,6 +51,19 @@ select is(
   has_table_privilege('authenticated', 'private.tenant_webhook_secret', 'select'),
   false,
   'authenticated no tiene GRANT SELECT sobre la relación privada'
+);
+
+select throws_ok(
+  $$select decrypted_secret from vault.decrypted_secrets limit 1$$,
+  '42501',
+  null,
+  'authenticated no puede consultar plaintext directamente en Vault'
+);
+
+select is(
+  has_table_privilege('authenticated', 'vault.decrypted_secrets', 'select'),
+  false,
+  'authenticated no tiene GRANT SELECT sobre secretos descifrados'
 );
 
 select throws_ok(
@@ -162,6 +175,15 @@ select is(
 );
 
 select tests.reset_claims();
+
+select throws_ok(
+  $$update public.tenant
+       set configuracion = configuracion || '{"webhook_secret":"no-reintroducir"}'::jsonb
+     where id = '11111111-1111-1111-1111-111111111111'$$,
+  '23514',
+  null,
+  'la base impide reintroducir webhook_secret en configuracion'
+);
 
 select is(
   (
