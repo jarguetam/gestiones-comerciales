@@ -7,7 +7,7 @@ test.describe('P-06 salud de plataforma (modo demo)', () => {
   test('el menú incluye Salud y muestra P-06', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: /^salud$/i }).first().click()
-    await expect(page.getByText(/P-06/i)).toBeVisible()
+    await expect(page.locator('[data-spec="P-06"]')).toBeVisible()
     await expect(page.getByRole('heading', { name: /salud de plataforma/i })).toBeVisible()
   })
 

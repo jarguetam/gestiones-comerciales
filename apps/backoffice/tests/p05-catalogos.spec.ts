@@ -7,14 +7,14 @@ test.describe('P-05 catálogos globales (modo demo)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: /^catálogos$/i }).first().click()
-    await expect(page.getByText(/P-05/i)).toBeVisible()
+    await expect(page.locator('[data-spec="P-05"]')).toBeVisible()
   })
 
   test('el menú incluye Catálogos y muestra P-05', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /catálogos globales/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^geografía$/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^módulos$/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^plantillas$/i })).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^geografía$/i })).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^módulos$/i })).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^plantillas$/i })).toBeVisible()
   })
 
   test('geografía permite agregar un departamento en demo', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('P-05 catálogos globales (modo demo)', () => {
   })
 
   test('módulos lista el núcleo y permite alta demo', async ({ page }) => {
-    await page.getByRole('button', { name: /^módulos$/i }).click()
+    await page.getByRole('tab', { name: /^módulos$/i }).click()
     await expect(page.getByText('core')).toBeVisible()
     await page.getByPlaceholder(/código/i).fill('demo_mod')
     await page.getByPlaceholder(/nombre visible/i).fill('Módulo demo')
@@ -46,7 +46,7 @@ test.describe('P-05 catálogos globales (modo demo)', () => {
   })
 
   test('plantillas filtra por rubro y crea una actividad', async ({ page }) => {
-    await page.getByRole('button', { name: /^plantillas$/i }).click()
+    await page.getByRole('tab', { name: /^plantillas$/i }).click()
     await expect(page.getByRole('button', { name: /verificación de garantías/i })).toBeVisible()
     await page.getByRole('button', { name: /^farmacéutica$/i }).click()
     await expect(page.getByRole('button', { name: /visita médica/i })).toBeVisible()

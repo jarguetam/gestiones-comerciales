@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { etiquetaFactor } from './mfa'
+import { Alert, Button, EmptyState, Input, PAGE, PageHeader } from '../../components/ui'
 
 interface FactorTotp {
   id: string
@@ -114,61 +115,54 @@ export function MfaPage() {
   }
 
   return (
-    <div className="p-6 max-w-xl space-y-4">
-      <p className="text-xs uppercase tracking-widest text-teal-700">P-01 · seguridad</p>
-      <h1 className="text-2xl font-bold text-slate-900">MFA TOTP</h1>
-      <p className="text-sm text-slate-600">
-        Enrolá un autenticador para exigir un segundo factor al entrar al backoffice.
-      </p>
-      {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {aviso && <p className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm text-teal-800">{aviso}</p>}
+    <div className={`${PAGE} max-w-xl`}>
+      <PageHeader
+        spec="P-01"
+        title="MFA TOTP"
+        description="Enrolá un autenticador para exigir un segundo factor al entrar al backoffice."
+      />
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {aviso && <Alert tone="success">{aviso}</Alert>}
 
-      <div className="rounded-lg bg-white p-4 shadow space-y-3">
-        <h2 className="font-medium">Factores</h2>
+      <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
+        <h2 className="font-medium text-ink">Factores</h2>
         {factors.length === 0 ? (
-          <p className="text-sm text-slate-500">Ningún factor enrolado.</p>
+          <EmptyState titulo="Ningún factor enrolado." />
         ) : (
           <ul className="space-y-2">
             {factors.map((f) => (
               <li key={f.id} className="flex items-center justify-between gap-3 text-sm">
                 <span>{etiquetaFactor(f)}</span>
-                <button
-                  type="button"
-                  onClick={() => void desenrolar(f.id)}
-                  className="text-red-700 hover:underline"
-                >
+                <Button variant="ghost" size="sm" onClick={() => void desenrolar(f.id)}>
                   Quitar
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         )}
-        <button
-          type="button"
-          onClick={() => void enrolar()}
-          disabled={loading || !!qr}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-        >
+        <Button onClick={() => void enrolar()} disabled={loading || !!qr}>
           {loading ? 'Generando…' : 'Enrolar TOTP'}
-        </button>
+        </Button>
       </div>
 
       {qr && (
-        <form onSubmit={(e) => void verificar(e)} className="rounded-lg bg-white p-4 shadow space-y-3">
-          <h2 className="font-medium">Verificar enrolamiento</h2>
-          <img src={qr} alt="QR TOTP" className="mx-auto h-40 w-40 bg-white" />
-          <input
+        <form onSubmit={(e) => void verificar(e)} className="space-y-3 rounded-2xl border border-line bg-surface p-4">
+          <h2 className="font-medium text-ink">Verificar enrolamiento</h2>
+          <img src={qr} alt="QR TOTP" className="mx-auto h-40 w-40 bg-surface" />
+          <Input
+            id="totp-enrolar"
+            label="Código MFA"
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
             inputMode="numeric"
             autoComplete="one-time-code"
             placeholder="Código de 6 dígitos"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 tracking-widest"
+            className="tracking-widest"
             required
           />
-          <button type="submit" disabled={loading} className="rounded-md bg-teal-700 px-4 py-2 text-sm text-white disabled:opacity-50">
+          <Button type="submit" disabled={loading}>
             {loading ? 'Verificando…' : 'Confirmar código'}
-          </button>
+          </Button>
         </form>
       )}
     </div>

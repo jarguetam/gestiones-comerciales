@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { requierePasoTotp } from './mfa'
+import { Alert, BrandMark, Button, Input } from '../../components/ui'
 
 export function Login() {
   const [email, setEmail] = useState('')
@@ -63,80 +64,36 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl">
-        <h1 className="mb-2 text-center text-2xl font-bold text-slate-900">GC Platform</h1>
-        <p className="mb-6 text-center text-sm text-slate-500">
+    <div className="flex min-h-screen items-center justify-center bg-ink p-6" data-spec="P-01">
+      <div className="w-full max-w-md rounded-lg bg-surface p-8 shadow-xl">
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <BrandMark nombre="GC Backoffice" />
+          <h1 className="text-2xl font-bold text-ink">GC Backoffice</h1>
+        </div>
+        <p className="mb-6 text-center text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Backoffice de plataforma'}
         </p>
         {DEMO_MODE && (
-          <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            Modo demo: preview estático sin backend.
-          </p>
+          <div className="mb-4">
+            <Alert tone="warning">Modo demo: preview estático sin backend.</Alert>
+          </div>
         )}
         {paso === 'password' ? (
           <form onSubmit={(e) => void handlePassword(e)} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                required={!DEMO_MODE}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required={!DEMO_MODE}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-slate-900 py-2 text-white disabled:opacity-50"
-            >
+            <Input id="email" label="Email" type="email" autoComplete="username" required={!DEMO_MODE} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input id="password" label="Contraseña" type="password" autoComplete="current-password" required={!DEMO_MODE} value={password} onChange={(e) => setPassword(e.target.value)} />
+            {error && <Alert tone="danger" role="alert">{error}</Alert>}
+            <Button type="submit" size="lg" disabled={loading}>
               {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar al backoffice' : 'Ingresar'}
-            </button>
+            </Button>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="space-y-4">
-            <div>
-              <label htmlFor="totp" className="block text-sm font-medium text-gray-700">
-                Código MFA
-              </label>
-              <input
-                id="totp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                required
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 tracking-widest"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-slate-900 py-2 text-white disabled:opacity-50"
-            >
+            <Input id="totp" label="Código MFA" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} className="tracking-widest" />
+            {error && <Alert tone="danger" role="alert">{error}</Alert>}
+            <Button type="submit" size="lg" disabled={loading}>
               {loading ? 'Verificando…' : 'Verificar'}
-            </button>
+            </Button>
           </form>
         )}
       </div>
