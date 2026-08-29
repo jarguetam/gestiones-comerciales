@@ -1,10 +1,25 @@
 import { useRef, useState } from 'react'
-import { PersonasView } from '../calendar/components/PersonasView'
+import { useQuery } from '@tanstack/react-query'
 import { useDominio } from '../../app/DominioContext'
 import { parseCsv, PLANTILLA_PERSONAS_CSV } from '../../lib/csv'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { PersonaItem } from '../calendar/personasData'
+import { fetchPersonas } from './personasApi'
+import { QK } from '../../lib/queryClient'
+import { etiquetaVocab } from '../../lib/vocabulario'
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  Input,
+  PageHeader,
+  PAGE,
+  TableSkeleton,
+} from '../../components/ui'
+import { useToast } from '../../components/ui/Toast'
+import { cn } from '../../lib/cn'
 
 interface ReporteImport {
   insertados: number
@@ -28,12 +43,30 @@ function personaDesdeFila(row: Record<string, string>, id: string): PersonaItem 
 }
 
 export function PersonasPage() {
-  const { personas, setPersonas, abrirNuevaVisita, fuente } = useDominio()
+  const { personas: personasDominio, setPersonas, abrirNuevaVisita, fuente, branding } = useDominio()
+  const live = !DEMO_MODE && fuente === 'supabase'
+  const q = useQuery({
+    queryKey: QK.personas,
+    queryFn: fetchPersonas,
+    enabled: live,
+  })
+  const personas = live ? (q.data ?? personasDominio) : personasDominio
+  const { push } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reporte, setReporte] = useState<ReporteImport | null>(null)
   const [cargando, setCargando] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [seleccion, setSeleccion] = useState<PersonaItem | null>(personas[0] ?? null)
+
+  const filtradas = personas.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.categoria.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.documento.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.direccion.toLowerCase().includes(busqueda.toLowerCase()),
+  )
 
   function descargarPlantilla() {
     const blob = new Blob([PLANTILLA_PERSONAS_CSV], { type: 'text/csv;charset=utf-8' })
@@ -81,7 +114,9 @@ export function PersonasPage() {
         })
         setPersonas(next)
         setReporte({ insertados, actualizados, errores })
-        setAviso(`Importación demo: ${insertados} altas, ${actualizados} actualizados, ${errores.length} errores`)
+        const msg = `Importación demo: ${insertados} altas, ${actualizados} actualizados, ${errores.length} errores`
+        setAviso(msg)
+        push({ tone: 'success', titulo: msg })
         return
       }
 
@@ -97,9 +132,9 @@ export function PersonasPage() {
         actualizados: payload?.actualizados ?? 0,
         errores: payload?.errores ?? [],
       })
-      setAviso(
-        `Importación: ${payload?.insertados ?? 0} altas, ${payload?.actualizados ?? 0} actualizados, ${payload?.errores?.length ?? 0} errores`,
-      )
+      const msg = `Importación: ${payload?.insertados ?? 0} altas, ${payload?.actualizados ?? 0} actualizados, ${payload?.errores?.length ?? 0} errores`
+      setAviso(msg)
+      push({ tone: 'success', titulo: msg })
       const { data: personasDb } = await supabase
         .from('persona')
         .select('id, nombre, categoria, documento, direccion, detalles')
@@ -127,7 +162,9 @@ export function PersonasPage() {
         )
       }
     } catch (e) {
-      setError(mensajeGc(e))
+      const msg = mensajeGc(e)
+      setError(msg)
+      push({ tone: 'error', titulo: msg })
     } finally {
       setCargando(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -135,56 +172,134 @@ export function PersonasPage() {
   }
 
   return (
-    <div className="max-w-3xl h-[calc(100vh-8rem)] rounded-2xl border border-[#E4DCC8] overflow-hidden bg-white relative flex flex-col">
-      <div className="shrink-0 px-5 py-3 border-b border-[#E4DCC8] bg-[#FBF8F1] flex flex-wrap items-center gap-2">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-brand-700 mr-auto">W-04 · Importar cartera</p>
-        <button
-          type="button"
-          onClick={descargarPlantilla}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-white"
-        >
-          Plantilla CSV
-        </button>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={cargando}
-          className="rounded-lg bg-brand-700 hover:bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-        >
-          {cargando ? 'Importando…' : 'Importar CSV'}
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv,text/csv"
-          aria-label="Archivo CSV de personas"
-          className="sr-only"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void onArchivo(file)
-          }}
-        />
-      </div>
-      {aviso && <p className="px-5 py-2 text-xs text-emerald-800 bg-emerald-50">{aviso}</p>}
-      {error && <p className="px-5 py-2 text-xs text-red-700 bg-red-50">{error}</p>}
+    <div className={cn(PAGE, 'max-w-none')}>
+      <PageHeader
+        spec="W-04"
+        title={etiquetaVocab(branding, 'persona', 'Personas')}
+        description={`${personas.length} registros`}
+        actions={
+          <>
+            <Button variant="secondary" onClick={descargarPlantilla}>
+              Plantilla CSV
+            </Button>
+            <Button onClick={() => inputRef.current?.click()} disabled={cargando}>
+              {cargando ? 'Importando…' : 'Importar CSV'}
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,text/csv"
+              aria-label="Archivo CSV de personas"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void onArchivo(file)
+              }}
+            />
+          </>
+        }
+      />
+
+      {aviso && <Alert tone="success">{aviso}</Alert>}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {reporte && reporte.errores.length > 0 && (
-        <ul className="px-5 py-2 text-xs text-amber-800 bg-amber-50 max-h-24 overflow-auto">
-          {reporte.errores.slice(0, 8).map((err, i) => (
-            <li key={i}>
-              Fila {err.fila ?? '?'}: {err.codigo} {err.mensaje}
-            </li>
-          ))}
-        </ul>
+        <Alert tone="warning">
+          <ul>
+            {reporte.errores.slice(0, 8).map((err, i) => (
+              <li key={i}>
+                Fila {err.fila ?? '?'}: {err.codigo} {err.mensaje}
+              </li>
+            ))}
+          </ul>
+        </Alert>
       )}
-      <div className="flex-1 min-h-0">
-        <PersonasView
-          embedded
-          personas={personas}
-          onOpenNewEvent={() => abrirNuevaVisita()}
-          onNavigateTab={() => undefined}
-          onScheduleWithPersona={(nombre) => abrirNuevaVisita(nombre)}
-        />
+
+      {live && q.isLoading ? (
+        <TableSkeleton cols={3} />
+      ) : (
+      <div className="grid min-h-[28rem] gap-4 lg:grid-cols-[minmax(0,22rem)_1fr]">
+        <div className="flex flex-col rounded-2xl border border-line bg-surface overflow-hidden">
+          <div className="border-b border-line p-3">
+            <Input
+              id="buscar-persona"
+              label="Buscar"
+              placeholder="Buscar por nombre, rubro o dirección..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
+          </div>
+          <ul className="flex-1 overflow-y-auto divide-y divide-line/70">
+            {filtradas.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => setSeleccion(p)}
+                  className={cn(
+                    'rail w-full min-h-11 px-4 py-3 text-left transition-colors duration-campo hover:bg-canvas',
+                    seleccion?.id === p.id && 'bg-canvas',
+                  )}
+                >
+                  <p className="font-medium truncate">{p.nombre}</p>
+                  <p className="text-xs text-muted truncate">{p.categoria}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {filtradas.length === 0 && (
+            <EmptyState
+              titulo="Sin coincidencias"
+              descripcion="Probá otro término o importá un CSV."
+              cta={{ etiqueta: 'Importar CSV', onClick: () => inputRef.current?.click() }}
+            />
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          {seleccion ? (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-2xl tracking-tight">{seleccion.nombre}</h3>
+                  <Badge tone="primary" className="mt-2">
+                    {seleccion.categoria}
+                  </Badge>
+                </div>
+                <Button onClick={() => abrirNuevaVisita(seleccion.nombre)}>+ Agendar visita</Button>
+              </div>
+              <dl className="mt-6 grid gap-3 sm:grid-cols-2 text-sm">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted">Documento</dt>
+                  <dd className="mt-0.5 font-medium">{seleccion.documento}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted">Teléfono</dt>
+                  <dd className="mt-0.5 font-medium">{seleccion.telefono}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs uppercase tracking-wide text-muted">Dirección</dt>
+                  <dd className="mt-0.5">{seleccion.direccion}</dd>
+                </div>
+                {seleccion.saldo ? (
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted">Saldo</dt>
+                    <dd className="mt-0.5 font-semibold">{seleccion.saldo}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted">Visitas pendientes</dt>
+                  <dd className="mt-0.5">{seleccion.visitasPendientes}</dd>
+                </div>
+              </dl>
+            </>
+          ) : (
+            <EmptyState
+              titulo="Elegí una persona"
+              descripcion="La ficha muestra datos, documento y acciones de agenda."
+            />
+          )}
+        </div>
       </div>
+      )}
     </div>
   )
 }

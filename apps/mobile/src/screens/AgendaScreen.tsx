@@ -1,15 +1,17 @@
 /**
  * M-02 Agenda del día + alta de visita (mismas validaciones GC-VIS que la web).
+ * Check-in GPS directo (M-04) con aviso de geocerca; el rastreo por intervalo
+ * vive en services/rastreoServicio y se activa desde App.
  */
 import React, { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
   Platform,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native'
 import * as Location from 'expo-location'
@@ -18,16 +20,18 @@ import type { Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
-import { colorPrimario } from '../lib/branding'
 import { fechaLocalHoy } from '../lib/visita'
 import NuevaVisitaModal from './NuevaVisitaModal'
+import { BadgeEstado, Cargando, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
+import { formatearFechaJornada, progresoJornada } from '../lib/jornada'
 
-const ESTILO_ESTADO: Record<string, { bg: string; fg: string; texto: string }> = {
-  programada: { bg: '#DBEAFE', fg: '#1D4ED8', texto: 'Programada' },
-  completada: { bg: '#D1FAE5', fg: '#047857', texto: 'Completada' },
-  aprobada: { bg: '#CCFBF1', fg: '#0F766E', texto: 'Aprobada' },
-  rechazada: { bg: '#FEE2E2', fg: '#B91C1C', texto: 'Rechazada' },
-  anulada: { bg: '#F3F4F6', fg: '#6B7280', texto: 'Anulada' },
+const ETIQUETA_ESTADO: Record<string, string> = {
+  programada: 'Programada',
+  completada: 'Completada',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  anulada: 'Anulada',
 }
 
 const DEMO_VISITAS: Visita[] = [
@@ -67,7 +71,7 @@ function mapFila(row: Record<string, unknown>): Visita {
 }
 
 export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
-  const primario = colorPrimario(perfil.branding)
+  const t = useTheme()
   const [visitas, setVisitas] = useState<Visita[]>(DEMO_MODE ? DEMO_VISITAS : [])
   const [cargando, setCargando] = useState(!DEMO_MODE)
   const [refrescando, setRefrescando] = useState(false)
@@ -175,62 +179,64 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   }
 
   function renderVisita({ item }: { item: Visita }) {
-    const estilo = ESTILO_ESTADO[item.estado] ?? ESTILO_ESTADO.programada
     return (
-      <View style={styles.tarjeta}>
+      <View style={[styles.tarjeta, { borderColor: t.line, backgroundColor: t.surface }]}>
+        <View style={[styles.rail, { backgroundColor: t.primary }]} />
         <View style={styles.tarjetaFila}>
+          <Text style={[styles.hora, { color: t.ink }]}>{item.hora_inicio ? item.hora_inicio.slice(0, 5) : '--:--'}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.nombre}>{item.persona_nombre}</Text>
-            {item.actividad ? <Text style={styles.actividad}>{item.actividad}</Text> : null}
-            {item.direccion ? <Text style={styles.direccion}>{item.direccion}</Text> : null}
-            {item.hora_inicio ? <Text style={styles.hora}>{item.hora_inicio.slice(0, 5)}</Text> : null}
+            <Text style={[styles.nombre, { color: t.ink }]}>{item.persona_nombre}</Text>
+            {item.actividad ? <Text style={[styles.actividad, { color: t.muted }]}>{item.actividad}</Text> : null}
+            <Text style={[styles.direccion, { color: t.muted }]}>{item.direccion ?? 'Sin zona'}</Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: estilo.bg }]}>
-            <Text style={[styles.badgeTexto, { color: estilo.fg }]}>{estilo.texto}</Text>
-          </View>
+          <BadgeEstado estado={ETIQUETA_ESTADO[item.estado] ?? item.estado} />
         </View>
-        {item.estado === 'programada' && !checkins.has(item.id) ? (
-          <Pressable
-            style={[styles.botonAccion, { backgroundColor: '#047857' }]}
+        {item.estado === 'programada' && !checkins.has(item.id) && (
+          <TouchableOpacity
+            style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => void handleCheckin(item)}
             disabled={checkinDe === item.id}
             accessibilityRole="button"
-            accessibilityLabel="Check-in GPS"
+            accessibilityLabel={`Check-in GPS de ${item.persona_nombre}`}
+            accessibilityState={{ disabled: checkinDe === item.id, busy: checkinDe === item.id }}
           >
             {checkinDe === item.id ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.botonAccionTexto}>Check-in GPS</Text>
+              <Text style={styles.botonCheckinTexto}>Check-in GPS</Text>
             )}
-          </Pressable>
-        ) : null}
-        {item.estado === 'programada' && checkins.has(item.id) ? (
-          <Pressable
-            style={[styles.botonAccion, { backgroundColor: primario }]}
+          </TouchableOpacity>
+        )}
+        {item.estado === 'programada' && checkins.has(item.id) && (
+          <TouchableOpacity
+            style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => void handleCompletar(item)}
             disabled={checkinDe === item.id}
             accessibilityRole="button"
-            accessibilityLabel="Completar visita"
+            accessibilityLabel={`Completar visita de ${item.persona_nombre}`}
           >
-            <Text style={styles.botonAccionTexto}>Completar visita</Text>
-          </Pressable>
-        ) : null}
+            <Text style={styles.botonCheckinTexto}>Completar visita</Text>
+          </TouchableOpacity>
+        )}
       </View>
     )
   }
 
   if (cargando) {
-    return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color={primario} />
-      </View>
-    )
+    return <Cargando etiqueta="Cargando agenda…" />
   }
 
+  const jornada = progresoJornada(visitas)
+  const fechaHero = visitas[0]?.fecha_visita ?? fechaLocalHoy()
+
   return (
-    <View style={styles.contenedor}>
-      {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
-      {mensaje ? <Text style={styles.mensaje}>{mensaje}</Text> : null}
+    <View style={[styles.contenedor, { backgroundColor: t.canvas }]}>
+      {error ? (
+        <Text style={[styles.errorBanner, { backgroundColor: t.surface, borderColor: t.danger, color: t.danger }]}>
+          {error}
+        </Text>
+      ) : null}
+      {mensaje && <Text style={[styles.mensaje, { color: t.success }]}>{mensaje}</Text>}
       <FlatList
         data={visitas}
         keyExtractor={(v) => String(v.id)}
@@ -242,28 +248,46 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
               setRefrescando(true)
               void cargar()
             }}
-            tintColor={primario}
+            tintColor={t.primary}
           />
         }
-        ListEmptyComponent={
-          <View style={styles.vacioCaja}>
-            <Text style={styles.vacioTitulo}>Nada agendado hoy</Text>
-            <Text style={styles.vacio}>Agendá una visita a un cliente de tu cartera o un prospecto.</Text>
+        ListHeaderComponent={
+          <View style={[styles.hero, { backgroundColor: t.surface, borderColor: t.line }]}>
+            <Text style={[styles.heroFecha, { color: t.ink }]}>{formatearFechaJornada(fechaHero)}</Text>
+            <View style={styles.heroLinea}>
+              <Text style={[styles.heroPct, { color: t.ink }]}>{jornada.pct}%</Text>
+              <Text style={[styles.heroMeta, { color: t.muted }]}>
+                {jornada.hechas} de {jornada.total} completadas
+              </Text>
+            </View>
+            <View style={[styles.barra, { backgroundColor: t.canvas }]}>
+              <View style={[styles.barraFill, { width: `${jornada.pct}%`, backgroundColor: t.primary }]} />
+            </View>
           </View>
+        }
+        ListEmptyComponent={
+          <Vacio
+            titulo={DEMO_MODE ? 'Agenda de demostración vacía' : 'Sin visitas programadas para hoy'}
+            descripcion={
+              DEMO_MODE
+                ? 'En DEMO no hay backend. En vivo aparecen las visitas de visitas_del_dia().'
+                : 'Agendá una visita a un cliente de tu cartera o un prospecto.'
+            }
+          />
         }
         contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
       />
-      <Pressable
-        style={[styles.fab, { backgroundColor: primario }]}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: t.primary }]}
         onPress={() => setMostrarAlta(true)}
         accessibilityRole="button"
         accessibilityLabel="Agendar visita"
       >
         <Text style={styles.fabTexto}>Agendar</Text>
-      </Pressable>
+      </TouchableOpacity>
       <NuevaVisitaModal
         visible={mostrarAlta}
-        colorPrimario={primario}
+        colorPrimario={t.primary}
         onCerrar={() => setMostrarAlta(false)}
         onGuardada={() => void cargar()}
       />
@@ -272,45 +296,47 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: '#F8FAFC' },
-  centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  mensaje: { marginHorizontal: 16, marginTop: 12, color: '#047857', fontSize: 13, fontWeight: '600' },
+  contenedor: { flex: 1 },
+  mensaje: { marginHorizontal: 16, marginTop: 12, fontSize: 13, fontWeight: '600' },
   errorBanner: {
     margin: 16,
     marginBottom: 0,
-    backgroundColor: '#FEF2F2',
-    color: '#B91C1C',
     padding: 12,
     borderRadius: 12,
+    borderWidth: 1,
     fontSize: 13,
     fontWeight: '600',
   },
+  hero: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 14 },
+  heroFecha: { fontSize: 28, fontWeight: '800', letterSpacing: -0.8 },
+  heroLinea: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 8 },
+  heroPct: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  heroMeta: { fontSize: 13 },
+  barra: { height: 6, borderRadius: 999, overflow: 'hidden', marginTop: 10 },
+  barraFill: { height: '100%', borderRadius: 999 },
   tarjeta: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    padding: 14,
+    paddingLeft: 16,
+    marginBottom: 10,
+    overflow: 'hidden',
   },
-  tarjetaFila: { flexDirection: 'row', alignItems: 'flex-start' },
-  nombre: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
-  actividad: { fontSize: 14, color: '#475569', marginTop: 4 },
-  direccion: { fontSize: 13, color: '#64748B', marginTop: 4 },
-  hora: { fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: '600' },
-  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 8 },
-  badgeTexto: { fontSize: 11, fontWeight: '700' },
-  botonAccion: {
+  rail: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  tarjetaFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  nombre: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  actividad: { fontSize: 13, marginTop: 2 },
+  direccion: { fontSize: 12, marginTop: 2 },
+  hora: { fontSize: 18, fontWeight: '800', letterSpacing: -0.6, width: 56 },
+  botonCheckin: {
     marginTop: 12,
     borderRadius: 12,
-    minHeight: 48,
+    minHeight: 52,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  botonAccionTexto: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  vacioCaja: { marginTop: 48, paddingHorizontal: 24, alignItems: 'center' },
-  vacioTitulo: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  vacio: { textAlign: 'center', color: '#64748B', fontSize: 15, lineHeight: 22 },
+  botonCheckinTexto: { color: '#fff', fontWeight: '700', fontSize: 16 },
   fab: {
     position: 'absolute',
     right: 16,

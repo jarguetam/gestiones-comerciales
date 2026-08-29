@@ -17,7 +17,8 @@ import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import type { Persona } from '../lib/tipos'
-import { colorPrimario } from '../lib/branding'
+import { Cargando, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 import NuevaVisitaModal from './NuevaVisitaModal'
 
 const CATEGORIAS = [
@@ -30,8 +31,10 @@ const CATEGORIAS = [
 ] as const
 
 export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
+  const t = useTheme()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [busqueda, setBusqueda] = useState('')
+  const [visitaDe, setVisitaDe] = useState<Persona | null>(null)
   const [cargando, setCargando] = useState(true)
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -43,7 +46,6 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
   const [telefono, setTelefono] = useState('')
   const [direccion, setDireccion] = useState('')
   const [categoria, setCategoria] = useState<string | null>(null)
-  const [visitaDe, setVisitaDe] = useState<Persona | null>(null)
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
@@ -105,14 +107,14 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
         {
           tipo: 'persona',
           payload: {
-            tenantId: perfil?.tenantId,
-            asesorId: perfil?.id,
             nombre: nombre.trim(),
             documento: documento.trim() || null,
             documentoTipo: 'DPI',
             direccion: direccion.trim() || null,
             categoria,
             detalles: telefono.trim() ? { telefono: telefono.trim() } : {},
+            tenantId: perfil?.tenantId,
+            asesorId: perfil?.id,
           },
           clienteKey: `persona:${documento.trim() || nombre.trim()}:${Date.now()}`,
         },
@@ -156,7 +158,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
           onChangeText={setBusqueda}
         />
         <TouchableOpacity
-          style={styles.botonNuevo}
+          style={[styles.botonNuevo, { backgroundColor: t.primary }]}
           onPress={() => setMostrarAlta((v) => !v)}
         >
           <Text style={styles.botonNuevoTexto}>{mostrarAlta ? 'Cancelar' : '+ Nuevo'}</Text>
@@ -198,7 +200,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
             {CATEGORIAS.map((c) => (
               <TouchableOpacity
                 key={c}
-                style={[styles.chip, categoria === c && styles.chipActivo]}
+                style={[styles.chip, categoria === c && { backgroundColor: t.primary, borderColor: t.primary }]}
                 onPress={() => setCategoria(categoria === c ? null : c)}
               >
                 <Text style={[styles.chipTexto, categoria === c && styles.chipTextoActivo]}>
@@ -209,7 +211,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
           </View>
           {error && <Text style={styles.error}>{error}</Text>}
           <TouchableOpacity
-            style={[styles.botonGuardar, guardando && { opacity: 0.6 }]}
+            style={[styles.botonGuardar, { backgroundColor: t.primary }, guardando && { opacity: 0.6 }]}
             onPress={handleGuardar}
             disabled={guardando}
           >
@@ -224,7 +226,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
 
       {cargando ? (
         <View style={styles.centro}>
-          <ActivityIndicator size="large" color="#1D4ED8" />
+          <ActivityIndicator size="large" color={t.primary} />
         </View>
       ) : (
         <FlatList
@@ -238,8 +240,9 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
               </Text>
               {item.direccion && <Text style={styles.direccion}>{item.direccion}</Text>}
               <TouchableOpacity
-                style={styles.botonAgendar}
+                style={[styles.botonAgendar, { backgroundColor: t.primary }]}
                 onPress={() => setVisitaDe(item)}
+                accessibilityRole="button"
                 accessibilityLabel={`Agendar visita a ${item.nombre}`}
               >
                 <Text style={styles.botonAgendarTexto}>Agendar visita</Text>
@@ -247,16 +250,15 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
             </View>
           )}
           ListEmptyComponent={
-            <Text style={styles.vacio}>
-              {DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'No hay registros.'}
-            </Text>
+            <Vacio titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'No hay registros.'} />
           }
           contentContainerStyle={{ padding: 16 }}
         />
       )}
+
       <NuevaVisitaModal
         visible={!!visitaDe}
-        colorPrimario={colorPrimario(perfil?.branding)}
+        colorPrimario={t.primary}
         personaId={visitaDe?.id}
         personaNombre={visitaDe?.nombre}
         direccion={visitaDe?.direccion ?? undefined}
@@ -269,6 +271,14 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: '#F3F4F6' },
+  botonAgendar: {
+    marginTop: 12,
+    borderRadius: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botonAgendarTexto: { color: '#fff', fontWeight: '700', fontSize: 14 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   barraBusqueda: { flexDirection: 'row', padding: 12, gap: 8 },
   inputBusqueda: {
@@ -283,10 +293,10 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   botonNuevo: {
-    backgroundColor: '#1D4ED8',
     borderRadius: 10,
     paddingHorizontal: 14,
     justifyContent: 'center',
+    backgroundColor: undefined,
   },
   botonNuevoTexto: { color: '#fff', fontWeight: '600', fontSize: 13 },
   formulario: {
@@ -321,7 +331,6 @@ const styles = StyleSheet.create({
   chipTextoActivo: { color: '#fff' },
   error: { color: '#DC2626', fontSize: 12, marginBottom: 8 },
   botonGuardar: {
-    backgroundColor: '#1D4ED8',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
@@ -336,14 +345,5 @@ const styles = StyleSheet.create({
   nombre: { fontSize: 15, fontWeight: '600', color: '#111827' },
   detalle: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   direccion: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  botonAgendar: {
-    marginTop: 12,
-    borderRadius: 12,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1D4ED8',
-  },
-  botonAgendarTexto: { color: '#fff', fontWeight: '700', fontSize: 14 },
   vacio: { textAlign: 'center', color: '#6B7280', marginTop: 40 },
 })

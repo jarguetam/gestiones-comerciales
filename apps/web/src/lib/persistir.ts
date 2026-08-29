@@ -3,13 +3,9 @@ import { DEMO_MODE, supabase } from './supabase'
 import type { CalendarEvent } from '../features/calendar/types'
 import type { PersonaItem } from '../features/calendar/personasData'
 import type { GeoDefaults } from './catalogos'
+import { filaDePersona, mensajeGc } from './persistirHelpers'
 
-export function mensajeGc(err: unknown): string {
-  if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: string }).message === 'string') {
-    return (err as { message: string }).message
-  }
-  return err instanceof Error ? err.message : 'No se pudo guardar'
-}
+export { errorAltaPersona, filaDePersona, mensajeGc } from './persistirHelpers'
 
 export async function contextoOperacion(): Promise<{ usuarioId: string; tenantId: string }> {
   const { data, error } = await supabase.auth.getSession()
@@ -33,22 +29,13 @@ export async function contextoOperacion(): Promise<{ usuarioId: string; tenantId
 
 export async function persistirPersona(persona: PersonaItem): Promise<PersonaItem> {
   if (DEMO_MODE) return persona
-  const { usuarioId, tenantId } = await contextoOperacion()
-  const documento = persona.documento && persona.documento !== 'Sin documento' ? persona.documento : null
+  const ctx = await contextoOperacion()
   const { data, error } = await supabase
     .from('persona')
-    .insert({
-      tenant_id: tenantId,
-      nombre: persona.nombre,
-      documento,
-      direccion: persona.direccion === '—' ? null : persona.direccion,
-      categoria: persona.categoria,
-      asesor_id: usuarioId,
-      detalles: { telefono: persona.telefono },
-    })
+    .insert(filaDePersona(persona, ctx))
     .select('id')
     .single()
-  if (error) throw error
+  if (error) throw new Error(mensajeGc(error))
   return { ...persona, id: String(data.id) }
 }
 
@@ -86,7 +73,7 @@ export async function persistirVisita(evento: CalendarEvent, geo: GeoDefaults): 
     })
     .select('id')
     .single()
-  if (error) throw error
+  if (error) throw new Error(mensajeGc(error))
   return { ...evento, id: `vis-${data.id}` }
 }
 

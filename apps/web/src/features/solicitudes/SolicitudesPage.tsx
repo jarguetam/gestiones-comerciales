@@ -1,6 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
+import { quetzales } from '../../lib/formato'
+import { contextoOperacion, mensajeGc } from '../../lib/persistir'
+import { etiquetaVocab } from '../../lib/vocabulario'
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  FilterChips,
+  PageHeader,
+  PAGE,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+  toneDeEstado,
+} from '../../components/ui'
+import { useToast } from '../../components/ui/Toast'
+import { FirmaCanvas } from './FirmaCanvas'
 
 const ESTADOS = ['todas', 'borrador', 'enviada', 'firmada', 'aprobada', 'rechazada'] as const
 
@@ -12,30 +33,33 @@ interface SolicitudDemo {
   descripcion: string
   fecha: string
   pdf?: string
+  firmaPng?: string
+  adjuntos: string[]
 }
 
 const DEMO: SolicitudDemo[] = [
-  { id: 's1', persona: 'Finca El Roble', estado: 'enviada', monto: 25000, descripcion: 'Crédito avío ciclo 2026', fecha: '2026-08-20' },
-  { id: 's2', persona: 'Cooperativa La Esperanza', estado: 'firmada', monto: 48000, descripcion: 'Renovación de línea', fecha: '2026-08-18', pdf: 'documentos/demo/s2.pdf' },
-  { id: 's3', persona: 'Agropecuaria Sur', estado: 'borrador', monto: 12000, descripcion: 'Capital de trabajo', fecha: '2026-08-25' },
-  { id: 's4', persona: 'Distribuidora Norte', estado: 'aprobada', monto: 80000, descripcion: 'Ampliación de cupo', fecha: '2026-08-10', pdf: 'documentos/demo/s4.pdf' },
+  { id: 's1', persona: 'Finca El Roble', estado: 'enviada', monto: 25000, descripcion: 'Crédito avío ciclo 2026', fecha: '2026-08-20', adjuntos: [] },
+  { id: 's2', persona: 'Cooperativa La Esperanza', estado: 'firmada', monto: 48000, descripcion: 'Renovación de línea', fecha: '2026-08-18', pdf: 'documentos/demo/s2.pdf', adjuntos: ['acta.pdf'] },
+  { id: 's3', persona: 'Agropecuaria Sur', estado: 'borrador', monto: 12000, descripcion: 'Capital de trabajo', fecha: '2026-08-25', adjuntos: [] },
+  { id: 's4', persona: 'Distribuidora Norte', estado: 'aprobada', monto: 80000, descripcion: 'Ampliación de cupo', fecha: '2026-08-10', pdf: 'documentos/demo/s4.pdf', adjuntos: ['boleta.png'] },
 ]
 
-function quetzales(n: number) {
-  return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n)
-}
-
 export function SolicitudesPage() {
-  const { fuente, personas } = useDominio()
+  const { fuente, personas, branding } = useDominio()
+  const { push } = useToast()
+  const live = !DEMO_MODE && fuente === 'supabase'
   const [filtro, setFiltro] = useState<(typeof ESTADOS)[number]>('todas')
   const [items, setItems] = useState<SolicitudDemo[]>(DEMO)
   const [detalle, setDetalle] = useState<SolicitudDemo | null>(null)
+  const [firma, setFirma] = useState<string | null>(null)
+  const [avisoPdf, setAvisoPdf] = useState<string | null>(null)
+  const [enviandoPdf, setEnviandoPdf] = useState(false)
 
   useEffect(() => {
-    if (DEMO_MODE || fuente === 'demo') return
+    if (!live) return
     void supabase
       .from('solicitud')
-      .select('id, descripcion, monto, creado_en, persona(nombre), solicitud_estado(codigo), solicitud_firma(pdf_ruta)')
+      .select('id, descripcion, monto, creado_en, persona(nombre), solicitud_estado(codigo), solicitud_firma(pdf_ruta, firma_ruta), solicitud_archivo(ruta)')
       .order('creado_en', { ascending: false })
       .limit(200)
       .then(({ data }) => {
@@ -44,10 +68,11 @@ export function SolicitudesPage() {
           data.map((s) => {
             const persona = s.persona as { nombre?: string } | { nombre?: string }[] | null
             const estado = s.solicitud_estado as { codigo?: string } | { codigo?: string }[] | null
-            const firma = s.solicitud_firma as { pdf_ruta?: string } | { pdf_ruta?: string }[] | null
+            const firmaRow = s.solicitud_firma as { pdf_ruta?: string; firma_ruta?: string } | { pdf_ruta?: string; firma_ruta?: string }[] | null
+            const archivos = s.solicitud_archivo as { ruta?: string }[] | null
             const p = Array.isArray(persona) ? persona[0] : persona
             const e = Array.isArray(estado) ? estado[0] : estado
-            const f = Array.isArray(firma) ? firma[0] : firma
+            const f = Array.isArray(firmaRow) ? firmaRow[0] : firmaRow
             return {
               id: String(s.id),
               persona: p?.nombre ?? '—',
@@ -56,91 +81,154 @@ export function SolicitudesPage() {
               descripcion: String(s.descripcion),
               fecha: String(s.creado_en).slice(0, 10),
               pdf: f?.pdf_ruta,
+              adjuntos: (archivos ?? []).map((a) => String(a.ruta ?? '')).filter(Boolean),
             }
           }),
         )
       })
-  }, [fuente])
+  }, [live])
 
   const visibles = useMemo(
     () => (filtro === 'todas' ? items : items.filter((s) => s.estado === filtro)),
     [filtro, items],
   )
 
+  async function firmarYPdf() {
+    if (!detalle || !firma) return
+    setAvisoPdf(null)
+    setEnviandoPdf(true)
+    try {
+      setItems((prev) => prev.map((s) => (s.id === detalle.id ? { ...s, firmaPng: firma } : s)))
+      setDetalle((d) => (d ? { ...d, firmaPng: firma } : d))
+      if (!live) {
+        setAvisoPdf('Firma guardada en demo. El PDF se genera con la Edge pdf-solicitud en vivo.')
+        push({ tone: 'success', titulo: 'Firma guardada (demo)' })
+        return
+      }
+      const { data, error } = await supabase.functions.invoke('pdf-solicitud', {
+        body: { solicitud_id: Number(detalle.id), firma_base64: firma },
+      })
+      if (error) {
+        const status = (error as { context?: { status?: number } }).context?.status
+        const msg =
+          status === 404
+            ? 'La función pdf-solicitud no está desplegada (404). La firma quedó persistida.'
+            : mensajeGc(error)
+        setAvisoPdf(msg)
+        push({ tone: 'error', titulo: msg })
+        return
+      }
+      const pdf = (data as { pdf_ruta?: string } | null)?.pdf_ruta
+      setAvisoPdf(pdf ? `PDF generado: ${pdf}` : 'Firma enviada.')
+      push({ tone: 'success', titulo: 'PDF de solicitud listo' })
+    } catch (e) {
+      const msg = mensajeGc(e)
+      setAvisoPdf(msg)
+      push({ tone: 'error', titulo: msg })
+    } finally {
+      setEnviandoPdf(false)
+    }
+  }
+
+  async function adjuntar(file: File) {
+    if (!detalle) return
+    if (!live) {
+      setItems((prev) =>
+        prev.map((s) => (s.id === detalle.id ? { ...s, adjuntos: [...s.adjuntos, file.name] } : s)),
+      )
+      setDetalle((d) => (d ? { ...d, adjuntos: [...d.adjuntos, file.name] } : d))
+      push({ tone: 'success', titulo: `Adjunto ${file.name} (demo)` })
+      return
+    }
+    try {
+      const { tenantId } = await contextoOperacion()
+      const path = `${tenantId}/solicitudes/${detalle.id}/${file.name}`
+      const { error: upErr } = await supabase.storage.from('documentos').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { error } = await supabase.from('solicitud_archivo').insert({ solicitud_id: Number(detalle.id), ruta: path })
+      if (error) throw error
+      setDetalle((d) => (d ? { ...d, adjuntos: [...d.adjuntos, path] } : d))
+      push({ tone: 'success', titulo: 'Adjunto subido' })
+    } catch (e) {
+      push({ tone: 'error', titulo: mensajeGc(e) })
+    }
+  }
+
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-06</p>
-        <h2 className="font-serif text-3xl">Solicitudes</h2>
-        <p className="text-sm text-slate-600">
-          Bandeja por estado del flujo. {visibles.length} registros
-          {personas.length ? ` · cartera ${personas.length}` : ''}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {ESTADOS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => setFiltro(e)}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-              filtro === e ? 'bg-brand-700 text-white' : 'bg-white border border-[#E4DCC8] text-slate-600'
-            }`}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
+    <div className={PAGE}>
+      <PageHeader
+        spec="W-06"
+        title={etiquetaVocab(branding, 'solicitud', 'Solicitudes')}
+        description={`Bandeja por estado del flujo. ${visibles.length} registros${personas.length ? ` · cartera ${personas.length}` : ''}`}
+      />
+      <FilterChips opciones={ESTADOS} valor={filtro} onChange={setFiltro} />
+      {visibles.length === 0 ? (
+        <EmptyState titulo="No hay solicitudes" descripcion="Cuando el módulo esté activo, las solicitudes del flujo aparecen aquí." />
+      ) : (
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Persona</th>
-              <th className="px-4 py-3 hidden md:table-cell">Descripción</th>
-              <th className="px-4 py-3">Monto</th>
-              <th className="px-4 py-3">Estado</th>
+              <Th>Fecha</Th>
+              <Th>Persona</Th>
+              <Th className="hidden md:table-cell">Descripción</Th>
+              <Th>Monto</Th>
+              <Th>Estado</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+          </THead>
+          <TBody>
             {visibles.map((s) => (
-              <tr
-                key={s.id}
-                className="hover:bg-[#F8F4EA] cursor-pointer"
-                onClick={() => setDetalle(s)}
-              >
-                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{s.fecha}</td>
-                <td className="px-4 py-3 font-medium">{s.persona}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-slate-600">{s.descripcion}</td>
-                <td className="px-4 py-3">{quetzales(s.monto)}</td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize">
-                    {s.estado}
-                  </span>
-                </td>
-              </tr>
+              <Tr key={s.id} className="cursor-pointer" onClick={() => { setDetalle(s); setFirma(s.firmaPng ?? null); setAvisoPdf(null) }}>
+                <Td className="text-muted whitespace-nowrap">{s.fecha}</Td>
+                <Td className="font-medium">{s.persona}</Td>
+                <Td className="hidden md:table-cell text-muted">{s.descripcion}</Td>
+                <Td>{quetzales(s.monto)}</Td>
+                <Td>
+                  <Badge tone={toneDeEstado(s.estado)}>{s.estado}</Badge>
+                </Td>
+              </Tr>
             ))}
-          </tbody>
-        </table>
-      </div>
-
+          </TBody>
+        </Table>
+      )}
       {detalle && (
-        <div className="rounded-2xl border border-[#E4DCC8] bg-white p-5">
+        <div className="rounded-2xl border border-line bg-surface p-5 space-y-3">
           <div className="flex justify-between gap-3">
-            <h3 className="font-serif text-xl">{detalle.persona}</h3>
-            <button type="button" className="text-sm text-slate-500" onClick={() => setDetalle(null)}>
+            <h3 className="font-display text-xl tracking-tight">{detalle.persona}</h3>
+            <Button variant="ghost" size="sm" onClick={() => setDetalle(null)}>
               Cerrar
-            </button>
+            </Button>
           </div>
-          <p className="text-sm text-slate-600 mt-1">{detalle.descripcion}</p>
-          <p className="mt-2 text-sm">
+          <p className="text-sm text-muted">{detalle.descripcion}</p>
+          <p className="text-sm">
             Monto {quetzales(detalle.monto)} · estado <strong className="capitalize">{detalle.estado}</strong>
           </p>
-          <p className="mt-3 text-xs text-slate-500">
-            Archivos y firma: {detalle.pdf ? `PDF ${detalle.pdf}` : 'sin PDF todavía. La firma (PNG) dispara pdf-solicitud.'}
-          </p>
+          {detalle.adjuntos.length > 0 && (
+            <ul className="text-xs text-muted list-disc pl-4">
+              {detalle.adjuntos.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          )}
+          <div>
+            <label htmlFor="adjunto-solicitud" className="block text-sm font-medium text-ink">
+              Adjunto
+            </label>
+            <input
+              id="adjunto-solicitud"
+              type="file"
+              className="mt-1 text-sm"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void adjuntar(f)
+              }}
+            />
+          </div>
+          <FirmaCanvas onChange={setFirma} disabled={enviandoPdf} />
+          <Button onClick={() => void firmarYPdf()} disabled={!firma || enviandoPdf}>
+            {enviandoPdf ? 'Generando PDF…' : 'Guardar firma y generar PDF'}
+          </Button>
+          {avisoPdf && <Alert tone={avisoPdf.includes('404') || avisoPdf.startsWith('GC-') ? 'warning' : 'success'}>{avisoPdf}</Alert>}
+          {detalle.pdf ? <p className="text-xs text-muted">PDF {detalle.pdf}</p> : null}
         </div>
       )}
     </div>

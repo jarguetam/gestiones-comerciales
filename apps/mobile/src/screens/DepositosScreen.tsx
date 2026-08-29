@@ -1,6 +1,6 @@
 /**
  * M-07 Depósitos (spec frontend). Visible si el módulo depositos está activo.
- * Registrar depósito con referencia (foto de boleta en demo = marca de adjunto).
+ * Registrar depósito con referencia y foto de boleta (cámara o galería).
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import {
@@ -9,7 +9,6 @@ import {
   Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -17,6 +16,8 @@ import * as ImagePicker from 'expo-image-picker'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { Boton, Campo, Card, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 
 interface DepoRow {
   id: number
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export default function DepositosScreen({ perfil }: Props) {
+  const t = useTheme()
   const [items, setItems] = useState<DepoRow[]>([])
   const [mostrar, setMostrar] = useState(false)
   const [monto, setMonto] = useState('')
@@ -53,6 +55,21 @@ export default function DepositosScreen({ perfil }: Props) {
   useEffect(() => {
     void cargar()
   }, [cargar])
+
+  async function adjuntarFoto() {
+    const cam = await ImagePicker.requestCameraPermissionsAsync()
+    const launch =
+      cam.status === 'granted' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
+    if (cam.status !== 'granted') {
+      const gal = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (gal.status !== 'granted') {
+        Alert.alert('Permiso requerido', 'La foto de boleta necesita cámara o galería.')
+        return
+      }
+    }
+    const res = await launch({ quality: 0.7, allowsEditing: true })
+    if (!res.canceled && res.assets[0]?.uri) setFotoUri(res.assets[0].uri)
+  }
 
   async function registrar() {
     const n = Number(monto)
@@ -93,59 +110,38 @@ export default function DepositosScreen({ perfil }: Props) {
 
   return (
     <View style={styles.box}>
-      <TouchableOpacity style={styles.boton} onPress={() => setMostrar(true)}>
-        <Text style={styles.botonTexto}>Registrar depósito</Text>
-      </TouchableOpacity>
+      <Boton etiqueta="Registrar depósito" onPress={() => setMostrar(true)} />
       <FlatList
         data={items}
         keyExtractor={(i) => String(i.id)}
+        ListEmptyComponent={<Vacio titulo="Sin depósitos" descripcion="Registrá el primero con boleta o referencia." />}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <Card>
             <Text style={styles.titulo}>Q {item.monto.toFixed(2)}</Text>
-            <Text style={styles.meta}>
+            <Text style={[styles.meta, { color: t.muted }]}>
               {item.referencia ?? 'sin boleta'} · {item.estado}
             </Text>
-          </View>
+          </Card>
         )}
       />
       <Modal visible={mostrar} animationType="slide">
         <View style={styles.modal}>
           <Text style={styles.h}>Nuevo depósito</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Monto"
-            keyboardType="numeric"
-            value={monto}
-            onChangeText={setMonto}
-          />
-          <TextInput style={styles.input} placeholder="Referencia / boleta" value={ref} onChangeText={setRef} />
+          <Campo label="Monto" placeholder="Monto" keyboardType="numeric" value={monto} onChangeText={setMonto} />
+          <Campo label="Referencia" placeholder="Referencia / boleta" value={ref} onChangeText={setRef} />
           <TouchableOpacity
-            onPress={() => {
-              void (async () => {
-                const cam = await ImagePicker.requestCameraPermissionsAsync()
-                const launch =
-                  cam.status === 'granted'
-                    ? ImagePicker.launchCameraAsync
-                    : ImagePicker.launchImageLibraryAsync
-                if (cam.status !== 'granted') {
-                  const gal = await ImagePicker.requestMediaLibraryPermissionsAsync()
-                  if (gal.status !== 'granted') {
-                    Alert.alert('Permiso requerido', 'La foto de boleta necesita cámara o galería.')
-                    return
-                  }
-                }
-                const res = await launch({ quality: 0.7, allowsEditing: true })
-                if (!res.canceled && res.assets[0]?.uri) setFotoUri(res.assets[0].uri)
-              })()
-            }}
+            onPress={() => void adjuntarFoto()}
+            accessibilityRole="button"
+            accessibilityLabel="Adjuntar foto de boleta"
+            accessibilityState={{ selected: !!fotoUri }}
           >
-            <Text style={styles.link}>{fotoUri ? '✓ Foto de boleta adjunta' : 'Adjuntar foto de boleta'}</Text>
+            <Text style={[styles.link, { color: t.primary }]}>
+              {fotoUri ? '✓ Foto de boleta adjunta' : 'Adjuntar foto de boleta'}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.boton} onPress={() => void registrar()}>
-            <Text style={styles.botonTexto}>Enviar</Text>
-          </TouchableOpacity>
+          <Boton etiqueta="Enviar" onPress={() => void registrar()} />
           <TouchableOpacity onPress={() => setMostrar(false)}>
-            <Text style={styles.link}>Cancelar</Text>
+            <Text style={[styles.link, { color: t.primary }]}>Cancelar</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -154,14 +150,10 @@ export default function DepositosScreen({ perfil }: Props) {
 }
 
 const styles = StyleSheet.create({
-  box: { flex: 1, padding: 12 },
-  boton: { backgroundColor: '#1D4ED8', borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 12 },
-  botonTexto: { color: '#fff', fontWeight: '700' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8 },
+  box: { flex: 1, padding: 12, gap: 12 },
   titulo: { fontWeight: '600' },
-  meta: { color: '#6B7280', marginTop: 4, fontSize: 12 },
+  meta: { marginTop: 4, fontSize: 12 },
   modal: { padding: 20, paddingTop: 56, flex: 1 },
   h: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, marginBottom: 10 },
-  link: { color: '#1D4ED8', fontWeight: '600', marginVertical: 8 },
+  link: { fontWeight: '600', marginVertical: 8 },
 })

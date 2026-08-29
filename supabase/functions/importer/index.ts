@@ -9,6 +9,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { json, handleOptions } from "../_shared/cors.ts";
 import { esXlsx, parseCsv } from "../_shared/csv.ts";
+import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 const TIPOS = new Set(["personas", "cuentas", "catalogos"]);
 const RPC: Record<string, string> = {
@@ -154,6 +155,12 @@ Deno.serve(async (req) => {
       errores: errores.length,
     }));
 
+    await registrarInvocacion(admin, {
+      funcion: "importer",
+      ok: true,
+      duracionMs: Date.now() - inicio,
+      tenantId,
+    });
     const status = filas.length > 2000 ? 202 : 200;
     return json({ tipo, insertados, actualizados, errores, total: filas.length }, status);
   } catch (e) {

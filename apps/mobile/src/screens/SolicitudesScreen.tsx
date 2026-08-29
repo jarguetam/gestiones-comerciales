@@ -2,20 +2,20 @@
  * M-06 Solicitudes/firma (spec frontend). Visible si el módulo solicitudes está activo.
  * Crear, adjuntar nota y firmar (canvas táctil → PNG) vía Edge pdf-solicitud.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   FlatList,
   Modal,
-  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { Boton, Campo, Card, FirmaPad, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 
 const PNG_1X1 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
@@ -32,26 +32,13 @@ interface Props {
 }
 
 export default function SolicitudesScreen({ perfil }: Props) {
+  const t = useTheme()
   const [items, setItems] = useState<SolicitudRow[]>([])
   const [mostrarNueva, setMostrarNueva] = useState(false)
   const [desc, setDesc] = useState('')
   const [monto, setMonto] = useState('')
   const [adjunto, setAdjunto] = useState(false)
   const [firmado, setFirmado] = useState(false)
-  const strokes = useRef(0)
-
-  const pad = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: () => {
-        strokes.current += 1
-      },
-      onPanResponderRelease: () => {
-        if (strokes.current > 4) setFirmado(true)
-      },
-    }),
-  ).current
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
@@ -131,50 +118,42 @@ export default function SolicitudesScreen({ perfil }: Props) {
     setMonto('')
     setAdjunto(false)
     setFirmado(false)
-    strokes.current = 0
     await cargar()
   }
 
   return (
     <View style={styles.box}>
-      <TouchableOpacity style={styles.boton} onPress={() => setMostrarNueva(true)}>
-        <Text style={styles.botonTexto}>Nueva solicitud</Text>
-      </TouchableOpacity>
+      <Boton etiqueta="Nueva solicitud" onPress={() => setMostrarNueva(true)} />
       <FlatList
         data={items}
         keyExtractor={(i) => String(i.id)}
+        ListEmptyComponent={<Vacio titulo="Sin solicitudes" descripcion="Creá la primera con el botón de arriba." />}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <Card>
             <Text style={styles.titulo}>{item.descripcion}</Text>
-            <Text style={styles.meta}>
+            <Text style={[styles.meta, { color: t.muted }]}>
               {item.estado?.nombre ?? item.estado?.codigo} · {item.monto ?? '—'}
             </Text>
-          </View>
+          </Card>
         )}
       />
       <Modal visible={mostrarNueva} animationType="slide">
         <ScrollView contentContainerStyle={styles.modal}>
           <Text style={styles.h}>Crear solicitud</Text>
-          <TextInput style={styles.input} placeholder="Descripción" value={desc} onChangeText={setDesc} />
-          <TextInput
-            style={styles.input}
-            placeholder="Monto"
-            keyboardType="numeric"
-            value={monto}
-            onChangeText={setMonto}
-          />
-          <TouchableOpacity onPress={() => setAdjunto((v) => !v)}>
-            <Text style={styles.link}>{adjunto ? '✓ Adjunto listo' : 'Adjuntar archivo'}</Text>
+          <Campo label="Descripción" placeholder="Descripción" value={desc} onChangeText={setDesc} />
+          <Campo label="Monto" placeholder="Monto" keyboardType="numeric" value={monto} onChangeText={setMonto} />
+          <TouchableOpacity
+            onPress={() => setAdjunto((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: adjunto }}
+          >
+            <Text style={[styles.link, { color: t.primary }]}>{adjunto ? '✓ Adjunto listo' : 'Adjuntar archivo'}</Text>
           </TouchableOpacity>
-          <Text style={styles.label}>Firme en el recuadro</Text>
-          <View style={styles.canvas} {...pad.panHandlers}>
-            <Text style={styles.canvasTxt}>{firmado ? 'Firma capturada (PNG)' : 'Canvas de firma'}</Text>
-          </View>
-          <TouchableOpacity style={styles.boton} onPress={() => void crear()}>
-            <Text style={styles.botonTexto}>Guardar</Text>
-          </TouchableOpacity>
+          <Text style={[styles.label, { color: t.muted }]}>Firme en el recuadro</Text>
+          <FirmaPad onFirmado={setFirmado} />
+          <Boton etiqueta="Guardar" onPress={() => void crear()} />
           <TouchableOpacity onPress={() => setMostrarNueva(false)}>
-            <Text style={styles.link}>Cancelar</Text>
+            <Text style={[styles.link, { color: t.primary }]}>Cancelar</Text>
           </TouchableOpacity>
         </ScrollView>
       </Modal>
@@ -183,26 +162,11 @@ export default function SolicitudesScreen({ perfil }: Props) {
 }
 
 const styles = StyleSheet.create({
-  box: { flex: 1, padding: 12 },
-  boton: { backgroundColor: '#1D4ED8', borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 12 },
-  botonTexto: { color: '#fff', fontWeight: '700' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8 },
+  box: { flex: 1, padding: 12, gap: 12 },
   titulo: { fontWeight: '600' },
-  meta: { color: '#6B7280', marginTop: 4, fontSize: 12 },
+  meta: { marginTop: 4, fontSize: 12 },
   modal: { padding: 20, paddingTop: 56 },
   h: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, marginBottom: 10 },
-  link: { color: '#1D4ED8', fontWeight: '600', marginVertical: 8 },
-  label: { fontSize: 12, color: '#6B7280', marginTop: 8 },
-  canvas: {
-    height: 140,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 8,
-  },
-  canvasTxt: { color: '#9CA3AF' },
+  link: { fontWeight: '600', marginVertical: 8 },
+  label: { fontSize: 12, marginTop: 8 },
 })

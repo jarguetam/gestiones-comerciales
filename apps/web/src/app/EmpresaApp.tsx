@@ -12,18 +12,24 @@ import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from 
 import { persistirPersona, persistirVisita } from '../lib/persistir'
 import { DEMO_MODE } from '../lib/supabase'
 import { BRANDING_DEMO, varsDeBranding, type BrandingTenant } from '../lib/branding'
+import { guardarBrandingCache } from '../lib/brandingPreLogin'
+import { KpiSkeleton, TableSkeleton } from '../components/ui'
 import type { CSSProperties } from 'react'
+import type { AsesorOpcion } from './DominioContext'
 
 const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
 
 export function EmpresaApp() {
   const [fuente, setFuente] = useState<FuenteDominio>('demo')
   const [tenantNombre, setTenantNombre] = useState('AgroMoney S.A.')
+  const [tenantCodigo, setTenantCodigo] = useState<string | undefined>('agromoney')
   const [branding, setBranding] = useState<BrandingTenant>(BRANDING_DEMO)
+  const [configuracion, setConfiguracion] = useState<Record<string, unknown>>({})
   const [aviso, setAviso] = useState<string | undefined>()
   const [eventos, setEventos] = useState<CalendarEvent[]>(INITIAL_EVENTS)
   const [personas, setPersonas] = useState<PersonaItem[]>(INITIAL_PERSONAS)
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_LEADS)
+  const [asesores, setAsesores] = useState<AsesorOpcion[]>([])
   const [modulos, setModulos] = useState<string[]>(['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje'])
   const [catalogos, setCatalogos] = useState<CatalogoActividad[]>(CATALOGO_ACTIVIDADES)
   const [horas, setHoras] = useState<CatalogoHora[]>(CATALOGO_HORAS)
@@ -40,16 +46,23 @@ export function EmpresaApp() {
         if (!vivo) return
         setFuente(d.fuente)
         setTenantNombre(d.tenantNombre)
+        setTenantCodigo(d.tenantCodigo)
         setBranding(d.branding)
+        setConfiguracion(d.configuracion)
         setAviso(d.aviso)
         setPersonas(d.personas)
         setEventos(d.eventos)
         setLeads(d.leads)
+        setAsesores(d.asesores)
         setModulos(d.modulos)
         setCatalogos(d.catalogos)
         setHoras(d.horas)
         setZonas(d.zonas)
         setGeo(d.geo)
+        guardarBrandingCache(d.branding, {
+          host: window.location.hostname,
+          codigo: d.tenantCodigo,
+        })
       })
       .finally(() => {
         if (vivo) setCargando(false)
@@ -99,11 +112,14 @@ export function EmpresaApp() {
     () => ({
       fuente,
       tenantNombre,
+      tenantCodigo,
       branding,
+      configuracion,
       aviso,
       eventos,
       personas,
       leads,
+      asesores,
       modulos,
       catalogos,
       horas,
@@ -112,16 +128,22 @@ export function EmpresaApp() {
       setEventos,
       setPersonas,
       setLeads,
+      setConfiguracion,
       abrirNuevaVisita,
       convertirLead: handleConvertLead,
+      setBranding,
+      setTenantNombre,
     }),
-    [fuente, tenantNombre, branding, aviso, eventos, personas, leads, modulos, catalogos, horas, zonas, geo],
+    [fuente, tenantNombre, tenantCodigo, branding, configuracion, aviso, eventos, personas, leads, asesores, modulos, catalogos, horas, zonas, geo],
   )
 
   if (cargando) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F3EEE4] text-slate-700">
-        Cargando operación…
+      <div className="min-h-screen bg-canvas p-6">
+        <KpiSkeleton />
+        <div className="mt-4">
+          <TableSkeleton />
+        </div>
       </div>
     )
   }
@@ -131,6 +153,7 @@ export function EmpresaApp() {
       <div style={varsDeBranding(branding) as CSSProperties}>
         <AppShell
           tenantNombre={tenantNombre}
+          branding={branding}
           fuente={fuente}
           aviso={aviso}
           modulos={modulos}

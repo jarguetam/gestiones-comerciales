@@ -22,8 +22,8 @@
 
 ## 2. Aplicación Web (admin/supervisor)
 
-Stack: **React 18 + TypeScript + Vite + React Router + TanStack Query + Tailwind + shadcn/ui**,
-`@supabase/supabase-js` como único cliente HTTP.
+Stack: **React 18 + TypeScript + Vite + React Router + Tailwind + kit propio**
+(`apps/web/src/components/ui`; no shadcn), `@supabase/supabase-js` como único cliente HTTP.
 
 ### 2.1 Boot y sesión
 
@@ -156,11 +156,19 @@ Tokens por tenant derivados de `tenant.branding`:
 }
 ```
 
-- **Web:** tokens inyectados como CSS variables (`--gc-primary`, ...) sobre shadcn/ui.
-- **Móvil:** mismo JSON mapeado al tema de React Navigation/StyledDictionary.
+- **Web:** tokens inyectados como CSS variables (`--gc-primary`, `--gc-canvas`, …) sobre el
+  kit propio (`Button`, `Table`, `Dialog`, `Toast`, `EmptyState`, `PageHeader`, …).
+  Neutros fijos; solo el primario (y logo/nombre) vienen de `tenant.branding`.
+- **Backoffice:** misma API de componentes, paleta de plataforma (ink como acento), sin
+  theming por empresa en el chrome.
+- **Móvil:** `ThemeProvider` + primitivos RN (`Boton`, `Campo`, `Card`, `Vacio`, `FirmaPad`).
+- **IDs de spec:** `data-spec="W-03"` (etc.), nunca eyebrows visibles `W-xx`/`P-xx`/`M-xx`.
+- **CRM/Personas desktop (D-UI-1):** kanban y ficha a ancho completo; sin PhoneMockup.
+- **Campo 2026:** Plus Jakarta Sans, canvas `#FAFAF8`, rail 4px del primario, jornada (fecha + % + hora/cliente/estado). Sin Playfair, sin crema `#F3EEE4`, sin pasteles de evento.
 - **Vocabulario por rubro:** `branding.vocabulario` permite renombrar entidades en UI
   (`persona` → "Cliente"/"Punto de venta"/"Asegurado") sin tocar código.
 - Fallback a tokens default si el tenant no define branding completo.
+  Documentación operativa: `docs/frontend/design-system.md`.
 
 ## 5. Estados, errores y feedback
 
@@ -234,7 +242,7 @@ Monorepo con pnpm workspaces; CI separado por app (web deploy a CDN, móvil a EA
 
 ## 10. Checklist de implementación frontend
 
-1. [ ] Design system con tokens multi-tenant + Storybook (3 brandings).
+1. [x] Design system con tokens multi-tenant (kit propio; sin Storybook). Ver `docs/frontend/design-system.md`.
 2. [ ] Supabase client + tipos generados + interceptor de errores GC-*.
 3. [ ] Web: W-01 login+MFA, W-02 dashboard, W-03 visitas (MVP admin).
 4. [ ] Móvil: M-01 login, M-02 agenda, M-04 check-in/out (MVP campo).

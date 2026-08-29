@@ -1,67 +1,83 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { DEMO_MODE, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
+import { BrandMark } from '../components/ui/BrandMark'
+import { cn } from '../lib/cn'
+
+const NAV = [
+  { to: '/', label: 'Empresas', end: true },
+  { to: '/catalogos', label: 'Catálogos' },
+  { to: '/salud', label: 'Salud' },
+  { to: '/seguridad', label: 'MFA' },
+]
 
 export function BackofficeShell() {
   const { session, demo } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [menu, setMenu] = useState(false)
   const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
+
+  useEffect(() => {
+    setMenu(false)
+  }, [location.pathname])
 
   async function cerrarSesion() {
     if (!DEMO_MODE) await supabase.auth.signOut()
     navigate('/login', { replace: true })
   }
 
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      'block rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-campo',
+      isActive ? 'bg-primary text-white' : 'text-ink hover:bg-canvas',
+    )
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <aside className="hidden md:flex w-56 shrink-0 flex-col bg-slate-900 text-slate-100">
-        <div className="px-5 py-5 border-b border-white/10">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-teal-300">Plataforma</p>
-          <h1 className="mt-1 text-lg font-bold">GC Backoffice</h1>
+    <div className="flex min-h-screen bg-canvas text-ink">
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-line bg-surface md:flex">
+        <div className="flex items-center gap-2 border-b border-line px-4 py-5">
+          <BrandMark nombre="GC Platform" compact />
+          <div>
+            <p className="font-display text-base leading-tight tracking-tight">GC Platform</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted">Backoffice</p>
+          </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-teal-700 text-white' : 'text-slate-300 hover:bg-white/5'}`
-            }
-          >
-            Empresas
-          </NavLink>
-          <NavLink
-            to="/catalogos"
-            className={({ isActive }) =>
-              `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-teal-700 text-white' : 'text-slate-300 hover:bg-white/5'}`
-            }
-          >
-            Catálogos
-          </NavLink>
-          <NavLink
-            to="/salud"
-            className={({ isActive }) =>
-              `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-teal-700 text-white' : 'text-slate-300 hover:bg-white/5'}`
-            }
-          >
-            Salud
-          </NavLink>
+        <nav className="flex-1 space-y-0.5 px-2 py-3" aria-label="Principal">
+          {NAV.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-slate-400">
+        <div className="border-t border-line px-4 py-4 text-[11px] text-muted">
           <p className="truncate">{email}</p>
-          <button type="button" onClick={() => void cerrarSesion()} className="mt-2 text-teal-300 hover:text-white">
+          <button type="button" onClick={() => void cerrarSesion()} className="mt-2 min-h-11 text-ink hover:text-primary">
             Salir
           </button>
         </div>
       </aside>
-      <div className="flex-1 min-w-0">
-        <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-3">
-          <span className="font-semibold shrink-0">GC Platform</span>
-          <nav className="flex gap-3 text-xs">
-            <NavLink to="/" end className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Empresas</NavLink>
-            <NavLink to="/catalogos" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Catálogos</NavLink>
-            <NavLink to="/salud" className={({ isActive }) => isActive ? 'text-teal-300' : 'text-slate-300'}>Salud</NavLink>
-          </nav>
+      <div className="min-w-0 flex-1">
+        <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 md:hidden">
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-line px-3 text-sm"
+            onClick={() => setMenu((v) => !v)}
+          >
+            Menú
+          </button>
+          <span className="font-display shrink-0 tracking-tight">GC Platform</span>
         </header>
+        {menu && (
+          <nav className="space-y-1 border-b border-line bg-surface px-3 pb-3 md:hidden" aria-label="Móvil">
+            {NAV.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
         <Outlet />
       </div>
     </div>

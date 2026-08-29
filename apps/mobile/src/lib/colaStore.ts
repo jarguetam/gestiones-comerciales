@@ -5,24 +5,26 @@ import {
   type AltaCola,
   type ItemCola,
 } from './cola'
-import {
-  type AlmacenCola,
-  claveCola,
-  hidratarColaJson,
-  serializarCola,
-} from './colaPersist'
+import type { ColaPersist } from './colaPersistencia'
 
 let items: ItemCola[] = []
+let persist: ColaPersist | null = null
 const listeners = new Set<() => void>()
-let almacen: AlmacenCola | null = null
-let clave = claveCola('anon')
 
 function publicar(next: ItemCola[]) {
   items = next
   for (const fn of listeners) fn()
-  if (almacen) {
-    void almacen.setItem(clave, serializarCola(items))
-  }
+  if (persist) void persist.save(next)
+}
+
+export function configurarPersistencia(p: ColaPersist | null) {
+  persist = p
+}
+
+export async function hidratarDesdePersistencia() {
+  if (!persist) return
+  const loaded = await persist.load()
+  if (loaded && loaded.length > 0) publicar(loaded)
 }
 
 export function leerCola(): ItemCola[] {
@@ -40,29 +42,8 @@ export function hidratarCola(inicial: ItemCola[]) {
   publicar(inicial)
 }
 
-export function configurarPersistencia(store: AlmacenCola | null, userId = 'anon') {
-  almacen = store
-  clave = claveCola(userId)
-}
-
-export async function hidratarDesdeAlmacen(fallback: ItemCola[]): Promise<ItemCola[]> {
-  if (!almacen) {
-    publicar(fallback)
-    return fallback
-  }
-  const raw = await almacen.getItem(clave)
-  const hidratada = hidratarColaJson(raw)
-  const next = hidratada ?? fallback
-  publicar(next)
-  return next
-}
-
 export function resetColaDemo() {
   publicar(demoCola())
-}
-
-export function vaciarCola() {
-  publicar([])
 }
 
 export function encolarMutacion(alta: AltaCola) {

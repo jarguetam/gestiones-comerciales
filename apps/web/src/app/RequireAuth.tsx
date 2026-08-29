@@ -11,7 +11,7 @@ export function RequireAuth({ children }: Props) {
   const location = useLocation()
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-brand-800">Cargando…</div>
+    return <div className="flex min-h-screen items-center justify-center text-ink">Cargando…</div>
   }
 
   if (!session && !demo) {

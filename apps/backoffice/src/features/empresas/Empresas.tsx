@@ -5,6 +5,22 @@ import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { WizardEmpresa } from './WizardEmpresa'
 import { nombreRubro } from './wizard'
 import type { TenantRow } from './types'
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  PAGE,
+  PageHeader,
+  Skeleton,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui'
+import { buttonClass } from '../../components/ui/buttonVariants'
 
 export function Empresas() {
   const { demo } = useAuth()
@@ -33,72 +49,61 @@ export function Empresas() {
   }, [cargar])
 
   return (
-    <main className="mx-auto max-w-7xl p-4">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">P-02</p>
-          <h2 className="text-2xl font-bold text-slate-900">Empresas</h2>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            to="/salud"
-            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Ver salud
-          </Link>
-          <button
-            type="button"
-            onClick={() => setWizardOpen(true)}
-            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-          >
-            + Nueva empresa
-          </button>
-        </div>
-      </div>
+    <main className={PAGE}>
+      <PageHeader
+        spec="P-02"
+        title="Empresas"
+        actions={
+          <>
+            <Link to="/salud" className={buttonClass('secondary')}>
+              Ver salud
+            </Link>
+            <Button onClick={() => setWizardOpen(true)}>+ Nueva empresa</Button>
+          </>
+        }
+      />
       {demo && (
-        <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-          Preview estático — abrí una fila para ver detalle (P-03) y usuarios (P-04).
-        </p>
+        <Alert tone="warning">Preview estático — abrí una fila para ver detalle y usuarios.</Alert>
       )}
       {error && (
-        <p className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        <Alert tone="danger" role="alert">{error}</Alert>
       )}
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Empresa</th>
-              <th className="px-4 py-3">Rubro</th>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {tenants === null ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Cargando…</td></tr>
-            ) : tenants.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Sin empresas todavía. Creá la primera con el wizard.</td></tr>
-            ) : (
-              tenants.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">
-                    <Link to={`/empresas/${t.id}`} className="text-teal-800 hover:underline">
-                      {t.nombre}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{nombreRubro(t.rubro)}</td>
-                  <td className="px-4 py-3">{t.plan}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                      {t.activo ? 'activa' : 'suspendida'}
-                    </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {tenants === null ? (
+        <Skeleton className="h-48 rounded-2xl" />
+      ) : tenants.length === 0 ? (
+        <EmptyState
+          titulo="Sin empresas todavía"
+          descripcion="Creá la primera con el wizard de alta."
+          cta={{ etiqueta: 'Nueva empresa', onClick: () => setWizardOpen(true) }}
+        />
+      ) : (
+        <Table>
+          <THead>
+            <Tr>
+              <Th>Empresa</Th>
+              <Th>Rubro</Th>
+              <Th>Plan</Th>
+              <Th>Estado</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {tenants.map((t) => (
+              <Tr key={t.id}>
+                <Td className="font-medium text-ink">
+                  <Link to={`/empresas/${t.id}`} className="text-primary hover:underline">
+                    {t.nombre}
+                  </Link>
+                </Td>
+                <Td>{nombreRubro(t.rubro)}</Td>
+                <Td>{t.plan}</Td>
+                <Td>
+                  <Badge tone={t.activo ? 'success' : 'neutral'}>{t.activo ? 'activa' : 'suspendida'}</Badge>
+                </Td>
+              </Tr>
+            ))}
+          </TBody>
+        </Table>
+      )}
       {wizardOpen && (
         <WizardEmpresa
           onClose={() => setWizardOpen(false)}

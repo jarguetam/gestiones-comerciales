@@ -1,26 +1,28 @@
 /**
- * M-01 Login. Email + contraseña + TOTP si aal1→aal2.
+ * M-01 Login (spec F1.10/F1.11).
+ * Email + contraseña + TOTP si aal1→aal2. En DEMO_MODE entra un perfil de campo.
  */
 import React, { useState } from 'react'
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native'
-import { supabase, type Perfil, cargarPerfil, resolverClaims } from '../lib/supabase'
-import { requierePasoTotp } from '../lib/mfa'
 import type { Session } from '@supabase/supabase-js'
+import { DEMO_MODE, PERFIL_DEMO, supabase, type Perfil, cargarPerfil, resolverClaims } from '../lib/supabase'
+import { requierePasoTotp } from '../lib/mfa'
+import { resetColaDemo } from '../lib/colaStore'
+import { Boton, Campo, Marca } from '../components/ui'
+import { useTheme } from '../theme'
 
 interface Props {
   onLogin: (perfil: Perfil) => void
 }
 
 export default function LoginScreen({ onLogin }: Props) {
+  const t = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [codigo, setCodigo] = useState('')
@@ -30,10 +32,19 @@ export default function LoginScreen({ onLogin }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
 
+  async function entrarDemo() {
+    resetColaDemo()
+    onLogin(PERFIL_DEMO)
+  }
+
   async function handlePassword() {
     setError(null)
     setCargando(true)
     try {
+      if (DEMO_MODE) {
+        await entrarDemo()
+        return
+      }
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -91,70 +102,71 @@ export default function LoginScreen({ onLogin }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.fondo}
+      style={[styles.fondo, { backgroundColor: t.canvas }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.tarjeta}>
-        <Text style={styles.eyebrow}>Campo</Text>
-        <Text style={styles.titulo}>Gestiones Comerciales</Text>
-        <Text style={styles.subtitulo}>
-          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Asesor de campo'}
+      <View style={[styles.tarjeta, { backgroundColor: t.surface }]}>
+        <View style={styles.marca}>
+          <Marca nombre="Gestiones Comerciales" />
+        </View>
+        <Text style={[styles.titulo, { color: t.ink }]}>Ruta de campo</Text>
+        <Text style={[styles.subtitulo, { color: t.muted }]}>
+          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Jornada del asesor'}
         </Text>
+
+        {DEMO_MODE && (
+          <View style={[styles.demo, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]}>
+            <Text style={[styles.demoTexto, { color: t.warningText }]}>
+              Preview sin backend: el ingreso abre la jornada con datos de demostración.
+            </Text>
+          </View>
+        )}
 
         {paso === 'password' ? (
           <>
-            <TextInput
-              style={styles.input}
+            <Campo
+              label="Email"
               placeholder="Email"
-              placeholderTextColor="#9CA3AF"
               autoCapitalize="none"
               keyboardType="email-address"
               autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
-            <TextInput
-              style={styles.input}
+            <Campo
+              label="Contraseña"
               placeholder="Contraseña"
-              placeholderTextColor="#9CA3AF"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
               onSubmitEditing={() => void handlePassword()}
             />
-            {error && <Text style={styles.error}>{error}</Text>}
-            <TouchableOpacity
-              style={[styles.boton, cargando && styles.botonDeshabilitado]}
+            {error && <Text style={[styles.error, { color: t.danger }]}>{error}</Text>}
+            <Boton
+              etiqueta={DEMO_MODE ? 'Entrar al tablero' : 'Ingresar'}
               onPress={() => void handlePassword()}
-              disabled={cargando || !email || !password}
-            >
-              {cargando ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.botonTexto}>Ingresar</Text>
-              )}
-            </TouchableOpacity>
+              disabled={!DEMO_MODE && (!email || !password)}
+              cargando={cargando}
+            />
           </>
         ) : (
           <>
-            <TextInput
-              style={styles.input}
+            <Campo
+              label="Código MFA"
               placeholder="Código MFA"
-              placeholderTextColor="#9CA3AF"
               keyboardType="number-pad"
               autoComplete="one-time-code"
               value={codigo}
               onChangeText={setCodigo}
               onSubmitEditing={() => void handleTotp()}
             />
-            {error && <Text style={styles.error}>{error}</Text>}
-            <TouchableOpacity
-              style={[styles.boton, cargando && styles.botonDeshabilitado]}
+            {error && <Text style={[styles.error, { color: t.danger }]}>{error}</Text>}
+            <Boton
+              etiqueta="Verificar"
               onPress={() => void handleTotp()}
-              disabled={cargando || !codigo}
-            >
-              {cargando ? <ActivityIndicator color="#fff" /> : <Text style={styles.botonTexto}>Verificar</Text>}
-            </TouchableOpacity>
+              disabled={!codigo}
+              cargando={cargando}
+            />
           </>
         )}
       </View>
@@ -163,9 +175,8 @@ export default function LoginScreen({ onLogin }: Props) {
 }
 
 const styles = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: '#F3F4F6', justifyContent: 'center', padding: 24 },
+  fondo: { flex: 1, justifyContent: 'center', padding: 24 },
   tarjeta: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 28,
     shadowColor: '#000',
@@ -173,27 +184,15 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  eyebrow: { fontSize: 11, color: '#1D4ED8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: 1.4 },
-  titulo: { fontSize: 22, fontWeight: '700', color: '#1D4ED8', textAlign: 'center', marginTop: 4 },
-  subtitulo: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20, marginTop: 2 },
-  input: {
+  marca: { alignItems: 'center', marginBottom: 8 },
+  titulo: { fontSize: 28, fontWeight: '800', letterSpacing: -0.8, textAlign: 'center', marginTop: 4 },
+  subtitulo: { fontSize: 13, textAlign: 'center', marginBottom: 20, marginTop: 2 },
+  demo: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#111827',
-    marginBottom: 12,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 14,
   },
-  error: { color: '#DC2626', fontSize: 13, marginBottom: 10 },
-  boton: {
-    backgroundColor: '#1D4ED8',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  botonDeshabilitado: { opacity: 0.6 },
-  botonTexto: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  demoTexto: { fontSize: 12 },
+  error: { fontSize: 13, marginBottom: 10 },
 })

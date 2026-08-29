@@ -48,3 +48,13 @@ export function demoNotificaciones(): ItemNotificacion[] {
     },
   ]
 }
+
+let inboxDemo: ItemNotificacion[] = demoNotificaciones()
+
+export function estadoDemoNotificaciones(): ItemNotificacion[] {
+  return inboxDemo.map((n) => ({ ...n }))
+}
+
+export function persistirLeidaDemo(id: string): void {
+  inboxDemo = marcarLeida(inboxDemo, id)
+}

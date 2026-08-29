@@ -96,7 +96,7 @@ export function MapaLeaflet({ ultimas, recorrido, clientes, seleccionado, onSele
       ref={el}
       role="application"
       aria-label="Mapa de asesores"
-      className="h-[min(70vh,36rem)] w-full rounded-2xl overflow-hidden border border-[#E4DCC8] bg-[#E8E4DA] isolate relative z-0"
+      className="h-[min(70vh,36rem)] w-full rounded-2xl overflow-hidden border border-line bg-canvas isolate relative z-0"
     />
   )
 }

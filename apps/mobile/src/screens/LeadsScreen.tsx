@@ -20,7 +20,8 @@ import {
   View,
 } from 'react-native'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
-import { colorPrimario } from '../lib/branding'
+import { BadgeEstado, Cargando, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 import NuevaVisitaModal from './NuevaVisitaModal'
 
 interface LeadRow {
@@ -43,26 +44,19 @@ interface EstadoRow {
   es_perdido: boolean
 }
 
-const ESTILO: Record<string, { bg: string; fg: string }> = {
-  nuevo: { bg: '#DBEAFE', fg: '#1D4ED8' },
-  contactado: { bg: '#E0E7FF', fg: '#4338CA' },
-  calificado: { bg: '#FEF3C7', fg: '#B45309' },
-  ganado: { bg: '#D1FAE5', fg: '#047857' },
-  perdido: { bg: '#FEE2E2', fg: '#B91C1C' },
-}
-
 interface Props {
   perfil: Perfil
 }
 
 export default function LeadsScreen({ perfil }: Props) {
+  const t = useTheme()
   const [leads, setLeads] = useState<LeadRow[]>([])
   const [estados, setEstados] = useState<EstadoRow[]>([])
   const [cargando, setCargando] = useState(true)
   const [seleccionado, setSeleccionado] = useState<LeadRow | null>(null)
   const [mostrarNuevo, setMostrarNuevo] = useState(false)
-  const [agendarLead, setAgendarLead] = useState<LeadRow | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  const [agendarLead, setAgendarLead] = useState<LeadRow | null>(null)
 
   // alta
   const [nNombre, setNNombre] = useState('')
@@ -127,12 +121,12 @@ export default function LeadsScreen({ perfil }: Props) {
     setOcupado(true)
     const estadoInicial = estados.find((e) => e.codigo === 'nuevo') ?? estados[0]
     const { error } = await supabase.from('lead').insert({
-      tenant_id: perfil.tenantId,
       nombre: nNombre.trim(),
       telefono: nTelefono.trim(),
       estado_id: estadoInicial?.id,
       monto_estimado: nMonto ? Number(nMonto) : null,
       asesor_id: perfil.id,
+      tenant_id: perfil.tenantId,
     })
     setOcupado(false)
     if (error) {
@@ -153,7 +147,7 @@ export default function LeadsScreen({ perfil }: Props) {
   return (
     <View style={styles.contenedor}>
       {cargando ? (
-        <View style={styles.centro}><ActivityIndicator size="large" color="#1D4ED8" /></View>
+        <View style={styles.centro}><Cargando etiqueta="Cargando leads…" /></View>
       ) : (
         <FlatList
           data={leads}
@@ -161,7 +155,6 @@ export default function LeadsScreen({ perfil }: Props) {
           contentContainerStyle={{ padding: 16 }}
           renderItem={({ item }) => {
             const cod = item.estado?.codigo ?? 'nuevo'
-            const estilo = ESTILO[cod] ?? ESTILO.nuevo
             return (
               <TouchableOpacity style={styles.tarjeta} onPress={() => setSeleccionado(item)}>
                 <View style={{ flex: 1 }}>
@@ -171,24 +164,18 @@ export default function LeadsScreen({ perfil }: Props) {
                     <Text style={styles.monto}>{fmt(item.monto_estimado)}</Text>
                   )}
                 </View>
-                <View style={[styles.badge, { backgroundColor: estilo.bg }]}>
-                  <Text style={[styles.badgeTexto, { color: estilo.fg }]}>
-                    {item.estado?.nombre ?? cod}
-                  </Text>
-                </View>
+                <BadgeEstado estado={item.estado?.nombre ?? cod} />
               </TouchableOpacity>
             )
           }}
           ListEmptyComponent={
-            <Text style={styles.vacio}>
-              {DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'Sin leads asignados.'}
-            </Text>
+            <Vacio titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'Sin leads asignados.'} />
           }
         />
       )}
 
       {/* FAB nuevo */}
-      <TouchableOpacity style={styles.fab} onPress={() => setMostrarNuevo(true)}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: t.primary }]} onPress={() => setMostrarNuevo(true)} accessibilityLabel="Nuevo lead">
         <Text style={styles.fabTexto}>+</Text>
       </TouchableOpacity>
 
@@ -209,19 +196,22 @@ export default function LeadsScreen({ perfil }: Props) {
                 )}
 
                 <View style={styles.filaAcciones}>
-                  <TouchableOpacity style={styles.accion} onPress={() => llamar(seleccionado.telefono)}>
+                  <TouchableOpacity style={[styles.accion, { backgroundColor: t.primary }]} onPress={() => llamar(seleccionado.telefono)}>
                     <Text style={styles.accionTexto}>Llamar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.accion, { backgroundColor: '#047857' }]} onPress={() => whatsapp(seleccionado.telefono)}>
                     <Text style={styles.accionTexto}>WhatsApp</Text>
                   </TouchableOpacity>
                 </View>
+
                 <TouchableOpacity
-                  style={[styles.botonConvertir, { backgroundColor: colorPrimario(perfil.branding) }]}
+                  style={[styles.botonConvertir, { backgroundColor: t.primary }]}
                   onPress={() => {
                     setAgendarLead(seleccionado)
                     setSeleccionado(null)
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Agendar visita"
                 >
                   <Text style={styles.botonConvertirTexto}>Agendar visita</Text>
                 </TouchableOpacity>
@@ -277,9 +267,10 @@ export default function LeadsScreen({ perfil }: Props) {
           </View>
         </View>
       </Modal>
+
       <NuevaVisitaModal
         visible={!!agendarLead}
-        colorPrimario={colorPrimario(perfil.branding)}
+        colorPrimario={t.primary}
         personaNombre={agendarLead?.nombre}
         direccion={agendarLead?.direccion ?? undefined}
         onCerrar={() => setAgendarLead(null)}
@@ -304,7 +295,7 @@ const styles = StyleSheet.create({
   vacio: { textAlign: 'center', color: '#6B7280', marginTop: 40 },
   fab: {
     position: 'absolute', right: 18, bottom: 24, width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#1D4ED8', alignItems: 'center', justifyContent: 'center', elevation: 4,
+    alignItems: 'center', justifyContent: 'center', elevation: 4,
   },
   fabTexto: { color: '#fff', fontSize: 26, marginTop: -2 },
   modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
@@ -313,7 +304,7 @@ const styles = StyleSheet.create({
   modalDetalle: { fontSize: 13, color: '#6B7280', marginTop: 4 },
   convertido: { marginTop: 8, fontSize: 12, color: '#047857', backgroundColor: '#D1FAE5', padding: 8, borderRadius: 8 },
   filaAcciones: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  accion: { flex: 1, backgroundColor: '#1D4ED8', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  accion: { flex: 1, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
   accionTexto: { color: '#fff', fontWeight: '600' },
   seccion: { marginTop: 16, marginBottom: 8, fontSize: 11, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase' },
   filaWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

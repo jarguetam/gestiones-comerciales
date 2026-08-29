@@ -8,12 +8,16 @@ import { DEMO_MODE, supabase } from '../lib/supabase'
 import { useCola } from '../lib/useCola'
 import { sincronizarAhora } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { Card, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 
 interface Props {
   colorPrimario: string
 }
 
 export default function SyncScreen({ colorPrimario }: Props) {
+  const t = useTheme()
+  const primario = colorPrimario || t.primary
   const { items, resumen } = useCola()
   const [syncing, setSyncing] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -34,14 +38,14 @@ export default function SyncScreen({ colorPrimario }: Props) {
 
   return (
     <View style={styles.box}>
-      <Text style={styles.hint}>Cola local · backoff automático</Text>
+      <Text style={[styles.hint, { color: t.muted }]}>Cola local</Text>
       <View style={styles.kpis}>
         <Kpi etiqueta="Pendientes" valor={resumen.pendientes} />
         <Kpi etiqueta="Errores" valor={resumen.errores} />
         <Kpi etiqueta="Enviados" valor={resumen.enviados} />
       </View>
       <TouchableOpacity
-        style={[styles.boton, { backgroundColor: colorPrimario }]}
+        style={[styles.boton, { backgroundColor: primario }]}
         onPress={() => void sync()}
         disabled={syncing}
       >
@@ -51,15 +55,16 @@ export default function SyncScreen({ colorPrimario }: Props) {
       <FlatList
         data={items}
         keyExtractor={(i) => i.id}
+        ListEmptyComponent={<Vacio titulo="Cola vacía" descripcion="No hay mutaciones pendientes." />}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <Card>
             <Text style={styles.tipo}>{item.tipo}</Text>
             <Text style={styles.estado}>
               {item.estado} · intentos {item.intentos}/{item.maxIntentos}
             </Text>
             {item.ultimoError ? <Text style={styles.error}>{item.ultimoError}</Text> : null}
             <Text style={styles.meta}>{item.clienteKey}</Text>
-          </View>
+          </Card>
         )}
       />
     </View>

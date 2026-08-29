@@ -1,21 +1,23 @@
 /**
  * @gc/mobile — App del asesor de campo.
- * Tabs de operación + notificaciones / cola. Theming desde tenant.branding.
+ * Tabs de operación + inbox/cola desde el header. Theming desde tenant.branding.
+ * Producción: cola persistente (SQLite), push FCM, rastreo de jornada y deep links.
  */
 import React, { useEffect, useState } from 'react'
 import {
   AppState,
   Linking,
+  Modal,
   Platform,
-  Pressable,
-  ScrollView,
-  StatusBar as RNStatusBar,
+  SafeAreaView,
+  StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { StatusBar } from 'expo-status-bar'
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
 import AgendaScreen from './screens/AgendaScreen'
 import PersonaScreen from './screens/PersonaScreen'
@@ -27,21 +29,23 @@ import AjustesScreen from './screens/AjustesScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
 import { DEMO_MODE, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
-import { colorPrimario } from './lib/branding'
+import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
-import { demoCola } from './lib/cola'
-import { configurarPersistencia, hidratarDesdeAlmacen, sincronizarAhora } from './lib/colaStore'
+import { demoNotificaciones, contarNoLeidas } from './lib/notificaciones'
+import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
+import { abrirPersistenciaCola } from './lib/abrirCola'
 import { ejecutarDemo, ejecutarMutacion } from './lib/sync'
 import { parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
 import { tokenPushNativo } from './lib/push'
 import { detenerRastreo, iniciarRastreo } from './services/rastreoServicio'
+import { ThemeProvider, useTheme } from './theme'
+import { Cargando, Marca } from './components/ui'
 
 type Tab =
   | 'agenda'
   | 'personas'
   | 'leads'
-  | 'mas'
   | 'formularios'
   | 'solicitudes'
   | 'depositos'
@@ -53,7 +57,6 @@ const TITULOS: Record<Tab, string> = {
   agenda: 'Agenda de hoy',
   personas: 'Cartera',
   leads: 'Mis leads',
-  mas: 'Más',
   formularios: 'Formularios',
   solicitudes: 'Solicitudes',
   depositos: 'Depósitos',
@@ -62,16 +65,15 @@ const TITULOS: Record<Tab, string> = {
   sync: 'Sincronización',
 }
 
-const BARRA: { id: 'agenda' | 'personas' | 'leads' | 'mas'; etiqueta: string }[] = [
-  { id: 'agenda', etiqueta: 'Agenda' },
-  { id: 'personas', etiqueta: 'Cartera' },
-  { id: 'leads', etiqueta: 'Leads' },
-  { id: 'mas', etiqueta: 'Más' },
-]
-
-function tabBarDe(tab: Tab): (typeof BARRA)[number]['id'] {
-  if (tab === 'agenda' || tab === 'personas' || tab === 'leads' || tab === 'mas') return tab
-  return 'mas'
+const ICONOS: Record<string, string> = {
+  agenda: '📅',
+  personas: '👤',
+  leads: '🎯',
+  formularios: '📋',
+  solicitudes: '📄',
+  depositos: '💰',
+  ajustes: '⚙',
+  mas: '⋯',
 }
 
 function claveRastreo(userId: string) {
@@ -80,11 +82,15 @@ function claveRastreo(userId: string) {
 
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
-  const [tab, setTab] = useState<Tab>('agenda')
   const [listo, setListo] = useState(false)
-  const [rastreoOn, setRastreoOn] = useState(true)
-  const [noLeidas, setNoLeidas] = useState(0)
-  const { pendientes } = useCola()
+
+  useEffect(() => {
+    void (async () => {
+      const persist = await abrirPersistenciaCola()
+      configurarPersistencia(persist)
+      await hidratarDesdePersistencia()
+    })()
+  }, [])
 
   useEffect(() => {
     if (DEMO_MODE) {
@@ -104,41 +110,6 @@ export default function App() {
 
   useEffect(() => {
     if (!perfil) return
-    configurarPersistencia(AsyncStorage, perfil.id)
-    void hidratarDesdeAlmacen(DEMO_MODE ? demoCola() : [])
-    void AsyncStorage.getItem(claveRastreo(perfil.id)).then((v) => {
-      setRastreoOn(v !== '0')
-    })
-  }, [perfil?.id])
-
-  useEffect(() => {
-    if (!perfil || DEMO_MODE) return
-    let cancel = false
-    tokenPushNativo()
-      .then((token) => {
-        if (!token || cancel) return
-        return registrarDispositivo(supabase, perfil.id, token)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancel = true
-    }
-  }, [perfil?.id])
-
-  useEffect(() => {
-    if (!perfil || DEMO_MODE) return
-    if (!rastreoOn) {
-      void detenerRastreo(supabase)
-      return
-    }
-    void iniciarRastreo(supabase)
-    return () => {
-      void detenerRastreo(supabase)
-    }
-  }, [perfil, rastreoOn])
-
-  useEffect(() => {
-    if (!perfil) return
     const t = setInterval(() => {
       void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
     }, 30_000)
@@ -153,6 +124,63 @@ export default function App() {
     }
   }, [perfil])
 
+  return (
+    <ThemeProvider branding={perfil?.branding}>
+      {!listo ? (
+        <Cargando etiqueta="Cargando sesión…" />
+      ) : !perfil ? (
+        <View style={{ flex: 1 }}>
+          <LoginScreen onLogin={setPerfil} />
+          <ExpoStatusBar style="dark" />
+        </View>
+      ) : (
+        <Shell perfil={perfil} onLogout={() => setPerfil(null)} />
+      )}
+    </ThemeProvider>
+  )
+}
+
+function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
+  const t = useTheme()
+  const [tab, setTab] = useState<Tab>('agenda')
+  const [mas, setMas] = useState(false)
+  const [rastreoOn, setRastreoOn] = useState(true)
+  const [noLeidas, setNoLeidas] = useState(0)
+  const { pendientes } = useCola()
+  const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
+
+  useEffect(() => {
+    void AsyncStorage.getItem(claveRastreo(perfil.id)).then((v) => {
+      setRastreoOn(v !== '0')
+    })
+  }, [perfil.id])
+
+  useEffect(() => {
+    if (DEMO_MODE) return
+    let cancel = false
+    tokenPushNativo()
+      .then((token) => {
+        if (!token || cancel) return
+        return registrarDispositivo(supabase, perfil.id, token)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancel = true
+    }
+  }, [perfil.id])
+
+  useEffect(() => {
+    if (DEMO_MODE) return
+    if (!rastreoOn) {
+      void detenerRastreo(supabase)
+      return
+    }
+    void iniciarRastreo(supabase)
+    return () => {
+      void detenerRastreo(supabase)
+    }
+  }, [perfil.id, rastreoOn])
+
   useEffect(() => {
     function aplicarUrl(url: string | null) {
       const dest = parseDeepLink(url)
@@ -165,7 +193,10 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!perfil || DEMO_MODE) return
+    if (DEMO_MODE) {
+      setNoLeidas(contarNoLeidas(demoNotificaciones()))
+      return
+    }
     supabase
       .from('notificacion')
       .select('id', { count: 'exact', head: true })
@@ -173,81 +204,83 @@ export default function App() {
       .then(({ count }) => {
         if (typeof count === 'number') setNoLeidas(count)
       })
-  }, [perfil, tab])
+  }, [tab])
 
   async function handleLogout() {
     await detenerRastreo(DEMO_MODE ? undefined : supabase)
-    setPerfil(null)
-    setTab('agenda')
+    onLogout()
   }
 
   async function handleRastreo(next: boolean) {
-    if (!perfil) return
     setRastreoOn(next)
     await AsyncStorage.setItem(claveRastreo(perfil.id), next ? '1' : '0')
   }
 
-  if (!listo) return <View style={styles.fondo} />
-
-  if (!perfil) {
-    return (
-      <View style={styles.fondo}>
-        <LoginScreen onLogin={setPerfil} />
-        <StatusBar style="dark" />
-      </View>
-    )
-  }
-
-  const primario = colorPrimario(perfil.branding)
-  const padTop = Platform.OS === 'ios' ? 54 : (RNStatusBar.currentHeight ?? 24) + 8
-
-  const extras: { id: Tab; etiqueta: string; detalle: string }[] = [
-    { id: 'formularios', etiqueta: 'Formularios', detalle: 'Fichas de campo' },
+  const extras: { id: Tab; etiqueta: string }[] = [
     ...(DEMO_MODE || perfil.modulos.includes('solicitudes')
-      ? [{ id: 'solicitudes' as const, etiqueta: 'Solicitudes', detalle: 'Créditos y trámites' }]
+      ? [{ id: 'solicitudes' as const, etiqueta: 'Solicitudes' }]
       : []),
     ...(DEMO_MODE || perfil.modulos.includes('depositos')
-      ? [{ id: 'depositos' as const, etiqueta: 'Depósitos', detalle: 'Boletas y recaudación' }]
+      ? [{ id: 'depositos' as const, etiqueta: 'Depósitos' }]
       : []),
-    { id: 'notificaciones', etiqueta: 'Avisos', detalle: noLeidas > 0 ? `${noLeidas} sin leer` : 'Notificaciones' },
-    { id: 'sync', etiqueta: 'Cola offline', detalle: pendientes > 0 ? `${pendientes} pendientes` : 'Sincronización' },
-    { id: 'ajustes', etiqueta: 'Ajustes', detalle: perfil.nombre },
+    { id: 'ajustes', etiqueta: 'Ajustes' },
   ]
+  const principales: { id: Tab; etiqueta: string }[] = [
+    { id: 'agenda', etiqueta: 'Agenda' },
+    { id: 'personas', etiqueta: 'Cartera' },
+    { id: 'leads', etiqueta: 'Leads' },
+    { id: 'formularios', etiqueta: 'Fichas' },
+  ]
+  const masActivo = extras.some((e) => e.id === tab)
 
   return (
-    <View style={styles.fondo}>
-      <View style={[styles.header, { backgroundColor: primario, paddingTop: padTop }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: t.canvas }]}>
+      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.line, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 8) : 8 }]}>
+        <Marca nombre={marca} logoUrl={perfil.branding.logo_url} compact />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitulo}>{TITULOS[tab]}</Text>
-          <Text style={styles.headerSub}>{perfil.tenantNombre ?? perfil.nombre}</Text>
+          <Text style={[styles.headerTitulo, { color: t.ink }]}>{TITULOS[tab]}</Text>
+          <Text style={[styles.headerSub, { color: t.muted }]}>{marca}</Text>
         </View>
-        {pendientes > 0 ? (
-          <View style={styles.offlineBadge} accessibilityLabel="Pendientes de sincronizar">
-            <Text style={styles.offlineTexto}>Cola {pendientes}</Text>
-          </View>
-        ) : null}
+        <TouchableOpacity
+          style={[styles.headerBtn, { borderColor: t.line }]}
+          onPress={() => setTab('notificaciones')}
+          accessibilityLabel="Notificaciones"
+          accessibilityState={{ selected: tab === 'notificaciones' }}
+        >
+          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Inbox</Text>
+          {noLeidas > 0 ? (
+            <View style={[styles.badge, { backgroundColor: t.primary }]}>
+              <Text style={styles.badgeTexto}>{noLeidas}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.headerBtn, { borderColor: t.line }]}
+          onPress={() => setTab('sync')}
+          accessibilityLabel="Sincronización"
+          accessibilityState={{ selected: tab === 'sync' }}
+        >
+          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Cola</Text>
+          {pendientes > 0 ? (
+            <View style={[styles.badge, { backgroundColor: t.warn }]}>
+              <Text style={styles.badgeTexto}>{pendientes}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1 }}>
+      {pendientes > 0 ? (
+        <View style={[styles.offline, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]} accessibilityRole="alert">
+          <Text style={[styles.offlineTexto, { color: t.warningText }]}>
+            {pendientes} mutaciones pendientes de enviar
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={[styles.body, { backgroundColor: t.canvas }]}>
         {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
         {tab === 'personas' && <PersonaScreen perfil={perfil} />}
         {tab === 'leads' && <LeadsScreen perfil={perfil} />}
-        {tab === 'mas' && (
-          <ScrollView contentContainerStyle={styles.masLista}>
-            {extras.map((item) => (
-              <Pressable
-                key={item.id}
-                style={styles.masItem}
-                onPress={() => setTab(item.id)}
-                accessibilityRole="button"
-                accessibilityLabel={item.etiqueta}
-              >
-                <Text style={styles.masTitulo}>{item.etiqueta}</Text>
-                <Text style={styles.masDetalle}>{item.detalle}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
         {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}
         {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
         {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
@@ -255,80 +288,126 @@ export default function App() {
           <AjustesScreen
             perfil={perfil}
             rastreoOn={rastreoOn}
-            onRastreo={handleRastreo}
+            onRastreo={(v) => void handleRastreo(v)}
             onLogout={() => void handleLogout()}
             onAbrirCola={() => setTab('sync')}
           />
         )}
         {tab === 'notificaciones' && (
-          <NotificacionesScreen colorPrimario={primario} onDeepLink={(url) => {
-            const dest = parseDeepLink(url)
-            if (dest) setTab(dest.tab)
-          }} />
+          <NotificacionesScreen
+            colorPrimario={t.primary}
+            onDeepLink={(url) => {
+              const dest = parseDeepLink(url)
+              if (dest) setTab(dest.tab)
+            }}
+          />
         )}
-        {tab === 'sync' && <SyncScreen colorPrimario={primario} />}
+        {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
       </View>
 
-      <View style={styles.tabs}>
-        {BARRA.map((t) => {
-          const activa = tabBarDe(tab) === t.id
+      <View style={[styles.tabs, { backgroundColor: t.surface, borderTopColor: t.line }]}>
+        {principales.map((item) => {
+          const activo = tab === item.id
           return (
-            <Pressable
-              key={t.id}
+            <TouchableOpacity
+              key={item.id}
               style={styles.tab}
-              onPress={() => setTab(t.id)}
+              onPress={() => setTab(item.id)}
               accessibilityRole="tab"
-              accessibilityState={{ selected: activa }}
-              accessibilityLabel={t.etiqueta}
+              accessibilityLabel={item.etiqueta}
+              accessibilityState={{ selected: activo }}
             >
-              <Text style={[styles.tabTexto, activa && { color: primario, fontWeight: '800' }]}>{t.etiqueta}</Text>
-            </Pressable>
+              <Text style={{ fontSize: 16 }}>{ICONOS[item.id]}</Text>
+              <Text style={[styles.tabTexto, { color: activo ? t.primary : t.muted, fontWeight: activo ? '700' : '500' }]}>
+                {item.etiqueta}
+              </Text>
+            </TouchableOpacity>
           )
         })}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => setMas(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Más opciones"
+          accessibilityState={{ selected: masActivo }}
+        >
+          <Text style={{ fontSize: 16 }}>{ICONOS.mas}</Text>
+          <Text style={[styles.tabTexto, { color: masActivo ? t.primary : t.muted, fontWeight: masActivo ? '700' : '500' }]}>
+            Más
+          </Text>
+        </TouchableOpacity>
       </View>
-      <StatusBar style="light" />
-    </View>
+
+      <Modal visible={mas} transparent animationType="fade" onRequestClose={() => setMas(false)}>
+        <TouchableOpacity style={styles.masFondo} activeOpacity={1} onPress={() => setMas(false)}>
+          <View style={[styles.masHoja, { backgroundColor: t.surface }]}>
+            {extras.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.masItem}
+                onPress={() => {
+                  setTab(item.id)
+                  setMas(false)
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={item.etiqueta}
+              >
+                <Text style={{ fontSize: 18 }}>{ICONOS[item.id]}</Text>
+                <Text style={[styles.masTexto, { color: t.ink }]}>{item.etiqueta}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <ExpoStatusBar style="dark" />
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: '#F8FAFC' },
+  safe: { flex: 1 },
   header: {
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+    borderBottomWidth: 1,
   },
-  headerTitulo: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  headerSub: { color: 'rgba(255,255,255,0.82)', fontSize: 13, marginTop: 4, fontWeight: '500' },
-  offlineBadge: {
-    backgroundColor: '#F59E0B',
+  headerTitulo: { fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
+  headerSub: { fontSize: 12, marginTop: 2 },
+  headerBtn: {
+    borderWidth: 1,
     borderRadius: 10,
+    minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: 10,
     paddingVertical: 8,
-  },
-  offlineTexto: { color: '#1B2430', fontSize: 11, fontWeight: '800' },
-  masLista: { padding: 16, gap: 10 },
-  masItem: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    minHeight: 64,
+    alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  masTitulo: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  masDetalle: { fontSize: 13, color: '#64748B', marginTop: 4 },
+  headerBtnTexto: { fontSize: 11, fontWeight: '700' },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    borderRadius: 999,
+    minWidth: 16,
+    paddingHorizontal: 4,
+  },
+  badgeTexto: { color: '#fff', fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  offline: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
+  offlineTexto: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  body: { flex: 1 },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    paddingBottom: Platform.OS === 'android' ? 12 : 22,
-    paddingTop: 6,
+    paddingBottom: 8,
   },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
-  tabTexto: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 52, paddingVertical: 8, gap: 2 },
+  tabTexto: { fontSize: 11 },
+  masFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  masHoja: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 28, gap: 4 },
+  masItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  masTexto: { fontSize: 16, fontWeight: '600' },
 })

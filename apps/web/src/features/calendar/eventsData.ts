@@ -102,7 +102,10 @@ export const INITIAL_EVENTS: CalendarEvent[] = [
     personaName: 'Distribuidora La Bendición',
     actividadId: 2,
     subActividadId: 22,
-    estado: 'programada',
+    estado: 'completada',
+    latitud: 14.8345,
+    longitud: -91.5183,
+    completadaEn: '2026-09-14T12:05:00.000Z',
   },
 
   // SEP 16
@@ -138,7 +141,8 @@ export const INITIAL_EVENTS: CalendarEvent[] = [
     personaName: 'Comercial El Progreso',
     actividadId: 4,
     subActividadId: 41,
-    estado: 'programada',
+    estado: 'rechazada',
+    revisadaEn: '2026-09-16T18:00:00.000Z',
   },
   {
     id: 'vis-1005',
@@ -264,7 +268,9 @@ export const INITIAL_EVENTS: CalendarEvent[] = [
     personaName: 'Transportes El Norte',
     actividadId: 1,
     subActividadId: 13,
-    estado: 'programada',
+    estado: 'aprobada',
+    completadaEn: '2026-11-23T16:40:00.000Z',
+    revisadaEn: '2026-11-23T17:10:00.000Z',
   },
   {
     id: 'vis-1012',
@@ -281,7 +287,8 @@ export const INITIAL_EVENTS: CalendarEvent[] = [
     personaName: 'Comercial San Gabriel',
     actividadId: 4,
     subActividadId: 43,
-    estado: 'programada',
+    estado: 'anulada',
+    revisadaEn: '2026-11-23T20:00:00.000Z',
   },
 
   // DIC 1

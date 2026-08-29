@@ -12,6 +12,8 @@ import {
   marcarLeida,
   type ItemNotificacion,
 } from '../lib/notificaciones'
+import { Card, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 
 interface Props {
   colorPrimario: string
@@ -19,6 +21,8 @@ interface Props {
 }
 
 export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Props) {
+  const t = useTheme()
+  const primario = colorPrimario || t.primary
   const [items, setItems] = useState<ItemNotificacion[]>(demoNotificaciones())
   const [error, setError] = useState<string | null>(null)
 
@@ -68,24 +72,25 @@ export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Prop
 
   return (
     <View style={styles.box}>
-      <Text style={styles.hint}>{pendientes} sin leer</Text>
+      <Text style={[styles.hint, { color: t.muted }]}>{pendientes} sin leer</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
         data={items}
         keyExtractor={(n) => n.id}
+        ListEmptyComponent={<Vacio titulo="Sin notificaciones" />}
         renderItem={({ item }) => (
-          <View style={[styles.card, !item.leida && styles.cardNueva]}>
+          <Card style={!item.leida ? { borderColor: primario } : undefined}>
             <Text style={styles.titulo}>{item.titulo}</Text>
             <Text style={styles.cuerpo}>{item.cuerpo}</Text>
             {deepLinkDe(item.datos) ? (
-              <Text style={[styles.link, { color: colorPrimario }]}>{deepLinkDe(item.datos)}</Text>
+              <Text style={[styles.link, { color: primario }]}>{deepLinkDe(item.datos)}</Text>
             ) : null}
             {!item.leida ? (
               <TouchableOpacity onPress={() => void leer(item)}>
-                <Text style={[styles.accion, { color: colorPrimario }]}>Marcar leída</Text>
+                <Text style={[styles.accion, { color: primario }]}>Marcar leída</Text>
               </TouchableOpacity>
             ) : null}
-          </View>
+          </Card>
         )}
       />
     </View>
@@ -94,17 +99,8 @@ export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Prop
 
 const styles = StyleSheet.create({
   box: { flex: 1, padding: 12 },
-  hint: { fontSize: 11, color: '#6B7280', textTransform: 'uppercase', marginBottom: 8 },
+  hint: { fontSize: 11, marginBottom: 8 },
   error: { color: '#B91C1C', marginBottom: 8 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  cardNueva: { borderColor: '#BFDBFE', backgroundColor: '#EFF6FF' },
   titulo: { fontWeight: '700', fontSize: 15, color: '#111827' },
   cuerpo: { color: '#4B5563', marginTop: 4, fontSize: 13 },
   link: { marginTop: 6, fontSize: 11, fontWeight: '600' },
