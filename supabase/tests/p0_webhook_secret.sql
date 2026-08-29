@@ -4,7 +4,7 @@
 -- ============================================================
 begin;
 set search_path = public, extensions;
-select plan(37);
+select plan(44);
 
 create schema if not exists tests;
 
@@ -137,57 +137,87 @@ values
 on conflict (usuario_plataforma_id, tenant_id) do update
 set rol = excluded.rol;
 
--- Prueba real de la rutina de migración sobre fixtures legacy. El CHECK se
--- quita solo dentro de esta transacción pgTAP y se restaura antes de probarlo.
+-- Prueba el guard/capture que EXPAND instala antes de BACKFILL. El CHECK final
+-- se quita solo dentro de esta transacción y se restaura antes del contract.
 alter table public.tenant
   drop constraint tenant_configuracion_sin_webhook_secret;
 
-insert into public.tenant (id, codigo, nombre, rubro, plan, configuracion)
+insert into public.tenant (id, codigo, nombre, rubro, plan)
 values
   (
     '44444444-0000-0000-0000-000000000001',
     'LEGACY-VALID',
     'Legacy válido',
     'agro',
-    'pro',
-    '{"webhook_secret":"legacy-hmac-secret","otra":"conservar"}'::jsonb
+    'pro'
   ),
   (
     '44444444-0000-0000-0000-000000000002',
     'LEGACY-NULL',
     'Legacy null',
     'agro',
-    'pro',
-    '{"webhook_secret":null,"otra":"null"}'::jsonb
+    'pro'
   ),
   (
     '44444444-0000-0000-0000-000000000003',
     'LEGACY-OBJECT',
     'Legacy objeto',
     'agro',
-    'pro',
-    '{"webhook_secret":{"invalido":true},"otra":"objeto"}'::jsonb
+    'pro'
   ),
   (
     '44444444-0000-0000-0000-000000000004',
     'LEGACY-EMPTY',
     'Legacy vacío',
     'agro',
-    'pro',
-    '{"webhook_secret":"","otra":"vacio"}'::jsonb
+    'pro'
+  ),
+  (
+    '44444444-0000-0000-0000-000000000005',
+    'LEGACY-CONCURRENT',
+    'Legacy concurrente',
+    'agro',
+    'pro'
   );
 
-select set_config(
-  'tests.legacy_migrated',
-  private.migrar_webhook_secrets_legacy()::text,
-  true
-);
+insert into public.usuario_plataforma_tenant (
+  usuario_plataforma_id,
+  tenant_id,
+  rol
+)
+values
+  (
+    'dddddddd-0000-0000-0000-000000000005',
+    '44444444-0000-0000-0000-000000000005',
+    'owner'
+  ),
+  (
+    'dddddddd-0000-0000-0000-000000000006',
+    '44444444-0000-0000-0000-000000000005',
+    'soporte'
+  );
 
-select is(
-  current_setting('tests.legacy_migrated')::integer,
-  1,
-  'la rutina migra exactamente el secreto legacy string no vacío'
-);
+-- BACKFILL usa rol postgres sin auth.uid y una marca local a su transacción.
+select set_config('app.webhook_secret_backfill', '1', true);
+update public.tenant
+   set configuracion = case id
+     when '44444444-0000-0000-0000-000000000001'::uuid
+       then '{"webhook_secret":"legacy-hmac-secret","otra":"conservar"}'::jsonb
+     when '44444444-0000-0000-0000-000000000002'::uuid
+       then '{"webhook_secret":null,"otra":"null"}'::jsonb
+     when '44444444-0000-0000-0000-000000000003'::uuid
+       then '{"webhook_secret":{"invalido":true},"otra":"objeto"}'::jsonb
+     when '44444444-0000-0000-0000-000000000004'::uuid
+       then '{"webhook_secret":"","otra":"vacio"}'::jsonb
+     else configuracion
+   end
+ where id in (
+   '44444444-0000-0000-0000-000000000001',
+   '44444444-0000-0000-0000-000000000002',
+   '44444444-0000-0000-0000-000000000003',
+   '44444444-0000-0000-0000-000000000004'
+ );
+select set_config('app.webhook_secret_backfill', '', true);
 
 select is(
   (
@@ -274,12 +304,6 @@ select is(
 );
 
 select is(
-  private.migrar_webhook_secrets_legacy(),
-  0,
-  'la rutina es idempotente al repetirse'
-);
-
-select is(
   (
     select count(*)::integer
       from private.tenant_webhook_secret
@@ -294,9 +318,109 @@ select is(
   'solo existe la referencia del secreto legacy válido'
 );
 
+-- Un JWT de admin tenant no se convierte en "migración" aunque la sesión SQL
+-- sea postgres; el guard exige auth.uid superadmin o la marca de backfill.
+select tests.set_claims(
+  '11111111-1111-1111-1111-111111111111',
+  'admin',
+  'aaaaaaaa-0000-0000-0000-000000000001'
+);
+
+select throws_ok(
+  $$update public.tenant
+       set configuracion = configuracion
+                           || '{"webhook_secret":"bypass-admin"}'::jsonb
+     where id = '44444444-0000-0000-0000-000000000005'$$,
+  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'el guard rechaza bypass por configuracion de admin tenant'
+);
+
+select tests.reset_claims();
+
+-- Owner y soporte sí pueden entrar a admin_tenant_actualizar, pero el trigger
+-- les impide usar configuracion como un RPC alternativo de rotación.
+select tests.set_claims(
+  '11111111-1111-1111-1111-111111111111',
+  'plataforma',
+  'dddddddd-0000-0000-0000-000000000005'
+);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.admin_tenant_actualizar(
+      '44444444-0000-0000-0000-000000000005',
+      '{"configuracion":{"webhook_secret":"bypass-owner"}}'::jsonb
+    )$$,
+  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'el guard rechaza bypass por configuracion de owner'
+);
+
+reset role;
+select tests.reset_claims();
+select tests.set_claims(
+  '11111111-1111-1111-1111-111111111111',
+  'plataforma',
+  'dddddddd-0000-0000-0000-000000000006'
+);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.admin_tenant_actualizar(
+      '44444444-0000-0000-0000-000000000005',
+      '{"configuracion":{"webhook_secret":"bypass-soporte"}}'::jsonb
+    )$$,
+  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'el guard rechaza bypass por configuracion de soporte'
+);
+
+reset role;
+select tests.reset_claims();
+
+-- Una escritura legacy concurrente autorizada sí se captura y se retira.
+select tests.set_claims(
+  '11111111-1111-1111-1111-111111111111',
+  'plataforma',
+  'dddddddd-0000-0000-0000-000000000004'
+);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.admin_tenant_actualizar(
+      '44444444-0000-0000-0000-000000000005',
+      '{"configuracion":{"webhook_secret":"capturado-concurrente","otra":"queda"}}'::jsonb
+    )$$,
+  'el guard captura una escritura legacy de superadmin activo'
+);
+
+reset role;
+select tests.reset_claims();
+
+select is(
+  (
+    select ds.decrypted_secret
+      from private.tenant_webhook_secret tws
+      join vault.decrypted_secrets ds on ds.id = tws.vault_secret_id
+     where tws.tenant_id = '44444444-0000-0000-0000-000000000005'
+  ),
+  'capturado-concurrente',
+  'la captura concurrente conserva plaintext idéntico en Vault'
+);
+
+select is(
+  (
+    select configuracion
+      from public.tenant
+     where id = '44444444-0000-0000-0000-000000000005'
+  ),
+  '{"otra":"queda"}'::jsonb,
+  'la captura concurrente retira solo webhook_secret'
+);
+
 alter table public.tenant
   add constraint tenant_configuracion_sin_webhook_secret
-  check (not (configuracion ? 'webhook_secret'));
+  check (not (configuracion ? 'webhook_secret')) not valid;
+alter table public.tenant
+  validate constraint tenant_configuracion_sin_webhook_secret;
 
 select throws_ok(
   $$update public.tenant
@@ -310,11 +434,27 @@ select throws_ok(
 select is(
   has_function_privilege(
     'authenticated',
-    'private.migrar_webhook_secrets_legacy()',
+    'private.capture_tenant_webhook_secret()',
     'execute'
   ),
   false,
-  'authenticated no puede ejecutar la rutina privada de migración'
+  'authenticated no puede ejecutar la función trigger privada'
+);
+
+select is(
+  has_function_privilege(
+    'service_role',
+    'private.capture_tenant_webhook_secret()',
+    'execute'
+  ),
+  false,
+  'service_role no puede ejecutar la función trigger privada'
+);
+
+select is(
+  to_regprocedure('private.migrar_webhook_secrets_legacy()'),
+  null,
+  'no queda helper one-shot de backfill'
 );
 
 select columns_are(
@@ -513,6 +653,14 @@ select is(
   ),
   'text',
   'admin_webhook_rotar_secret conserva RETURNS text'
+);
+
+select unlike(
+  pg_get_functiondef(
+    'public.integracion_recibir(uuid,text,text,jsonb,text,text,text)'::regprocedure
+  ),
+  'configuracion',
+  'CONTRACT deja integracion_recibir sin fallback a tenant.configuracion'
 );
 
 select is(
