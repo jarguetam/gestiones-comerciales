@@ -7,7 +7,8 @@
 - Firmado con el **keystore de debug** de Android, no con un keystore de producción.
 - **No** está publicado en Google Play ni listo para distribución de tienda.
 - Sirve para instalar a mano y revisar el flujo de campo.
-- Si el build **no** recibió `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY`, la app avisa que es preview DEMO y qué variable faltó. Si las recibió, el cliente apunta a Supabase y el login real está habilitado; **Entrar al tablero** sigue abriendo la jornada de demostración.
+- El APK de esta rama se compiló **con** `EXPO_PUBLIC_SUPABASE_URL` + anon JWT del proyecto `xcoeipsnykceorcvjwve` (la misma anon pública del bundle de GitHub Pages). El cliente está conectado; **Ingresar** usa Supabase Auth y **Entrar al tablero** abre la jornada demo.
+- Si un build **no** recibe esas variables, la app lista exactamente cuáles faltan y sigue dejando entrar en demostración.
 
 Recompilar:
 
