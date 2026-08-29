@@ -22,6 +22,30 @@ Antes de escribir código, SIEMPRE:
 Al terminar: si el PR se mergea, borrar la rama remota
 (`git push origin --delete <rama>`). No dejar ramas huérfanas.
 
+## Spec-Driven Development (features nuevas)
+
+Una **feature nueva** (pantalla, módulo, RPC/Edge, flujo nuevo o cambio de modelo
+de datos) NUNCA empieza por código. Flujo obligatorio, en este orden:
+
+1. **Spec primero.** Crear `openspec/changes/<kebab-del-cambio>/` con:
+   - `proposal.md`: problema, cambio propuesto, impacto, out-of-scope y una sección
+     **"Preguntas de aclaración"**: las dudas concretas para el usuario, cada una con
+     la respuesta que se asume por defecto si no contesta.
+   - `specs/`: requisitos con escenarios WHEN/THEN (mismo formato que
+     `openspec/changes/add-core-platform/specs/`).
+   - `design.md`: decisiones con alternativas, solo si hay trade-offs reales.
+2. **Parar y preguntar.** Entregar el proposal con las preguntas al usuario ANTES de
+   escribir código. Se implementa recién cuando el usuario responde o aprueba
+   explícitamente los supuestos. Si aprueba sin responder alguna pregunta, la
+   respuesta por defecto queda registrada en el proposal como supuesto.
+3. **Plan.** Con las respuestas, escribir `tasks.md`: tareas chicas y verificables,
+   cada una con su criterio de done (test unitario, pgTAP o e2e).
+4. **Implementación.** Un PR por change, referenciando `openspec/changes/<nombre>`
+   en la descripción; marcar los checkboxes de `tasks.md` a medida que se avanza.
+
+No aplica a bugfixes, refactors ni ajustes de copy/estilo: esos siguen la
+gobernanza de ramas normal, sin proposal.
+
 ## UI de campo 2026
 
 Toda pantalla o control nuevo usa el kit en `src/components/ui` (web/backoffice) o
