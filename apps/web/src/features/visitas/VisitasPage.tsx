@@ -1,79 +1,106 @@
 import { useState } from 'react'
 import { useDominio } from '../../app/DominioContext'
+import { Button, FilterChips, PageHeader, PAGE, Table, THead, Th, Td, TBody, Tr, Badge, toneDeEstado, EmptyState } from '../../components/ui'
+import { lineaTiempoVisita } from '../../lib/visitaTimeline'
+import type { CalendarEvent } from '../calendar/types'
+import { cn } from '../../lib/cn'
 
 const ESTADOS = ['todas', 'programada', 'completada', 'aprobada', 'rechazada', 'anulada'] as const
 
 export function VisitasPage() {
   const { eventos, abrirNuevaVisita } = useDominio()
   const [filtro, setFiltro] = useState<(typeof ESTADOS)[number]>('todas')
+  const [detalle, setDetalle] = useState<CalendarEvent | null>(null)
   const visibles =
     filtro === 'todas' ? eventos : eventos.filter((e) => (e.estado ?? 'programada') === filtro)
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-03</p>
-          <h2 className="font-serif text-3xl">Visitas</h2>
-          <p className="text-sm text-slate-600">{visibles.length} registros</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => abrirNuevaVisita()}
-          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Nueva visita
-        </button>
-      </div>
+    <div className={PAGE}>
+      <PageHeader
+        spec="W-03"
+        title="Visitas"
+        description={`${visibles.length} registros`}
+        actions={<Button onClick={() => abrirNuevaVisita()}>Nueva visita</Button>}
+      />
 
-      <div className="flex flex-wrap gap-2">
-        {ESTADOS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => setFiltro(e)}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-              filtro === e ? 'bg-brand-700 text-white' : 'bg-white border border-[#E4DCC8] text-slate-600'
-            }`}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
+      <FilterChips opciones={ESTADOS} valor={filtro} onChange={setFiltro} />
 
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
-            <tr>
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Visita</th>
-              <th className="px-4 py-3 hidden md:table-cell">Cliente</th>
-              <th className="px-4 py-3 hidden lg:table-cell">Lugar</th>
-              <th className="px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {visibles.map((v) => (
-              <tr key={v.id} className="hover:bg-[#F8F4EA]">
-                <td className="px-4 py-3 whitespace-nowrap text-slate-600">
-                  {v.date}
-                  <span className="block text-[11px]">{v.startTime}</span>
-                </td>
-                <td className="px-4 py-3 font-medium">{v.title}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-slate-600">{v.personaName ?? '—'}</td>
-                <td className="px-4 py-3 hidden lg:table-cell text-slate-500 truncate max-w-xs">
-                  {v.location ?? '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize">
-                    {v.estado ?? 'programada'}
-                  </span>
-                </td>
+      {visibles.length === 0 ? (
+        <EmptyState
+          titulo="No hay visitas con este filtro"
+          descripcion="Programá la jornada o importá tu cartera para agendar."
+          cta={{ etiqueta: 'Nueva visita', onClick: () => abrirNuevaVisita() }}
+        />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+          <Table>
+            <THead>
+              <tr>
+                <Th>Fecha</Th>
+                <Th>Visita</Th>
+                <Th className="hidden md:table-cell">Cliente</Th>
+                <Th className="hidden lg:table-cell">Lugar</Th>
+                <Th>Estado</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </THead>
+            <TBody>
+              {visibles.map((v) => (
+                <Tr
+                  key={v.id}
+                  className={cn('cursor-pointer', detalle?.id === v.id && 'bg-canvas')}
+                  onClick={() => setDetalle(v)}
+                >
+                  <Td className="whitespace-nowrap text-muted">
+                    {v.date}
+                    <span className="block text-[11px]">{v.startTime}</span>
+                  </Td>
+                  <Td className="font-medium">{v.title}</Td>
+                  <Td className="hidden md:table-cell text-muted">{v.personaName ?? '—'}</Td>
+                  <Td className="hidden lg:table-cell text-muted truncate max-w-xs">{v.location ?? '—'}</Td>
+                  <Td>
+                    <Badge tone={toneDeEstado(v.estado)}>{v.estado ?? 'programada'}</Badge>
+                  </Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+
+          <aside className="rounded-2xl border border-line bg-surface p-5 h-fit">
+            {detalle ? (
+              <>
+                <h3 className="font-serif text-xl">{detalle.title}</h3>
+                <p className="mt-1 text-sm text-muted">
+                  {detalle.personaName ?? 'Sin cliente'} · {detalle.date} {detalle.startTime}
+                </p>
+                {detalle.location ? <p className="mt-1 text-sm text-muted">{detalle.location}</p> : null}
+                {detalle.notes ? <p className="mt-3 text-sm">{detalle.notes}</p> : null}
+                {detalle.checkinGps ? (
+                  <p className="mt-2 text-xs text-muted">
+                    Check-in GPS {detalle.checkinGps.lat.toFixed(4)}, {detalle.checkinGps.lng.toFixed(4)}
+                  </p>
+                ) : null}
+                <ol className="mt-4 space-y-2">
+                  {lineaTiempoVisita(detalle.estado).map((paso) => (
+                    <li key={paso.clave} className="flex items-center gap-2 text-sm">
+                      <span
+                        className={cn(
+                          'h-2.5 w-2.5 rounded-full',
+                          paso.fase === 'hecho' && 'bg-emerald-600',
+                          paso.fase === 'actual' && 'bg-primary',
+                          paso.fase === 'pendiente' && 'bg-line',
+                        )}
+                      />
+                      <span className={paso.fase === 'pendiente' ? 'text-muted' : 'font-medium'}>{paso.etiqueta}</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <p className="text-sm text-muted">Elegí una visita para ver el detalle y la línea de tiempo.</p>
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   )
 }

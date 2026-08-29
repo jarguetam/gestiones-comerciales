@@ -1,8 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { BRANDING_DEMO, nombreComercial } from '../../lib/branding'
 import { requierePasoTotp } from './mfa'
+import { BrandMark } from '../../components/ui/BrandMark'
+import { Button } from '../../components/ui/Button'
+import { Input } from '../../components/ui/Field'
+import { Alert } from '../../components/ui/Alert'
+import { mensajeToast } from '../../lib/erroresUi'
 
+/**
+ * Login (W-01). El branding de tenant por dominio no se resuelve antes de sesión
+ * (no hay lookup público de host → tenant). En DEMO_MODE se muestra el branding
+ * de demostración. En vivo, el tema se aplica en el shell tras cargarDominio.
+ */
 export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,6 +24,8 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const branding = DEMO_MODE ? BRANDING_DEMO : null
+  const marca = branding ? nombreComercial(branding, 'Gestiones Comerciales') : 'Gestiones Comerciales'
 
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
@@ -40,7 +53,8 @@ export function Login() {
       }
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de autenticación')
+      const t = mensajeToast(err)
+      setError(t.descripcion ? `${t.titulo} (${t.descripcion})` : t.titulo)
     } finally {
       setLoading(false)
     }
@@ -56,88 +70,72 @@ export function Login() {
       if (error) throw error
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Código MFA inválido')
+      const t = mensajeToast(err)
+      setError(t.descripcion ? `${t.titulo} (${t.descripcion})` : t.titulo)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#1B2430] flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl bg-[#F3EEE4] p-8 shadow-xl">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-brand-700">Ruta de campo</p>
-        <h1 className="mt-2 font-serif text-3xl text-slate-900">Gestiones Comerciales</h1>
-        <p className="mt-1 text-sm text-slate-600">
+    <div className="min-h-screen bg-ink flex items-center justify-center p-6" data-spec="W-01">
+      <div className="w-full max-w-md rounded-2xl bg-canvas p-8 shadow-xl">
+        <div className="flex items-center gap-3">
+          <BrandMark nombre={marca} logoUrl={branding?.logo_url} />
+          <div>
+            <h1 className="font-serif text-3xl text-ink">Gestiones Comerciales</h1>
+            <p className="text-sm text-muted">{marca}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Entrá a la operación de tu empresa.'}
         </p>
         {DEMO_MODE && (
-          <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Preview sin backend: el ingreso abre el tablero con datos de demostración.
-          </p>
+          <div className="mt-4">
+            <Alert tone="warning">Preview sin backend: el ingreso abre el tablero con datos de demostración.</Alert>
+          </div>
         )}
         {paso === 'password' ? (
           <form onSubmit={(e) => void handlePassword(e)} className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                required={!DEMO_MODE}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required={!DEMO_MODE}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-brand-700 py-2.5 font-semibold text-white disabled:opacity-50"
-            >
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              autoComplete="username"
+              required={!DEMO_MODE}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Input
+              id="password"
+              label="Contraseña"
+              type="password"
+              autoComplete="current-password"
+              required={!DEMO_MODE}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {error && <Alert tone="danger" role="alert">{error}</Alert>}
+            <Button type="submit" size="lg" disabled={loading}>
               {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar al tablero' : 'Ingresar'}
-            </button>
+            </Button>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="totp" className="block text-sm font-medium text-slate-700">
-                Código MFA
-              </label>
-              <input
-                id="totp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                required
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 tracking-widest"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-brand-700 py-2.5 font-semibold text-white disabled:opacity-50"
-            >
+            <Input
+              id="totp"
+              label="Código MFA"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              className="tracking-widest"
+            />
+            {error && <Alert tone="danger" role="alert">{error}</Alert>}
+            <Button type="submit" size="lg" disabled={loading}>
               {loading ? 'Verificando…' : 'Verificar'}
-            </button>
+            </Button>
           </form>
         )}
       </div>

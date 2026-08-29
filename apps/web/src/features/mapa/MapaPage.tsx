@@ -13,6 +13,7 @@ import { useDominio } from '../../app/DominioContext'
 import { useAuth } from '../auth/useAuth'
 import { MapaLeaflet } from './MapaLeaflet'
 import { CLIENTES_DEMO, SUPERVISORES_DEMO, puntosDemo, type ClienteMapa, type SupervisorOpcion } from './puntosDemo'
+import { Alert, PageHeader, PAGE, Table, THead, Th, TBody, Tr, Td, EmptyState } from '../../components/ui'
 
 function hoyLocal(): string {
   const d = new Date()
@@ -137,38 +138,26 @@ export function MapaPage() {
 
   if (!puede) {
     return (
-      <div className="max-w-lg rounded-2xl border border-[#E4DCC8] bg-white p-6">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-14</p>
-        <h2 className="font-serif text-2xl mt-1">Sin acceso al mapa</h2>
-        <p className="text-sm text-slate-600 mt-2">El mapa de asesores es para supervisor, gerente y admin.</p>
+      <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-14">
+        <h2 className="font-serif text-2xl">Sin acceso al mapa</h2>
+        <p className="text-sm text-muted mt-2">El mapa de asesores es para supervisor, gerente y admin.</p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-14</p>
-        <h2 className="font-serif text-3xl">Mapa de asesores</h2>
-        <p className="text-sm text-slate-600">
-          Última posición y recorrido del día. Teselas OpenStreetMap.
-        </p>
-      </div>
-
-      {error && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+    <div className={PAGE}>
+      <PageHeader spec="W-14" title="Mapa de asesores" description="Última posición y recorrido del día. Teselas OpenStreetMap." />
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {!live && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Alert tone="warning">
           Modo demo: recorridos de campo en Escuintla, Guatemala y Quetzaltenango. Sin GPS real.
-        </p>
+        </Alert>
       )}
 
       <div className="flex flex-wrap gap-3 items-end">
         <div className="text-sm">
-          <label htmlFor="mapa-fecha" className="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+          <label htmlFor="mapa-fecha" className="block text-[11px] uppercase tracking-wide text-muted mb-1">
             Fecha
           </label>
           <input
@@ -176,19 +165,19 @@ export function MapaPage() {
             type="date"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
-            className="rounded-lg border border-[#E4DCC8] bg-white px-3 py-2 text-sm"
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           />
         </div>
         {mostrarFiltro && (
           <div className="text-sm">
-            <label htmlFor="filtro-equipo" className="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">
+            <label htmlFor="filtro-equipo" className="block text-[11px] uppercase tracking-wide text-muted mb-1">
               Equipo
             </label>
             <select
               id="filtro-equipo"
               value={equipo}
               onChange={(e) => setEquipo(e.target.value)}
-              className="rounded-lg border border-[#E4DCC8] bg-white px-3 py-2 text-sm min-w-[12rem]"
+              className="rounded-lg border border-line bg-surface px-3 py-2 text-sm min-w-[12rem]"
             >
               <option value="">Todos los equipos</option>
               {supervisores.map((s) => (
@@ -209,47 +198,34 @@ export function MapaPage() {
         onSelect={setSeleccionado}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <div className="border-b border-[#E4DCC8] bg-[#EFE8D8] px-4 py-3">
-          <h3 className="text-sm font-semibold">Asesores en campo</h3>
-          <p className="text-xs text-slate-600">{ultimas.length} con posición · clic para ver recorrido</p>
-        </div>
-        <table className="w-full text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-wide text-slate-600">
+      {ultimas.length === 0 ? (
+        <EmptyState titulo="No hay rastreo para esta fecha" descripcion="Elegí otro día o quitá el filtro de equipo." />
+      ) : (
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Asesor</th>
-              <th className="px-4 py-3">Rol</th>
-              <th className="px-4 py-3">Última</th>
-              <th className="px-4 py-3 hidden md:table-cell">Puntos</th>
+              <Th>Asesor</Th>
+              <Th>Rol</Th>
+              <Th>Última</Th>
+              <Th className="hidden md:table-cell">Puntos</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {ultimas.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-slate-500">
-                  No hay rastreo para esta fecha
-                  {equipo ? ' y este equipo' : ''}.
-                </td>
-              </tr>
-            ) : (
-              ultimas.map((p) => (
-                <tr
-                  key={p.usuarioId}
-                  className={`cursor-pointer hover:bg-[#F8F4EA] ${p.usuarioId === seleccionado ? 'bg-purple-50' : ''}`}
-                  onClick={() => setSeleccionado(p.usuarioId)}
-                >
-                  <td className="px-4 py-3 font-medium">{p.nombre}</td>
-                  <td className="px-4 py-3 capitalize text-slate-600">{p.rol}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{horaCorta(p.registradoEn)}</td>
-                  <td className="px-4 py-3 hidden md:table-cell text-slate-500">
-                    {recorridoDe(visibles, p.usuarioId).length}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
+          </THead>
+          <TBody>
+            {ultimas.map((p) => (
+              <Tr
+                key={p.usuarioId}
+                className={`cursor-pointer ${p.usuarioId === seleccionado ? 'bg-canvas' : ''}`}
+                onClick={() => setSeleccionado(p.usuarioId)}
+              >
+                <Td className="font-medium">{p.nombre}</Td>
+                <Td className="capitalize text-muted">{p.rol}</Td>
+                <Td className="whitespace-nowrap">{horaCorta(p.registradoEn)}</Td>
+                <Td className="hidden md:table-cell text-muted">{recorridoDe(visibles, p.usuarioId).length}</Td>
+              </Tr>
+            ))}
+          </TBody>
+        </Table>
+      )}
     </div>
   )
 }

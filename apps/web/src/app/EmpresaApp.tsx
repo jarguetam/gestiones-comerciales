@@ -114,13 +114,15 @@ export function EmpresaApp() {
       setLeads,
       abrirNuevaVisita,
       convertirLead: handleConvertLead,
+      setBranding,
+      setTenantNombre,
     }),
     [fuente, tenantNombre, branding, aviso, eventos, personas, leads, modulos, catalogos, horas, zonas, geo],
   )
 
   if (cargando) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F3EEE4] text-slate-700">
+      <div className="flex min-h-screen items-center justify-center bg-canvas text-ink">
         Cargando operación…
       </div>
     )
@@ -131,6 +133,7 @@ export function EmpresaApp() {
       <div style={varsDeBranding(branding) as CSSProperties}>
         <AppShell
           tenantNombre={tenantNombre}
+          branding={branding}
           fuente={fuente}
           aviso={aviso}
           modulos={modulos}

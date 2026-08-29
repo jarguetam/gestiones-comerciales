@@ -4,6 +4,8 @@ import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_ATTENDEES } from '../even
 import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
 import type { CatalogoActividad, CatalogoHora } from '../../../lib/catalogos'
 import { errorAltaPersona, mensajeGc } from '../../../lib/persistirHelpers'
+import { Dialog } from '../../../components/ui/Dialog'
+import { Button } from '../../../components/ui/Button'
 
 interface NewEventModalProps {
   onClose: () => void
@@ -179,25 +181,8 @@ export function NewEventModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-serif italic text-white tracking-wide">
-            Nueva Visita / Gestión
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10"
-            aria-label="Cerrar modal"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Form body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-sm">
+    <Dialog title="Nueva Visita / Gestión" onClose={onClose} className="max-w-md">
+      <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-sm">
           {/* Tipo de Actividad (dropdown) */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
@@ -328,7 +313,7 @@ export function NewEventModal({
           {/* Persona / Cliente (dropdown de la cartera + alta inline) */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-700">
+              <label htmlFor="visita-cliente" className="block text-xs font-semibold text-slate-700">
                 Cliente *
               </label>
               <button
@@ -347,6 +332,7 @@ export function NewEventModal({
             {!mostrarAlta ? (
               <>
                 <select
+                  id="visita-cliente"
                   value={personaId}
                   onChange={(e) => setPersonaId(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
@@ -418,7 +404,7 @@ export function NewEventModal({
                 <button
                   type="button"
                   onClick={() => void handleRegistrarPersona()}
-                  className="w-full py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition-colors"
+                  className="w-full py-2 rounded-lg bg-primary hover:opacity-90 text-white text-xs font-semibold transition-colors"
                 >
                   Registrar y usar en esta visita
                 </button>
@@ -485,25 +471,13 @@ export function NewEventModal({
             </p>
           )}
 
-          {/* Footer Buttons */}
           <div className="pt-2 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="px-5 py-2 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-xl shadow-md transition-all disabled:opacity-50"
-            >
+            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" disabled={guardando}>
               {guardando ? 'Guardando…' : 'Guardar visita'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Dialog>
   )
 }

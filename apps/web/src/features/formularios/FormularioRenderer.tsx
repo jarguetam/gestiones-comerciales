@@ -1,7 +1,5 @@
 import type { CampoEsquema } from '../../lib/formulario'
-
-const INPUT =
-  'mt-1 w-full rounded-lg border border-[#E4DCC8] bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand-700 focus:outline-none focus:ring-1 focus:ring-brand-700'
+import { fieldClass } from '../../components/ui'
 
 interface Props {
   campos: CampoEsquema[]
@@ -26,7 +24,7 @@ export function FormularioRenderer({ campos, valores, onChange, disabled }: Prop
                 checked={valor === true}
                 disabled={disabled}
                 onChange={(e) => onChange(campo.clave, e.target.checked)}
-                className="h-4 w-4 accent-brand-700"
+                className="h-4 w-4 accent-primary"
               />
               {campo.etiqueta}
               {requerido}
@@ -36,14 +34,14 @@ export function FormularioRenderer({ campos, valores, onChange, disabled }: Prop
 
         return (
           <div key={campo.clave}>
-            <label htmlFor={campo.clave} className="block text-sm font-medium text-slate-700">
+            <label htmlFor={campo.clave} className="block text-sm font-medium text-ink">
               {campo.etiqueta}
               {requerido}
             </label>
             {campo.tipo === 'seleccion' ? (
               <select
                 id={campo.clave}
-                className={INPUT}
+                className={fieldClass}
                 disabled={disabled}
                 value={typeof valor === 'string' ? valor : ''}
                 onChange={(e) => onChange(campo.clave, e.target.value || undefined)}
@@ -59,7 +57,7 @@ export function FormularioRenderer({ campos, valores, onChange, disabled }: Prop
               <input
                 id={campo.clave}
                 type="number"
-                className={INPUT}
+                className={fieldClass}
                 disabled={disabled}
                 min={campo.min}
                 max={campo.max}
@@ -74,7 +72,7 @@ export function FormularioRenderer({ campos, valores, onChange, disabled }: Prop
               <input
                 id={campo.clave}
                 type="date"
-                className={INPUT}
+                className={fieldClass}
                 disabled={disabled}
                 value={typeof valor === 'string' ? valor : ''}
                 onChange={(e) => onChange(campo.clave, e.target.value || undefined)}
@@ -83,7 +81,7 @@ export function FormularioRenderer({ campos, valores, onChange, disabled }: Prop
               <input
                 id={campo.clave}
                 type="text"
-                className={INPUT}
+                className={fieldClass}
                 disabled={disabled}
                 value={typeof valor === 'string' ? valor : ''}
                 onChange={(e) => onChange(campo.clave, e.target.value || undefined)}

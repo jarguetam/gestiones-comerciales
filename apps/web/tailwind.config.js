@@ -8,6 +8,12 @@ export default {
         sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       colors: {
+        canvas: 'var(--gc-canvas)',
+        surface: 'var(--gc-surface)',
+        line: 'var(--gc-border)',
+        ink: 'var(--gc-ink)',
+        muted: 'var(--gc-muted)',
+        primary: 'var(--gc-primary)',
         brand: {
           50: '#FAF5FF',
           100: '#F3E8FF',
@@ -40,9 +46,7 @@ export default {
         },
       },
       boxShadow: {
-        phone: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 12px #0f172a, 0 0 0 14px #334155',
-        'phone-sm': '0 20px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 8px #0f172a',
-        fab: '0 8px 24px -4px rgba(109, 40, 217, 0.5)',
+        fab: '0 8px 24px -4px color-mix(in srgb, var(--gc-primary) 50%, transparent)',
       },
     },
   },

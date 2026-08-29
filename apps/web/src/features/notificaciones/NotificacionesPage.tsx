@@ -7,6 +7,8 @@ import {
   marcarLeida,
   type ItemNotificacion,
 } from './notificaciones'
+import { Alert, Button, EmptyState, PageHeader } from '../../components/ui'
+import { cn } from '../../lib/cn'
 
 export function NotificacionesPage() {
   const { fuente } = useDominio()
@@ -53,42 +55,37 @@ export function NotificacionesPage() {
   const pendientes = contarNoLeidas(items)
 
   return (
-    <div className="max-w-xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-13</p>
-        <h2 className="font-serif text-3xl">Notificaciones</h2>
-        <p className="text-sm text-slate-600">
-          Centro in-app · {pendientes} sin leer
-        </p>
-      </div>
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
-      <ul className="space-y-3">
-        {items.map((n) => (
-          <li
-            key={n.id}
-            className={`rounded-2xl border p-4 ${n.leida ? 'border-slate-100 bg-white' : 'border-purple-100 bg-purple-50/40'}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold">{n.titulo}</h3>
-                <p className="text-sm text-slate-600 mt-1">{n.cuerpo}</p>
-                <p className="text-[11px] text-slate-400 mt-2">{new Date(n.creado_en).toLocaleString()}</p>
-              </div>
-              {!n.leida && (
-                <button
-                  type="button"
-                  onClick={() => void leer(n.id)}
-                  className="shrink-0 text-xs font-semibold text-brand-700"
-                >
-                  Marcar leída
-                </button>
+    <div className="mx-auto w-full max-w-xl space-y-4">
+      <PageHeader spec="W-13" title="Notificaciones" description={`Centro in-app · ${pendientes} sin leer`} />
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {items.length === 0 ? (
+        <EmptyState titulo="No hay notificaciones" descripcion="Cuando haya avisos de visitas o asignaciones aparecen aquí." />
+      ) : (
+        <ul className="space-y-3">
+          {items.map((n) => (
+            <li
+              key={n.id}
+              className={cn(
+                'rounded-2xl border p-4',
+                n.leida ? 'border-line bg-surface' : 'border-primary/30 bg-canvas',
               )}
-            </div>
-          </li>
-        ))}
-      </ul>
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">{n.titulo}</h3>
+                  <p className="text-sm text-muted mt-1">{n.cuerpo}</p>
+                  <p className="text-[11px] text-muted mt-2">{new Date(n.creado_en).toLocaleString()}</p>
+                </div>
+                {!n.leida && (
+                  <Button variant="ghost" size="sm" onClick={() => void leer(n.id)}>
+                    Marcar leída
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

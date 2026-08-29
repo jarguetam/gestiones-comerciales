@@ -4,18 +4,22 @@ import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { CatalogoActividad, CatalogoHora, ZonaCatalogo } from '../../lib/catalogos'
 import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS } from '../calendar/eventsData'
 import { useDominio } from '../../app/DominioContext'
+import { Alert, BrandMark, Button, Input, PageHeader, PAGE, Tabs, TabPanel } from '../../components/ui'
+import { useToast } from '../../components/ui/Toast'
+import { colorCssValido, logoUrlValido, type BrandingTenant } from '../../lib/branding'
+import { fieldClass } from '../../components/ui'
 
 const ZONAS_DEMO: ZonaCatalogo[] = [
   { id: 1, codigo: 'Z1', nombre: 'Zona Centro', activo: true },
   { id: 2, codigo: 'Z2', nombre: 'Zona Sur', activo: true },
 ]
 
-type Tab = 'actividades' | 'zonas' | 'horarios'
+type Tab = 'branding' | 'actividades' | 'zonas' | 'horarios'
 
 export function CatalogosPage() {
   const { fuente } = useDominio()
   const live = !DEMO_MODE && fuente === 'supabase'
-  const [tab, setTab] = useState<Tab>('actividades')
+  const [tab, setTab] = useState<Tab>('branding')
   const [actividades, setActividades] = useState<CatalogoActividad[]>(CATALOGO_ACTIVIDADES)
   const [zonas, setZonas] = useState<ZonaCatalogo[]>(ZONAS_DEMO)
   const [horas, setHoras] = useState<CatalogoHora[]>(CATALOGO_HORAS)
@@ -52,51 +56,113 @@ export function CatalogosPage() {
   }, [cargar])
 
   return (
-    <div className="max-w-4xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-10</p>
-        <h2 className="font-serif text-3xl">Configuración</h2>
-        <p className="text-sm text-slate-600">Catálogos de tu empresa: actividades, zonas y duraciones.</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(['actividades', 'zonas', 'horarios'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-              tab === t ? 'bg-brand-700 text-white' : 'bg-white border border-[#E4DCC8] text-slate-600'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {aviso && <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{aviso}</p>}
-      {!live && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Modo demo: los cambios no se persisten.
-        </p>
-      )}
-
-      {tab === 'actividades' && (
-        <ActividadesPanel
-          live={live}
-          actividades={actividades}
-          onChange={setActividades}
-          onAviso={setAviso}
-          onError={setError}
-        />
-      )}
-      {tab === 'zonas' && (
+    <div className={PAGE}>
+      <PageHeader spec="W-10" title="Configuración" description="Branding y catálogos de tu empresa: actividades, zonas y duraciones." />
+      <Tabs
+        tabs={[
+          { id: 'branding', label: 'Branding' },
+          { id: 'actividades', label: 'Actividades' },
+          { id: 'zonas', label: 'Zonas' },
+          { id: 'horarios', label: 'Horarios' },
+        ]}
+        valor={tab}
+        onChange={(id) => setTab(id as Tab)}
+      />
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {aviso && <Alert tone="success">{aviso}</Alert>}
+      {!live && <Alert tone="warning">Modo demo: los cambios no se persisten.</Alert>}
+      <TabPanel id="branding" valor={tab}>
+        <BrandingPanel live={live} onAviso={setAviso} onError={setError} />
+      </TabPanel>
+      <TabPanel id="actividades" valor={tab}>
+        <ActividadesPanel live={live} actividades={actividades} onChange={setActividades} onAviso={setAviso} onError={setError} />
+      </TabPanel>
+      <TabPanel id="zonas" valor={tab}>
         <ZonasPanel live={live} zonas={zonas} onChange={setZonas} onAviso={setAviso} onError={setError} />
-      )}
-      {tab === 'horarios' && (
+      </TabPanel>
+      <TabPanel id="horarios" valor={tab}>
         <HorasPanel live={live} horas={horas} onChange={setHoras} onAviso={setAviso} onError={setError} />
-      )}
+      </TabPanel>
+    </div>
+  )
+}
+
+function BrandingPanel({
+  live,
+  onAviso,
+  onError,
+}: {
+  live: boolean
+  onAviso: (v: string | null) => void
+  onError: (v: string | null) => void
+}) {
+  const { branding, tenantNombre, setBranding, setTenantNombre } = useDominio()
+  const { push } = useToast()
+  const [nombre, setNombre] = useState(branding.nombre_comercial ?? tenantNombre)
+  const [color, setColor] = useState(branding.color_primario ?? '#6D28D9')
+  const [logo, setLogo] = useState(branding.logo_url ?? '')
+  const preview: BrandingTenant = { nombre_comercial: nombre, color_primario: color, logo_url: logo }
+
+  async function guardar() {
+    onError(null)
+    if (!colorCssValido(color)) {
+      onError('El color debe ser un hex válido (#RGB o #RRGGBB)')
+      return
+    }
+    if (logo.trim() && !logoUrlValido(logo)) {
+      onError('El logo debe ser una URL http(s)')
+      return
+    }
+    const next: BrandingTenant = {
+      nombre_comercial: nombre.trim() || tenantNombre,
+      color_primario: color,
+      logo_url: logo.trim() || undefined,
+    }
+    setBranding(next)
+    setTenantNombre(next.nombre_comercial ?? tenantNombre)
+    if (!live) {
+      onAviso('Vista previa actualizada (demo, no se persiste)')
+      push({ tone: 'success', titulo: 'Branding actualizado (demo)' })
+      return
+    }
+    try {
+      const { tenantId } = await contextoOperacion()
+      const { error } = await supabase.from('tenant').update({ branding: next, nombre: next.nombre_comercial }).eq('id', tenantId)
+      if (error) throw error
+      onAviso('Branding guardado')
+      push({ tone: 'success', titulo: 'Branding guardado' })
+    } catch (e) {
+      const msg = mensajeGc(e)
+      onError(msg)
+      push({ tone: 'error', titulo: msg })
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
+        <Input id="brand-nombre" label="Nombre comercial" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <div>
+          <label htmlFor="brand-color" className="block text-sm font-medium text-ink">Color primario</label>
+          <div className="mt-1 flex items-center gap-3">
+            <input id="brand-color" type="color" value={colorCssValido(color) ?? '#6D28D9'} onChange={(e) => setColor(e.target.value)} className="h-10 w-16 rounded border border-line" />
+            <input value={color} onChange={(e) => setColor(e.target.value)} className={fieldClass} />
+          </div>
+        </div>
+        <Input id="brand-logo" label="URL del logo" value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://…" />
+        <Button onClick={() => void guardar()}>Guardar branding</Button>
+      </div>
+      <div className="rounded-2xl border border-line bg-ink p-5 text-canvas">
+        <p className="text-xs uppercase tracking-wide text-slate-400">Vista previa</p>
+        <div className="mt-4 flex items-center gap-3">
+          <BrandMark nombre={nombre || 'GC'} logoUrl={preview.logo_url} variant="dark" />
+          <div>
+            <p className="font-serif text-xl">{nombre || 'Gestiones Comerciales'}</p>
+            <p className="text-xs text-slate-400">Sidebar y login usan este logo y el primario.</p>
+          </div>
+        </div>
+        <div className="mt-6 h-10 rounded-lg" style={{ background: colorCssValido(color) ?? '#6D28D9' }} />
+      </div>
     </div>
   )
 }
@@ -203,19 +269,19 @@ function ActividadesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-[#E4DCC8] bg-white p-4">
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-4">
         <input
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Nueva actividad"
           className="flex-1 min-w-[12rem] rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        <button type="button" onClick={() => void altaActividad()} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white">
+        <button type="button" onClick={() => void altaActividad()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
           Agregar
         </button>
       </div>
       {actividades.map((a) => (
-        <div key={a.id} className="rounded-2xl border border-[#E4DCC8] bg-white p-4">
+        <div key={a.id} className="rounded-2xl border border-line bg-surface p-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-medium">{a.nombre}</h3>
             <button
@@ -247,7 +313,7 @@ function ActividadesPanel({
               placeholder="Nueva subactividad"
               className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
             />
-            <button type="button" onClick={() => void altaSub(a.id)} className="rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-semibold text-brand-800">
+            <button type="button" onClick={() => void altaSub(a.id)} className="rounded-lg border border-primary px-3 py-1.5 text-xs font-semibold text-primary">
               Añadir
             </button>
           </div>
@@ -301,16 +367,16 @@ function ZonasPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-[#E4DCC8] bg-white p-4">
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-4">
         <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Código" className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
         <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre de zona" className="flex-1 min-w-[10rem] rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <button type="button" onClick={() => void alta()} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white">
+        <button type="button" onClick={() => void alta()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
           Agregar
         </button>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
         <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
+          <thead className="bg-[var(--gc-thead)] text-[11px] uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Código</th>
               <th className="px-4 py-3">Nombre</th>
@@ -376,14 +442,14 @@ function HorasPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-[#E4DCC8] bg-white p-4">
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-4">
         <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (ej. 2 horas)" className="flex-1 min-w-[10rem] rounded-lg border border-slate-300 px-3 py-2 text-sm" />
         <input value={cantidad} onChange={(e) => setCantidad(e.target.value)} type="number" step="0.5" min="0.5" className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <button type="button" onClick={() => void alta()} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white">
+        <button type="button" onClick={() => void alta()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
           Agregar
         </button>
       </div>
-      <ul className="rounded-2xl border border-[#E4DCC8] bg-white divide-y divide-slate-100">
+      <ul className="rounded-2xl border border-line bg-surface divide-y divide-slate-100">
         {horas.map((h) => (
           <li key={h.id} className="px-4 py-3 text-sm flex justify-between">
             <span>{h.nombre}</span>
