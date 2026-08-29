@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": ">=20"
+    "node": "22.14.0"
   },
   "scripts": {
     "dev:web": "pnpm --filter @gc/web dev",
@@ -14,7 +14,8 @@
     "build:backoffice": "pnpm --filter @gc/backoffice build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "ops:preflight": "node --experimental-strip-types scripts/ops/preflight.ts"
   },
   "pnpm": {
     "overrides": {
