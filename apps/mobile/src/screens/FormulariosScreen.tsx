@@ -155,7 +155,7 @@ export default function FormulariosScreen({ perfil }: Props) {
         },
         DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
       )
-      Alert.alert(DEMO_MODE ? 'Encolado (demo)' : 'Encolado', `Score ${score ?? '—'}%. Ver M-09.`)
+      Alert.alert(DEMO_MODE ? 'Encolado (demo)' : 'Encolado', `Score ${score ?? '—'}%. Revisá la cola de sincronización.`)
       setValores({})
     } finally {
       setEnviando(false)

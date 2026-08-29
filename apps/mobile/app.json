@@ -2,23 +2,92 @@
   "expo": {
     "name": "Gestiones Comerciales",
     "slug": "gestiones-comerciales",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "gestiones",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#1D4ED8"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gc.mobile"
+      "bundleIdentifier": "com.gc.mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Gestiones Comerciales usa tu ubicación para el check-in de visitas y el rastreo de jornada que configuró tu empresa.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "El rastreo de campo continúa durante la jornada laboral, solo dentro de la ventana horaria de tu empresa.",
+        "NSLocationAlwaysUsageDescription": "El rastreo de campo continúa durante la jornada laboral, solo dentro de la ventana horaria de tu empresa.",
+        "NSCameraUsageDescription": "La cámara se usa para fotografiar boletas de depósito.",
+        "NSPhotoLibraryUsageDescription": "La galería se usa para adjuntar la foto de una boleta de depósito.",
+        "NSFaceIDUsageDescription": "Face ID permite reingresar a tu sesión de campo.",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.gc.mobile",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1D4ED8"
-      }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [{ "scheme": "gestiones" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Gestiones Comerciales usa tu ubicación durante la jornada para registrar visitas y el rastreo de campo configurado por tu empresa.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1D4ED8"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "La cámara se usa para fotografiar boletas de depósito.",
+          "photosPermission": "La galería se usa para adjuntar la foto de una boleta."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {}
     }
   }
 }

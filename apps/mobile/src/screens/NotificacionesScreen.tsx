@@ -17,9 +17,10 @@ import { useTheme } from '../theme'
 
 interface Props {
   colorPrimario: string
+  onDeepLink?: (url: string) => void
 }
 
-export default function NotificacionesScreen({ colorPrimario }: Props) {
+export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Props) {
   const t = useTheme()
   const primario = colorPrimario || t.primary
   const [items, setItems] = useState<ItemNotificacion[]>(demoNotificaciones())
@@ -58,7 +59,10 @@ export default function NotificacionesScreen({ colorPrimario }: Props) {
   async function leer(item: ItemNotificacion) {
     setItems((prev) => marcarLeida(prev, item.id))
     const link = deepLinkDe(item.datos)
-    if (link) void Linking.openURL(link).catch(() => undefined)
+    if (link) {
+      if (onDeepLink) onDeepLink(link)
+      else void Linking.openURL(link).catch(() => undefined)
+    }
     if (DEMO_MODE) return
     const { error } = await supabase.from('notificacion').update({ leida: true }).eq('id', item.id)
     if (error) setError(error.message)

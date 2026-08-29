@@ -22,6 +22,7 @@ import {
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { BadgeEstado, Cargando, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
+import NuevaVisitaModal from './NuevaVisitaModal'
 
 interface LeadRow {
   id: number
@@ -55,6 +56,7 @@ export default function LeadsScreen({ perfil }: Props) {
   const [seleccionado, setSeleccionado] = useState<LeadRow | null>(null)
   const [mostrarNuevo, setMostrarNuevo] = useState(false)
   const [ocupado, setOcupado] = useState(false)
+  const [agendarLead, setAgendarLead] = useState<LeadRow | null>(null)
 
   // alta
   const [nNombre, setNNombre] = useState('')
@@ -124,6 +126,7 @@ export default function LeadsScreen({ perfil }: Props) {
       estado_id: estadoInicial?.id,
       monto_estimado: nMonto ? Number(nMonto) : null,
       asesor_id: perfil.id,
+      tenant_id: perfil.tenantId,
     })
     setOcupado(false)
     if (error) {
@@ -201,6 +204,18 @@ export default function LeadsScreen({ perfil }: Props) {
                   </TouchableOpacity>
                 </View>
 
+                <TouchableOpacity
+                  style={[styles.botonConvertir, { backgroundColor: t.primary }]}
+                  onPress={() => {
+                    setAgendarLead(seleccionado)
+                    setSeleccionado(null)
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Agendar visita"
+                >
+                  <Text style={styles.botonConvertirTexto}>Agendar visita</Text>
+                </TouchableOpacity>
+
                 <Text style={styles.seccion}>Mover a</Text>
                 <View style={styles.filaWrap}>
                   {estados
@@ -252,6 +267,15 @@ export default function LeadsScreen({ perfil }: Props) {
           </View>
         </View>
       </Modal>
+
+      <NuevaVisitaModal
+        visible={!!agendarLead}
+        colorPrimario={t.primary}
+        personaNombre={agendarLead?.nombre}
+        direccion={agendarLead?.direccion ?? undefined}
+        onCerrar={() => setAgendarLead(null)}
+        onGuardada={() => setAgendarLead(null)}
+      />
     </View>
   )
 }

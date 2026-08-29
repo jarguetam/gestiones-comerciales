@@ -19,6 +19,7 @@ import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import type { Persona } from '../lib/tipos'
 import { Cargando, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
+import NuevaVisitaModal from './NuevaVisitaModal'
 
 const CATEGORIAS = [
   'agricultor',
@@ -29,10 +30,11 @@ const CATEGORIAS = [
   'farmacia',
 ] as const
 
-export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) {
+export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
   const t = useTheme()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [busqueda, setBusqueda] = useState('')
+  const [visitaDe, setVisitaDe] = useState<Persona | null>(null)
   const [cargando, setCargando] = useState(true)
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -111,6 +113,8 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
             direccion: direccion.trim() || null,
             categoria,
             detalles: telefono.trim() ? { telefono: telefono.trim() } : {},
+            tenantId: perfil?.tenantId,
+            asesorId: perfil?.id,
           },
           clienteKey: `persona:${documento.trim() || nombre.trim()}:${Date.now()}`,
         },
@@ -235,6 +239,14 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
                 {[item.documento, item.categoria].filter(Boolean).join(' · ')}
               </Text>
               {item.direccion && <Text style={styles.direccion}>{item.direccion}</Text>}
+              <TouchableOpacity
+                style={[styles.botonAgendar, { backgroundColor: t.primary }]}
+                onPress={() => setVisitaDe(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Agendar visita a ${item.nombre}`}
+              >
+                <Text style={styles.botonAgendarTexto}>Agendar visita</Text>
+              </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
@@ -243,12 +255,30 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
           contentContainerStyle={{ padding: 16 }}
         />
       )}
+
+      <NuevaVisitaModal
+        visible={!!visitaDe}
+        colorPrimario={t.primary}
+        personaId={visitaDe?.id}
+        personaNombre={visitaDe?.nombre}
+        direccion={visitaDe?.direccion ?? undefined}
+        onCerrar={() => setVisitaDe(null)}
+        onGuardada={() => setVisitaDe(null)}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: '#F3F4F6' },
+  botonAgendar: {
+    marginTop: 12,
+    borderRadius: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botonAgendarTexto: { color: '#fff', fontWeight: '700', fontSize: 14 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   barraBusqueda: { flexDirection: 'row', padding: 12, gap: 8 },
   inputBusqueda: {

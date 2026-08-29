@@ -1,6 +1,6 @@
 /**
  * M-07 Depósitos (spec frontend). Visible si el módulo depositos está activo.
- * Registrar depósito con referencia (foto de boleta en demo = marca de adjunto).
+ * Registrar depósito con referencia y foto de boleta (cámara o galería).
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import {
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
@@ -35,7 +36,7 @@ export default function DepositosScreen({ perfil }: Props) {
   const [mostrar, setMostrar] = useState(false)
   const [monto, setMonto] = useState('')
   const [ref, setRef] = useState('')
-  const [foto, setFoto] = useState(false)
+  const [fotoUri, setFotoUri] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
@@ -55,6 +56,21 @@ export default function DepositosScreen({ perfil }: Props) {
     void cargar()
   }, [cargar])
 
+  async function adjuntarFoto() {
+    const cam = await ImagePicker.requestCameraPermissionsAsync()
+    const launch =
+      cam.status === 'granted' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync
+    if (cam.status !== 'granted') {
+      const gal = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (gal.status !== 'granted') {
+        Alert.alert('Permiso requerido', 'La foto de boleta necesita cámara o galería.')
+        return
+      }
+    }
+    const res = await launch({ quality: 0.7, allowsEditing: true })
+    if (!res.canceled && res.assets[0]?.uri) setFotoUri(res.assets[0].uri)
+  }
+
   async function registrar() {
     const n = Number(monto)
     if (!n || n <= 0) {
@@ -65,13 +81,13 @@ export default function DepositosScreen({ perfil }: Props) {
       await encolarYSync(
         {
           tipo: 'deposito',
-          payload: { monto: n, referencia: ref || (foto ? 'boleta.jpg' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+          payload: { monto: n, referencia: ref || (fotoUri ? 'boleta.jpg' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
           clienteKey: `deposito:${n}:${Date.now()}`,
         },
         ejecutarDemo,
       )
       setItems((prev) => [
-        { id: Date.now(), monto: n, referencia: ref || (foto ? 'boleta.jpg' : null), estado: 'pendiente' },
+        { id: Date.now(), monto: n, referencia: ref || (fotoUri ? 'boleta.jpg' : null), estado: 'pendiente' },
         ...prev,
       ])
       setMostrar(false)
@@ -80,7 +96,7 @@ export default function DepositosScreen({ perfil }: Props) {
     await encolarYSync(
       {
         tipo: 'deposito',
-        payload: { monto: n, referencia: ref.trim() || (foto ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+        payload: { monto: n, referencia: ref.trim() || (fotoUri ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
         clienteKey: `deposito:${n}:${Date.now()}`,
       },
       ejecutarMutacion(supabase),
@@ -88,7 +104,7 @@ export default function DepositosScreen({ perfil }: Props) {
     setMostrar(false)
     setMonto('')
     setRef('')
-    setFoto(false)
+    setFotoUri(null)
     await cargar()
   }
 
@@ -114,11 +130,14 @@ export default function DepositosScreen({ perfil }: Props) {
           <Campo label="Monto" placeholder="Monto" keyboardType="numeric" value={monto} onChangeText={setMonto} />
           <Campo label="Referencia" placeholder="Referencia / boleta" value={ref} onChangeText={setRef} />
           <TouchableOpacity
-            onPress={() => setFoto((v) => !v)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: foto }}
+            onPress={() => void adjuntarFoto()}
+            accessibilityRole="button"
+            accessibilityLabel="Adjuntar foto de boleta"
+            accessibilityState={{ selected: !!fotoUri }}
           >
-            <Text style={[styles.link, { color: t.primary }]}>{foto ? '✓ Foto de boleta adjunta' : 'Adjuntar foto de boleta'}</Text>
+            <Text style={[styles.link, { color: t.primary }]}>
+              {fotoUri ? '✓ Foto de boleta adjunta' : 'Adjuntar foto de boleta'}
+            </Text>
           </TouchableOpacity>
           <Boton etiqueta="Enviar" onPress={() => void registrar()} />
           <TouchableOpacity onPress={() => setMostrar(false)}>

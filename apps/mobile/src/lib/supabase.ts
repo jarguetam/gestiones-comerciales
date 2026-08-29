@@ -6,49 +6,36 @@
  * En Expo las variables públicas se exponen como EXPO_PUBLIC_*.
  * En builds de desarrollo nativos, process.env se rellena en build time.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
+import { BRANDING_DEMO, brandingDeJson, nombreComercial } from './branding'
+import { claimsEmpresaDe, type Rol } from './claims'
+import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
+import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
+import { sesionStorage } from './sesionStorage'
 
-// Base64 URL-safe sin Buffer (Hermes no lo incluye por defecto)
-function base64UrlDecode(input: string): string {
-  const b64 = input.replace(/-/g, '+').replace(/_/g, '/')
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-  let bin = ''
-  for (let i = 0, bc = 0, bs: string | undefined, buffer = 0, idx = 0; (bs = b64.charAt(idx++)); ) {
-    buffer = chars.indexOf(bs)
-    if (~buffer) {
-      bc = bc % 4 ? bc * 64 + buffer : buffer
-      if (bc++ % 4) bin += String.fromCharCode(255 & (bc >> ((-2 * bc) & 6)))
-    }
-  }
-  // UTF-8 decode
-  return decodeURIComponent(
-    bin.split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''),
-  )
-}
+export { claimsDe, type Rol } from './claims'
+export type { Perfil } from './perfil'
 
 declare const process: { env: Record<string, string | undefined> }
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined
 
-export const DEMO_MODE = !supabaseUrl || !supabaseAnonKey
-
-export const supabase: SupabaseClient = DEMO_MODE
-  ? ({} as SupabaseClient)
-  : createClient(supabaseUrl!, supabaseAnonKey!)
-
-export type Rol = 'admin' | 'gerente' | 'supervisor' | 'asesor'
-
-export interface Perfil {
-  id: string
-  tenantId: string
-  nombre: string
-  rol: Rol
-  tenantNombre?: string
-  modulos: string[]
-  branding: BrandingTenant
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('GC-CFG-001: faltan EXPO_PUBLIC_SUPABASE_URL o EXPO_PUBLIC_SUPABASE_ANON_KEY')
 }
+
+/** El binario de campo siempre habla con Supabase. No hay preview demo. */
+export const DEMO_MODE = false
+
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: sesionStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+})
 
 export const PERFIL_DEMO: Perfil = {
   id: 'demo-asesor',
@@ -60,49 +47,82 @@ export const PERFIL_DEMO: Perfil = {
   branding: BRANDING_DEMO,
 }
 
-/** Decodifica los claims custom del JWT (tenant_id y rol, spec F0.3). */
-export function claimsDe(accessToken: string): { tenantId: string; rol: Rol } | null {
-  const partes = accessToken.split('.')
-  if (partes.length !== 3) return null
-  try {
-    const payload = JSON.parse(base64UrlDecode(partes[1])) as {
-      tenant_id?: string
-      rol?: Rol
-      app_metadata?: { tenant_id?: string; rol?: Rol }
+/**
+ * Hidrata tenant/rol como la web: JWT + app_metadata del user,
+ * refresh de sesión si faltan, y RPC tenant_id_actual / rol_actual.
+ */
+export async function resolverClaims(session: Session): Promise<{ tenantId: string; rol: Rol } | null> {
+  let actual = session
+  let claims = claimsEmpresaDe({
+    accessToken: actual.access_token,
+    appMetadata: actual.user.app_metadata,
+  })
+  if (!claims) {
+    const { data } = await supabase.auth.refreshSession()
+    if (data.session) {
+      actual = data.session
+      claims = claimsEmpresaDe({
+        accessToken: actual.access_token,
+        appMetadata: actual.user.app_metadata,
+      })
     }
-    const tenantId = payload.tenant_id || payload.app_metadata?.tenant_id
-    const rol = payload.rol || payload.app_metadata?.rol
-    if (!tenantId || !rol) return null
-    return { tenantId, rol }
-  } catch {
-    return null
   }
+  if (!claims) {
+    const [tenantRes, rolRes] = await Promise.all([
+      supabase.rpc('tenant_id_actual'),
+      supabase.rpc('rol_actual'),
+    ])
+    claims = claimsEmpresaDe({
+      accessToken: actual.access_token,
+      appMetadata: actual.user.app_metadata,
+      tenantIdDb: tenantRes.data != null ? String(tenantRes.data) : null,
+      rolDb: typeof rolRes.data === 'string' ? rolRes.data : null,
+    })
+  }
+  return claims
 }
 
-/** Carga el perfil del usuario autenticado (tabla public.usuario vía RLS). */
-export async function cargarPerfil(userId: string, tenantId: string, rol: Rol): Promise<Perfil | null> {
-  const { data, error } = await supabase
-    .from('usuario')
-    .select('id, nombre, tenant(nombre, branding)')
-    .eq('id', userId)
-    .single()
-  if (error || !data) return null
-  const tenant = (data as unknown as { tenant?: { nombre?: string; branding?: unknown } }).tenant
-  const branding = brandingDeJson(tenant?.branding)
-  const { data: mods } = await supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true)
-  const modulos = ((mods ?? []) as Array<{ modulo: { codigo?: string } | { codigo?: string }[] | null }>)
-    .map((row) => {
-      const m = Array.isArray(row.modulo) ? row.modulo[0] : row.modulo
-      return m?.codigo
-    })
-    .filter((c): c is string => !!c)
-  return {
-    id: data.id,
-    tenantId,
-    nombre: data.nombre,
-    rol,
-    tenantNombre: nombreComercial(branding, tenant?.nombre ?? 'Gestiones Comerciales'),
-    modulos,
+/**
+ * Hidrata el perfil como la web: claims ya resueltos + tenant por id +
+ * usuario propio si RLS lo deja ver. Un embed o .single() vacío ya no
+ * bloquea el ingreso (GC-AUTH-022).
+ */
+export async function cargarPerfil(session: Session, claims: { tenantId: string; rol: Rol }): Promise<Perfil> {
+  const userId = session.user.id
+  const [usuarioRes, tenantRes, modsRes] = await Promise.all([
+    supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
+    supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
+    supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
+  ])
+  const branding = brandingDeJson(tenantRes.data?.branding)
+  return perfilDesdeFuentes({
+    userId,
+    claims,
+    usuario: usuarioRes.data as { id: string; nombre: string } | null,
+    tenantNombre: nombreComercial(branding, (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales'),
     branding,
-  }
+    modulos: modulosDeFilas(modsRes.data as Parameters<typeof modulosDeFilas>[0]),
+    email: session.user.email,
+    userMetadata: session.user.user_metadata,
+  })
+}
+
+export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
+  const err = validarVisitaNueva(b)
+  if (err) throw new Error(err)
+  const { error } = await supabase.rpc('visita_crear', {
+    p_persona_nombre: b.personaNombre!.trim(),
+    p_actividad_id: b.actividadId,
+    p_sub_actividad_id: b.subActividadId,
+    p_actividad_hora_id: b.actividadHoraId,
+    p_zona_id: b.zonaId,
+    p_departamento_id: b.departamentoId,
+    p_municipio_id: b.municipioId,
+    p_fecha: b.fecha,
+    p_hora_inicio: horaParaRpc(b.horaInicio!),
+    p_persona_id: b.personaId ?? null,
+    p_direccion: b.direccion?.trim() || null,
+    p_comentario: b.comentario?.trim() || '',
+  })
+  if (error) throw error
 }

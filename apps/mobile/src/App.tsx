@@ -1,9 +1,22 @@
 /**
  * @gc/mobile — App del asesor de campo.
  * Tabs de operación + inbox/cola desde el header. Theming desde tenant.branding.
+ * Producción: cola persistente (SQLite), push FCM, rastreo de jornada y deep links.
  */
 import React, { useEffect, useState } from 'react'
-import { Modal, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  AppState,
+  Linking,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
 import AgendaScreen from './screens/AgendaScreen'
@@ -15,13 +28,17 @@ import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { claimsDe, DEMO_MODE, supabase, type Perfil, cargarPerfil } from './lib/supabase'
+import { DEMO_MODE, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { demoNotificaciones, contarNoLeidas } from './lib/notificaciones'
 import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
 import { abrirPersistenciaCola } from './lib/abrirCola'
 import { ejecutarDemo, ejecutarMutacion } from './lib/sync'
+import { parseDeepLink } from './lib/deepLink'
+import { registrarDispositivo } from './lib/dispositivo'
+import { tokenPushNativo } from './lib/push'
+import { detenerRastreo, iniciarRastreo } from './services/rastreoServicio'
 import { ThemeProvider, useTheme } from './theme'
 import { Cargando, Marca } from './components/ui'
 
@@ -59,6 +76,10 @@ const ICONOS: Record<string, string> = {
   mas: '⋯',
 }
 
+function claveRastreo(userId: string) {
+  return `gc.rastreo:${userId}`
+}
+
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [listo, setListo] = useState(false)
@@ -78,10 +99,9 @@ export default function App() {
     }
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
-        const claims = claimsDe(data.session.access_token)
+        const claims = await resolverClaims(data.session)
         if (claims) {
-          const p = await cargarPerfil(data.session.user.id, claims.tenantId, claims.rol)
-          if (p) setPerfil(p)
+          setPerfil(await cargarPerfil(data.session, claims))
         }
       }
       setListo(true)
@@ -93,7 +113,15 @@ export default function App() {
     const t = setInterval(() => {
       void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
     }, 30_000)
-    return () => clearInterval(t)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') {
+        void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
+      }
+    })
+    return () => {
+      clearInterval(t)
+      sub.remove()
+    }
   }, [perfil])
 
   return (
@@ -116,9 +144,77 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const t = useTheme()
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
+  const [rastreoOn, setRastreoOn] = useState(true)
+  const [noLeidas, setNoLeidas] = useState(0)
   const { pendientes } = useCola()
-  const noLeidas = contarNoLeidas(demoNotificaciones())
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
+
+  useEffect(() => {
+    void AsyncStorage.getItem(claveRastreo(perfil.id)).then((v) => {
+      setRastreoOn(v !== '0')
+    })
+  }, [perfil.id])
+
+  useEffect(() => {
+    if (DEMO_MODE) return
+    let cancel = false
+    tokenPushNativo()
+      .then((token) => {
+        if (!token || cancel) return
+        return registrarDispositivo(supabase, perfil.id, token)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancel = true
+    }
+  }, [perfil.id])
+
+  useEffect(() => {
+    if (DEMO_MODE) return
+    if (!rastreoOn) {
+      void detenerRastreo(supabase)
+      return
+    }
+    void iniciarRastreo(supabase)
+    return () => {
+      void detenerRastreo(supabase)
+    }
+  }, [perfil.id, rastreoOn])
+
+  useEffect(() => {
+    function aplicarUrl(url: string | null) {
+      const dest = parseDeepLink(url)
+      if (!dest) return
+      setTab(dest.tab)
+    }
+    const sub = Linking.addEventListener('url', ({ url }) => aplicarUrl(url))
+    void Linking.getInitialURL().then(aplicarUrl)
+    return () => sub.remove()
+  }, [])
+
+  useEffect(() => {
+    if (DEMO_MODE) {
+      setNoLeidas(contarNoLeidas(demoNotificaciones()))
+      return
+    }
+    supabase
+      .from('notificacion')
+      .select('id', { count: 'exact', head: true })
+      .eq('leida', false)
+      .then(({ count }) => {
+        if (typeof count === 'number') setNoLeidas(count)
+      })
+  }, [tab])
+
+  async function handleLogout() {
+    await detenerRastreo(DEMO_MODE ? undefined : supabase)
+    onLogout()
+  }
+
+  async function handleRastreo(next: boolean) {
+    setRastreoOn(next)
+    await AsyncStorage.setItem(claveRastreo(perfil.id), next ? '1' : '0')
+  }
 
   const extras: { id: Tab; etiqueta: string }[] = [
     ...(DEMO_MODE || perfil.modulos.includes('solicitudes')
@@ -189,9 +285,23 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
         {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
         {tab === 'ajustes' && (
-          <AjustesScreen perfil={perfil} onLogout={onLogout} onAbrirCola={() => setTab('sync')} />
+          <AjustesScreen
+            perfil={perfil}
+            rastreoOn={rastreoOn}
+            onRastreo={(v) => void handleRastreo(v)}
+            onLogout={() => void handleLogout()}
+            onAbrirCola={() => setTab('sync')}
+          />
         )}
-        {tab === 'notificaciones' && <NotificacionesScreen colorPrimario={t.primary} />}
+        {tab === 'notificaciones' && (
+          <NotificacionesScreen
+            colorPrimario={t.primary}
+            onDeepLink={(url) => {
+              const dest = parseDeepLink(url)
+              if (dest) setTab(dest.tab)
+            }}
+          />
+        )}
         {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
       </View>
 

@@ -111,8 +111,15 @@ jobs:
       - name: Tests unitarios backoffice (P-05 + P-06)
         run: pnpm --filter @gc/backoffice test
 
-      - name: Tests unitarios móvil (cola offline, MFA, notifs)
+      - name: Tests unitarios móvil (cola offline, MFA, notifs, persistencia)
         run: pnpm --filter @gc/mobile test
+
+      - name: Artefactos EAS del móvil
+        run: |
+          test -f apps/mobile/eas.json
+          test -f apps/mobile/assets/icon.png
+          test -f apps/mobile/google-services.json
+          echo "OK: EAS + icono + google-services"
 
       - name: Typecheck + build apps (web + backoffice + mobile)
         run: |

@@ -34,6 +34,24 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
       if (error) throw error
       return
     }
+    if (item.tipo === 'visita') {
+      const { error } = await cliente.rpc('visita_crear', {
+        p_persona_nombre: p.personaNombre,
+        p_actividad_id: p.actividadId,
+        p_sub_actividad_id: p.subActividadId,
+        p_actividad_hora_id: p.actividadHoraId,
+        p_zona_id: p.zonaId,
+        p_departamento_id: p.departamentoId,
+        p_municipio_id: p.municipioId,
+        p_fecha: p.fecha,
+        p_hora_inicio: p.horaInicio,
+        p_persona_id: p.personaId ?? null,
+        p_direccion: p.direccion ?? null,
+        p_comentario: p.comentario ?? '',
+      })
+      if (error) throw error
+      return
+    }
     if (item.tipo === 'deposito') {
       const { error } = await cliente.from('deposito').insert({
         monto: p.monto,
@@ -59,6 +77,8 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
     }
     if (item.tipo === 'persona') {
       const { error } = await cliente.from('persona').insert({
+        tenant_id: p.tenantId,
+        asesor_id: p.asesorId,
         nombre: p.nombre,
         documento: p.documento ?? null,
         documento_tipo: p.documentoTipo ?? 'DPI',
@@ -71,10 +91,12 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
     }
     if (item.tipo === 'lead') {
       const { error } = await cliente.from('lead').insert({
+        tenant_id: p.tenantId,
         nombre: p.nombre,
         telefono: p.telefono,
         monto_estimado: p.montoEstimado ?? null,
         asesor_id: p.asesorId,
+        estado_id: p.estadoId,
       })
       if (error) throw error
     }

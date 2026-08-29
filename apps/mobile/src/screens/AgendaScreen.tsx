@@ -1,13 +1,13 @@
 /**
- * M-02 Agenda de visitas del día (spec F1.11).
- * Lista las visitas de hoy del asesor con su estado y permite check-in GPS
- * directo (M-04) desde cada tarjeta. Incluye rastreo por intervalo de la
- * config del tenant mientras el asesor está dentro de la ventana (GC-RAS-*).
+ * M-02 Agenda del día + alta de visita (mismas validaciones GC-VIS que la web).
+ * Check-in GPS directo (M-04) con aviso de geocerca; el rastreo por intervalo
+ * vive en services/rastreoServicio y se activa desde App.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -16,16 +16,15 @@ import {
 } from 'react-native'
 import * as Location from 'expo-location'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
-import type { PuntoGps, Visita } from '../lib/tipos'
+import type { Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
+import { fechaLocalHoy } from '../lib/visita'
+import NuevaVisitaModal from './NuevaVisitaModal'
 import { BadgeEstado, Cargando, Vacio } from '../components/ui'
-import { NEUTROS, useTheme } from '../theme'
+import { useTheme } from '../theme'
 import { formatearFechaJornada, progresoJornada } from '../lib/jornada'
-
-declare const process: { env: Record<string, string | undefined> }
-
-const SUPABASE_FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v1`
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   programada: 'Programada',
@@ -40,27 +39,38 @@ const DEMO_VISITAS: Visita[] = [
     id: 201,
     persona_nombre: 'Agropecuaria El Triunfo',
     direccion: 'Km 56 Carretera a Puerto San José',
-    fecha_visita: '2026-08-28',
+    fecha_visita: fechaLocalHoy(),
     hora_inicio: '08:30:00',
     estado: 'programada',
     actividad: 'Verificación de garantías',
-  },
-  {
-    id: 202,
-    persona_nombre: 'Agrícola El Roble S.A.',
-    direccion: 'Zona 1, Escuintla',
-    fecha_visita: '2026-08-28',
-    hora_inicio: '11:00:00',
-    estado: 'programada',
-    actividad: 'Seguimiento de crédito',
+    latitud: 14.3,
+    longitud: -90.78,
   },
 ]
 
-interface Props {
-  perfil: Perfil
+const UMBRAL_GEOCERCA_M = 200
+
+function mapFila(row: Record<string, unknown>): Visita {
+  const act = row.actividad
+  let actividad: string | null = null
+  if (typeof act === 'string') actividad = act
+  else if (act && typeof act === 'object' && 'nombre' in act) {
+    actividad = String((act as { nombre: unknown }).nombre)
+  }
+  return {
+    id: Number(row.id),
+    persona_nombre: String(row.persona_nombre ?? '—'),
+    direccion: (row.direccion as string | null) ?? null,
+    fecha_visita: String(row.fecha_visita ?? ''),
+    hora_inicio: (row.hora_inicio as string | null) ?? null,
+    estado: (row.estado as Visita['estado']) ?? 'programada',
+    actividad,
+    latitud: row.latitud != null ? Number(row.latitud) : null,
+    longitud: row.longitud != null ? Number(row.longitud) : null,
+  }
 }
 
-export default function AgendaScreen({ perfil }: Props) {
+export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   const t = useTheme()
   const [visitas, setVisitas] = useState<Visita[]>(DEMO_MODE ? DEMO_VISITAS : [])
   const [cargando, setCargando] = useState(!DEMO_MODE)
@@ -68,8 +78,8 @@ export default function AgendaScreen({ perfil }: Props) {
   const [checkinDe, setCheckinDe] = useState<number | null>(null)
   const [checkins, setCheckins] = useState<Set<number>>(new Set())
   const [mensaje, setMensaje] = useState<string | null>(null)
-  const colaRastreo = useRef<PuntoGps[]>([])
-  const timerRastreo = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [mostrarAlta, setMostrarAlta] = useState(false)
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
@@ -78,75 +88,32 @@ export default function AgendaScreen({ perfil }: Props) {
       setRefrescando(false)
       return
     }
-    const { data, error } = await supabase.rpc('visitas_del_dia')
-    if (!error && data) setVisitas(data as Visita[])
+    const hoy = fechaLocalHoy()
+    const rpc = await supabase.rpc('visitas_del_dia', { p_fecha: hoy })
+    if (!rpc.error && rpc.data) {
+      setVisitas((rpc.data as Array<Record<string, unknown>>).map(mapFila))
+      setError(null)
+    } else {
+      const q = await supabase
+        .from('visita')
+        .select('id, persona_nombre, direccion, fecha_visita, hora_inicio, estado, latitud, longitud, actividad(nombre)')
+        .eq('fecha_visita', hoy)
+        .order('hora_inicio')
+      if (q.error) {
+        setError(q.error.message || rpc.error?.message || 'No se pudo leer la agenda')
+        setVisitas([])
+      } else {
+        setVisitas(((q.data ?? []) as Array<Record<string, unknown>>).map(mapFila))
+        setError(null)
+      }
+    }
     setCargando(false)
     setRefrescando(false)
   }, [])
 
-  useEffect(() => {
-    cargar()
+  React.useEffect(() => {
+    void cargar()
   }, [cargar])
-
-  // ----- Rastreo por intervalo (config_rastreo del tenant) -----
-  useEffect(() => {
-    if (DEMO_MODE) return
-
-    let activo = true
-    async function iniciarRastreo() {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== 'granted' || !activo) return
-
-      // config del día: el servidor también la valida en rastreo-ingesta
-      const { data: cfg } = await supabase
-        .from('config_rastreo')
-        .select('intervalo_min, hora_inicio, hora_fin')
-        .eq('dia_semana', new Date().getDay())
-        .maybeSingle()
-      if (!cfg || !activo) return
-
-      const intervaloMs = (cfg.intervalo_min ?? 15) * 60_000
-      timerRastreo.current = setInterval(async () => {
-        const ahora = new Date()
-        const hhmmss = ahora.toTimeString().slice(0, 8)
-        if (hhmmss < cfg.hora_inicio || hhmmss > cfg.hora_fin) return
-
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        })
-        colaRastreo.current.push({
-          latitud: pos.coords.latitude,
-          longitud: pos.coords.longitude,
-          precision_m: pos.coords.accuracy,
-          velocidad_kmh: pos.coords.speed != null ? pos.coords.speed * 3.6 : null,
-          registrado_en: new Date().toISOString(),
-        })
-
-        // Envía el lote al edge rastreo-ingesta (él aplica GC-RAS-001 y la ventana)
-        if (colaRastreo.current.length >= 3) {
-          const puntos = [...colaRastreo.current]
-          colaRastreo.current = []
-          const { data: sesion } = await supabase.auth.getSession()
-          await fetch(`${SUPABASE_FUNCTIONS_URL}/rastreo-ingesta`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${sesion.session?.access_token}`,
-            },
-            body: JSON.stringify({ puntos }),
-          }).catch(() => {
-            // offline: reencola (idempotente por registrado_en único)
-            colaRastreo.current.unshift(...puntos)
-          })
-        }
-      }, intervaloMs)
-    }
-    iniciarRastreo()
-    return () => {
-      activo = false
-      if (timerRastreo.current) clearInterval(timerRastreo.current)
-    }
-  }, [])
 
   async function gps(): Promise<{ lat: number; lng: number }> {
     if (DEMO_MODE) return { lat: 14.6349, lng: -90.5069 }
@@ -156,7 +123,15 @@ export default function AgendaScreen({ perfil }: Props) {
     return { lat: pos.coords.latitude, lng: pos.coords.longitude }
   }
 
-  // ----- M-04: check-in / completar GPS (cola offline) -----
+  function avisoGeocerca(visita: Visita, lat: number, lng: number): string | null {
+    if (visita.latitud == null || visita.longitud == null) return null
+    const d = distanciaMetros(lat, lng, visita.latitud, visita.longitud)
+    if (fueraDeRango(d, UMBRAL_GEOCERCA_M)) {
+      return `Check-in fuera de geocerca (${Math.round(d)} m). Se registra, no se bloquea.`
+    }
+    return null
+  }
+
   async function handleCheckin(visita: Visita) {
     setMensaje(null)
     setCheckinDe(visita.id)
@@ -171,7 +146,7 @@ export default function AgendaScreen({ perfil }: Props) {
         DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
       )
       setCheckins((prev) => new Set(prev).add(visita.id))
-      setMensaje(`Check-in encolado en ${visita.persona_nombre}`)
+      setMensaje(avisoGeocerca(visita, pos.lat, pos.lng) ?? `Check-in en ${visita.persona_nombre}`)
       if (!DEMO_MODE) await cargar()
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'No se pudo registrar el check-in')
@@ -219,7 +194,7 @@ export default function AgendaScreen({ perfil }: Props) {
         {item.estado === 'programada' && !checkins.has(item.id) && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
-            onPress={() => handleCheckin(item)}
+            onPress={() => void handleCheckin(item)}
             disabled={checkinDe === item.id}
             accessibilityRole="button"
             accessibilityLabel={`Check-in GPS de ${item.persona_nombre}`}
@@ -235,7 +210,7 @@ export default function AgendaScreen({ perfil }: Props) {
         {item.estado === 'programada' && checkins.has(item.id) && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
-            onPress={() => handleCompletar(item)}
+            onPress={() => void handleCompletar(item)}
             disabled={checkinDe === item.id}
             accessibilityRole="button"
             accessibilityLabel={`Completar visita de ${item.persona_nombre}`}
@@ -252,10 +227,15 @@ export default function AgendaScreen({ perfil }: Props) {
   }
 
   const jornada = progresoJornada(visitas)
-  const fechaHero = visitas[0]?.fecha_visita ?? '2026-08-29'
+  const fechaHero = visitas[0]?.fecha_visita ?? fechaLocalHoy()
 
   return (
     <View style={[styles.contenedor, { backgroundColor: t.canvas }]}>
+      {error ? (
+        <Text style={[styles.errorBanner, { backgroundColor: t.surface, borderColor: t.danger, color: t.danger }]}>
+          {error}
+        </Text>
+      ) : null}
       {mensaje && <Text style={[styles.mensaje, { color: t.success }]}>{mensaje}</Text>}
       <FlatList
         data={visitas}
@@ -266,8 +246,9 @@ export default function AgendaScreen({ perfil }: Props) {
             refreshing={refrescando}
             onRefresh={() => {
               setRefrescando(true)
-              cargar()
+              void cargar()
             }}
+            tintColor={t.primary}
           />
         }
         ListHeaderComponent={
@@ -290,21 +271,42 @@ export default function AgendaScreen({ perfil }: Props) {
             descripcion={
               DEMO_MODE
                 ? 'En DEMO no hay backend. En vivo aparecen las visitas de visitas_del_dia().'
-                : 'Cuando tu supervisor asigne visitas, se listan aquí para check-in GPS.'
+                : 'Agendá una visita a un cliente de tu cartera o un prospecto.'
             }
           />
         }
-        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
       />
-      <Text style={[styles.pie, { color: t.muted }]}>Asesor: {perfil.nombre}</Text>
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: t.primary }]}
+        onPress={() => setMostrarAlta(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Agendar visita"
+      >
+        <Text style={styles.fabTexto}>Agendar</Text>
+      </TouchableOpacity>
+      <NuevaVisitaModal
+        visible={mostrarAlta}
+        colorPrimario={t.primary}
+        onCerrar={() => setMostrarAlta(false)}
+        onGuardada={() => void cargar()}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   mensaje: { marginHorizontal: 16, marginTop: 12, fontSize: 13, fontWeight: '600' },
+  errorBanner: {
+    margin: 16,
+    marginBottom: 0,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   hero: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 14 },
   heroFecha: { fontSize: 28, fontWeight: '800', letterSpacing: -0.8 },
   heroLinea: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 8 },
@@ -326,8 +328,6 @@ const styles = StyleSheet.create({
   actividad: { fontSize: 13, marginTop: 2 },
   direccion: { fontSize: 12, marginTop: 2 },
   hora: { fontSize: 18, fontWeight: '800', letterSpacing: -0.6, width: 56 },
-  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8 },
-  badgeTexto: { fontSize: 11, fontWeight: '600' },
   botonCheckin: {
     marginTop: 12,
     borderRadius: 12,
@@ -337,6 +337,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   botonCheckinTexto: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  vacio: { textAlign: 'center', color: NEUTROS.muted, marginTop: 40 },
-  pie: { textAlign: 'center', fontSize: 11, padding: 8 },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: Platform.OS === 'android' ? 16 : 24,
+    minHeight: 52,
+    paddingHorizontal: 22,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  fabTexto: { color: '#fff', fontWeight: '800', fontSize: 16 },
 })
