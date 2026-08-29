@@ -19,8 +19,8 @@ export function FilterChips<T extends string>({
           type="button"
           onClick={() => onChange(o)}
           className={cn(
-            'shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize',
-            valor === o ? 'bg-primary text-white' : 'bg-surface border border-line text-muted',
+            'shrink-0 rounded-full border px-4 text-sm font-medium capitalize transition-colors duration-campo min-h-11',
+            valor === o ? 'border-primary bg-primary text-white' : 'border-line bg-surface text-muted',
           )}
         >
           {etiquetas?.[o] ?? o}

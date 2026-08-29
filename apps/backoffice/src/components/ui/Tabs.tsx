@@ -23,8 +23,8 @@ export function Tabs({
             id={`tab-${t.id}`}
             onClick={() => onChange(t.id)}
             className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium capitalize',
-              selected ? 'bg-primary text-white' : 'bg-surface border border-line text-muted',
+              'min-h-11 rounded-full border px-4 text-sm font-medium capitalize transition-colors duration-campo',
+              selected ? 'border-primary bg-primary text-white' : 'border-line bg-surface text-muted',
             )}
           >
             {t.label}

@@ -11,6 +11,8 @@ test('buttonClass primary usa token primary y focus visible', () => {
   const c = buttonClass('primary', 'md')
   assert.match(c, /bg-primary/)
   assert.match(c, /focus-visible:ring-primary/)
+  assert.match(c, /min-h-11/)
+  assert.match(c, /duration-campo/)
   assert.doesNotMatch(c, /bg-brand-700/)
 })
 
@@ -19,7 +21,7 @@ test('buttonClass secondary, danger y tamaños son distintos', () => {
   const dan = buttonClass('danger', 'lg')
   assert.match(sec, /border-line/)
   assert.match(sec, /text-xs/)
-  assert.match(dan, /bg-rose-700/)
+  assert.match(dan, /bg-danger/)
   assert.match(dan, /w-full/)
   assert.notEqual(sec, dan)
 })

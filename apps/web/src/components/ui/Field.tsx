@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes 
 import { cn } from '../../lib/cn'
 
 const FIELD =
-  'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50'
+  'mt-1 block w-full min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted transition-colors duration-campo focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50'
 
 interface CampoProps {
   id: string

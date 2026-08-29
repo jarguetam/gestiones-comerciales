@@ -64,14 +64,14 @@ export function Dialog({
         className={cn('w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-surface shadow-2xl', className)}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 bg-primary px-6 py-4 text-white">
-          <h2 id={titleId} className="font-serif text-lg tracking-wide">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
+          <h2 id={titleId} className="font-display text-lg tracking-tight text-ink">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1 text-white/80 hover:bg-white/10 hover:text-white"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink"
             aria-label="Cerrar"
           >
             ✕
