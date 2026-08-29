@@ -1,8 +1,11 @@
+export type VocabularioBranding = Partial<Record<'persona' | 'visita' | 'lead' | 'solicitud', string>>
+
 export interface BrandingTenant {
   nombre_comercial?: string
   color_primario?: string
   color_secundario?: string
   logo_url?: string
+  vocabulario?: VocabularioBranding
 }
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
@@ -16,11 +19,27 @@ export function brandingDeJson(raw: unknown): BrandingTenant {
       : typeof o.nombre === 'string'
         ? o.nombre
         : undefined
+  const vocabRaw = o.vocabulario
+  let vocabulario: VocabularioBranding | undefined
+  if (vocabRaw && typeof vocabRaw === 'object' && !Array.isArray(vocabRaw)) {
+    const v = vocabRaw as Record<string, unknown>
+    const pick = (k: keyof VocabularioBranding) => (typeof v[k] === 'string' ? v[k] : undefined)
+    vocabulario = {
+      persona: pick('persona'),
+      visita: pick('visita'),
+      lead: pick('lead'),
+      solicitud: pick('solicitud'),
+    }
+    if (!vocabulario.persona && !vocabulario.visita && !vocabulario.lead && !vocabulario.solicitud) {
+      vocabulario = undefined
+    }
+  }
   return {
     nombre_comercial: nombre,
     color_primario: typeof o.color_primario === 'string' ? o.color_primario : undefined,
     color_secundario: typeof o.color_secundario === 'string' ? o.color_secundario : undefined,
     logo_url: typeof o.logo_url === 'string' ? o.logo_url : undefined,
+    vocabulario,
   }
 }
 

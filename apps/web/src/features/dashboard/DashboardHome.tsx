@@ -11,7 +11,7 @@ import {
   rankingSupervisores,
   type FilaDashboard,
 } from './dashboard'
-import { Button, PageHeader, PAGE, Select } from '../../components/ui'
+import { Button, PageHeader, PAGE, Select, KpiSkeleton } from '../../components/ui'
 
 const ESTILO_KPI = 'rounded-2xl bg-surface border border-line p-5 shadow-sm'
 
@@ -37,16 +37,21 @@ export function DashboardHome() {
   const [supervisorId, setSupervisorId] = useState('')
   const [depositosPendientes, setDepositosPendientes] = useState(2)
   const [cuentasMora, setCuentasMora] = useState(1)
+  const [cargandoKpi, setCargandoKpi] = useState(live)
 
   useEffect(() => {
     if (!live) {
       setFilas(demoFilasDashboard())
+      setCargandoKpi(false)
       return
     }
+    setCargandoKpi(true)
     const rpc = rol === 'supervisor' ? 'dashboard_supervisor' : 'dashboard_gerente'
     void supabase.rpc(rpc).then(({ data, error }) => {
-      if (error || !Array.isArray(data) || data.length === 0) return
-      setFilas((data as Record<string, unknown>[]).map(filaDeRpc))
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setFilas((data as Record<string, unknown>[]).map(filaDeRpc))
+      }
+      setCargandoKpi(false)
     })
     if (modulos.includes('depositos')) {
       void supabase
@@ -105,6 +110,9 @@ export function DashboardHome() {
         }
       />
 
+      {cargandoKpi ? (
+        <KpiSkeleton />
+      ) : (
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <article className={ESTILO_KPI}>
           <p className="text-[11px] uppercase tracking-wide text-muted">Visitas programadas</p>
@@ -112,7 +120,7 @@ export function DashboardHome() {
         </article>
         <article className={ESTILO_KPI}>
           <p className="text-[11px] uppercase tracking-wide text-muted">Completadas</p>
-          <p className="mt-2 font-serif text-4xl text-emerald-800">{kpis.pctCompletadas}%</p>
+          <p className="mt-2 font-serif text-4xl text-primary">{kpis.pctCompletadas}%</p>
           <p className="text-xs text-muted mt-1">
             {kpis.completadas} de {kpis.visitas} visitas
           </p>
@@ -130,6 +138,7 @@ export function DashboardHome() {
           </p>
         </article>
       </section>
+      )}
 
       {(modulos.includes('creditos') || DEMO_MODE) && (
         <p className="text-sm text-muted">

@@ -1,58 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { useCallback, useEffect } from 'react'
+import { DEMO_MODE } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
-import {
-  contarNoLeidas,
-  demoNotificaciones,
-  marcarLeida,
-  type ItemNotificacion,
-} from './notificaciones'
+import { useNotificaciones } from './useNotificaciones'
 import { Alert, Button, EmptyState, PageHeader } from '../../components/ui'
 import { cn } from '../../lib/cn'
 
 export function NotificacionesPage() {
   const { fuente } = useDominio()
   const live = !DEMO_MODE && fuente === 'supabase'
-  const [items, setItems] = useState<ItemNotificacion[]>(demoNotificaciones())
-  const [error, setError] = useState<string | null>(null)
-
-  const cargar = useCallback(async () => {
-    if (!live) {
-      setItems(demoNotificaciones())
-      return
-    }
-    const { data, error } = await supabase
-      .from('notificacion')
-      .select('id, titulo, cuerpo, leida, creado_en')
-      .order('creado_en', { ascending: false })
-      .limit(100)
-    if (error) {
-      setError(error.message)
-      return
-    }
-    setItems(
-      ((data ?? []) as Array<Record<string, unknown>>).map((n) => ({
-        id: String(n.id),
-        titulo: String(n.titulo),
-        cuerpo: String(n.cuerpo),
-        leida: Boolean(n.leida),
-        creado_en: String(n.creado_en),
-      })),
-    )
-  }, [live])
+  const { items, pendientes, error, leer, refetch } = useNotificaciones(live)
 
   useEffect(() => {
-    void cargar()
-  }, [cargar])
+    void refetch()
+  }, [refetch])
 
-  async function leer(id: string) {
-    setItems((prev) => marcarLeida(prev, id))
-    if (!live) return
-    const { error } = await supabase.from('notificacion').update({ leida: true }).eq('id', id)
-    if (error) setError(error.message)
-  }
-
-  const pendientes = contarNoLeidas(items)
+  const marcar = useCallback(
+    (id: string) => {
+      leer(id)
+    },
+    [leer],
+  )
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4">
@@ -77,7 +44,7 @@ export function NotificacionesPage() {
                   <p className="text-[11px] text-muted mt-2">{new Date(n.creado_en).toLocaleString()}</p>
                 </div>
                 {!n.leida && (
-                  <Button variant="ghost" size="sm" onClick={() => void leer(n.id)}>
+                  <Button variant="ghost" size="sm" onClick={() => marcar(n.id)}>
                     Marcar leída
                   </Button>
                 )}

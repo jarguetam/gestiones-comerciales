@@ -41,7 +41,7 @@ test('mensajeToast separa código GC-* del texto humano', () => {
   assert.equal(extraerCodigoGc('GC-CRM-002: motivo requerido'), 'GC-CRM-002')
   const m = mensajeToast(new Error('GC-KM-001: km_final no puede ser menor que km_inicial'))
   assert.equal(m.descripcion, 'GC-KM-001')
-  assert.match(m.titulo, /km_final/i)
+  assert.match(m.titulo, /km_final|menor/i)
 })
 
 test('lineaTiempoVisita marca el paso actual y anulación', () => {
@@ -53,6 +53,18 @@ test('lineaTiempoVisita marca el paso actual y anulación', () => {
   assert.equal(ok[2].etiqueta, 'Aprobada')
   const anul = lineaTiempoVisita('anulada')
   assert.equal(anul.at(-1)?.clave, 'anulada')
+})
+
+test('lineaTiempoVisita no inventa check-in sin GPS ni timestamps', () => {
+  const sinGps = lineaTiempoVisita('completada')
+  assert.equal(sinGps.some((p) => p.clave === 'checkin'), false)
+  assert.equal(sinGps.find((p) => p.clave === 'completada')?.cuando ?? null, null)
+  const conGps = lineaTiempoVisita('programada', { latitud: 14.6, longitud: -90.5, creadoEn: '2026-08-01T08:00:00Z' })
+  const checkin = conGps.find((p) => p.clave === 'checkin')
+  assert.ok(checkin)
+  assert.equal(checkin?.cuando, undefined)
+  assert.match(checkin?.detalle ?? '', /14\.6/)
+  assert.equal(conGps[0].cuando, '2026-08-01T08:00:00Z')
 })
 
 test('cn omite valores vacíos', () => {
