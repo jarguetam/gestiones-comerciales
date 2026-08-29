@@ -60,8 +60,9 @@ Fuente: `tenant.branding` (`nombre_comercial`, `color_primario`, `logo_url`).
 
 - **Web W-10:** tab Branding en Configuración. Preview en vivo; persistencia
   `tenant.update` cuando hay sesión Supabase.
-- **Login web:** no hay resolución de tenant por dominio pre-sesión. En DEMO se
-  muestra `BRANDING_DEMO`. En vivo el branding entra al shell post-login.
+- **Login web:** no hay RPC público host/codigo → branding (RLS `tenant_select` es
+  authenticated). Pre-sesión: `?tenant=`, localStorage de la última sesión por host/codigo,
+  y `BRANDING_DEMO`. Tras login se cachea `tenant.branding` para el próximo pre-login.
 - **Backoffice:** un acento de plataforma (`--gc-primary` = ink). El color de cada
   empresa se edita en P-03, no pinta el chrome del backoffice.
 - **Móvil:** `perfil.branding` tras login; default `#1D4ED8` si el JSON es inválido.
