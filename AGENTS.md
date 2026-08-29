@@ -3,18 +3,24 @@
 Monorepo: `apps/web` (empresa), `apps/backoffice` (plataforma), `apps/mobile` (campo),
 `supabase/` (SQL + Edge). Specs en `spec/` y `docs/`.
 
-## UI nueva
+## UI de campo 2026
 
 Toda pantalla o control nuevo usa el kit en `src/components/ui` (web/backoffice) o
-`apps/mobile/src/components/ui` + `useTheme()`. Detalle, tokens y Do/Don’t:
+`apps/mobile/src/components/ui` + `useTheme()`. Detalle y Do/Don’t:
 [`docs/frontend/design-system.md`](docs/frontend/design-system.md).
 
-- No hex sueltos en features nuevas (`bg-canvas`, `border-line`, `bg-primary`, `text-ink`).
-- Listados: `EmptyState` / `Vacio`, `TableSkeleton` / `Cargando`, toasts en mutaciones.
-- IDs de spec (`W-03`, `P-05`, `M-02`) en `data-spec` o comentario de archivo, **nunca**
-  como eyebrow visible. Playwright usa `[data-spec="…"]`.
-- CRM y Personas en web son layout **desktop** (lista+ficha / kanban). No reintroducir
-  `PhoneMockup`, `BottomNav` ni el showcase calendar.
+Identidad: herramienta de ruta (asesor en calle + supervisor en desktop).
+**Murió** la regla crema/Playfair. No reintroducir serif, canvas `#F3EEE4`,
+pasteles de evento, header púrpura, `PhoneMockup` ni bottom-nav de calendario.
+
+- Tipografía: Plus Jakarta Sans + `font-display` / tracking tight. Nada de italic serif.
+- Tokens: `bg-canvas` `#FAFAF8`, `text-ink` `#111111`, `border-line`, `bg-primary`.
+  Estados: ok / warn / danger. Rail de 4px del primario en visitas/leads.
+- Campo (`< md` y móvil): targets ≥ 44px, 4 destinos + Más, jornada (hora + cliente
+  + estado + lugar), FAB/check-in enorme.
+- Desktop: sidebar estrecho, nav texto, contenido full-bleed, kanban real.
+- IDs de spec (`W-03`, `P-05`, `M-02`) en `data-spec` o comentario de archivo,
+  **nunca** como eyebrow visible. Playwright usa `[data-spec="…"]`.
 - Labels con `htmlFor` (web) o `accessibilityLabel` / `accessibilityState` (móvil).
 
 ## Tests
