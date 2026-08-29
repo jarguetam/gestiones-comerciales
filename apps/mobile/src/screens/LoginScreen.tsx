@@ -1,6 +1,5 @@
 /**
- * M-01 Login (spec F1.10/F1.11).
- * Email + contraseña + TOTP si aal1→aal2. En DEMO_MODE entra un perfil de campo.
+ * M-01 Login. Email + contraseña + TOTP si aal1→aal2. En DEMO_MODE entra un perfil de campo.
  */
 import React, { useState } from 'react'
 import {
@@ -15,7 +14,6 @@ import {
 } from 'react-native'
 import { claimsDe, DEMO_MODE, PERFIL_DEMO, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
 import { requierePasoTotp } from '../lib/mfa'
-import { resetColaDemo } from '../lib/colaStore'
 
 interface Props {
   onLogin: (perfil: Perfil) => void
@@ -32,7 +30,6 @@ export default function LoginScreen({ onLogin }: Props) {
   const [cargando, setCargando] = useState(false)
 
   async function entrarDemo() {
-    resetColaDemo()
     onLogin(PERFIL_DEMO)
   }
 
@@ -105,7 +102,7 @@ export default function LoginScreen({ onLogin }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.tarjeta}>
-        <Text style={styles.eyebrow}>M-01 · Campo</Text>
+        <Text style={styles.eyebrow}>Campo</Text>
         <Text style={styles.titulo}>Gestiones Comerciales</Text>
         <Text style={styles.subtitulo}>
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Asesor de campo'}

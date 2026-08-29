@@ -1,10 +1,8 @@
 /**
- * M-02 Agenda de visitas del día (spec F1.11).
- * Lista las visitas de hoy del asesor con su estado y permite check-in GPS
- * directo (M-04) desde cada tarjeta. Incluye rastreo por intervalo de la
- * config del tenant mientras el asesor está dentro de la ventana (GC-RAS-*).
+ * M-02 Agenda de visitas del día.
+ * Check-in / completar GPS (M-04) encolados; el rastreo de jornada vive en App.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -16,13 +14,10 @@ import {
 } from 'react-native'
 import * as Location from 'expo-location'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
-import type { PuntoGps, Visita } from '../lib/tipos'
+import type { Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
-
-declare const process: { env: Record<string, string | undefined> }
-
-const SUPABASE_FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v1`
+import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
 
 const ESTILO_ESTADO: Record<string, { bg: string; fg: string; texto: string }> = {
   programada: { bg: '#DBEAFE', fg: '#1D4ED8', texto: 'Programada' },
@@ -41,6 +36,8 @@ const DEMO_VISITAS: Visita[] = [
     hora_inicio: '08:30:00',
     estado: 'programada',
     actividad: 'Verificación de garantías',
+    latitud: 14.3,
+    longitud: -90.78,
   },
   {
     id: 202,
@@ -53,6 +50,8 @@ const DEMO_VISITAS: Visita[] = [
   },
 ]
 
+const UMBRAL_GEOCERCA_M = 200
+
 interface Props {
   perfil: Perfil
 }
@@ -64,8 +63,6 @@ export default function AgendaScreen({ perfil }: Props) {
   const [checkinDe, setCheckinDe] = useState<number | null>(null)
   const [checkins, setCheckins] = useState<Set<number>>(new Set())
   const [mensaje, setMensaje] = useState<string | null>(null)
-  const colaRastreo = useRef<PuntoGps[]>([])
-  const timerRastreo = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
@@ -80,69 +77,9 @@ export default function AgendaScreen({ perfil }: Props) {
     setRefrescando(false)
   }, [])
 
-  useEffect(() => {
-    cargar()
+  React.useEffect(() => {
+    void cargar()
   }, [cargar])
-
-  // ----- Rastreo por intervalo (config_rastreo del tenant) -----
-  useEffect(() => {
-    if (DEMO_MODE) return
-
-    let activo = true
-    async function iniciarRastreo() {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== 'granted' || !activo) return
-
-      // config del día: el servidor también la valida en rastreo-ingesta
-      const { data: cfg } = await supabase
-        .from('config_rastreo')
-        .select('intervalo_min, hora_inicio, hora_fin')
-        .eq('dia_semana', new Date().getDay())
-        .maybeSingle()
-      if (!cfg || !activo) return
-
-      const intervaloMs = (cfg.intervalo_min ?? 15) * 60_000
-      timerRastreo.current = setInterval(async () => {
-        const ahora = new Date()
-        const hhmmss = ahora.toTimeString().slice(0, 8)
-        if (hhmmss < cfg.hora_inicio || hhmmss > cfg.hora_fin) return
-
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        })
-        colaRastreo.current.push({
-          latitud: pos.coords.latitude,
-          longitud: pos.coords.longitude,
-          precision_m: pos.coords.accuracy,
-          velocidad_kmh: pos.coords.speed != null ? pos.coords.speed * 3.6 : null,
-          registrado_en: new Date().toISOString(),
-        })
-
-        // Envía el lote al edge rastreo-ingesta (él aplica GC-RAS-001 y la ventana)
-        if (colaRastreo.current.length >= 3) {
-          const puntos = [...colaRastreo.current]
-          colaRastreo.current = []
-          const { data: sesion } = await supabase.auth.getSession()
-          await fetch(`${SUPABASE_FUNCTIONS_URL}/rastreo-ingesta`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${sesion.session?.access_token}`,
-            },
-            body: JSON.stringify({ puntos }),
-          }).catch(() => {
-            // offline: reencola (idempotente por registrado_en único)
-            colaRastreo.current.unshift(...puntos)
-          })
-        }
-      }, intervaloMs)
-    }
-    iniciarRastreo()
-    return () => {
-      activo = false
-      if (timerRastreo.current) clearInterval(timerRastreo.current)
-    }
-  }, [])
 
   async function gps(): Promise<{ lat: number; lng: number }> {
     if (DEMO_MODE) return { lat: 14.6349, lng: -90.5069 }
@@ -152,7 +89,15 @@ export default function AgendaScreen({ perfil }: Props) {
     return { lat: pos.coords.latitude, lng: pos.coords.longitude }
   }
 
-  // ----- M-04: check-in / completar GPS (cola offline) -----
+  function avisoGeocerca(visita: Visita, lat: number, lng: number): string | null {
+    if (visita.latitud == null || visita.longitud == null) return null
+    const d = distanciaMetros(lat, lng, visita.latitud, visita.longitud)
+    if (fueraDeRango(d, UMBRAL_GEOCERCA_M)) {
+      return `Check-in fuera de geocerca (${Math.round(d)} m). Se registra, no se bloquea.`
+    }
+    return null
+  }
+
   async function handleCheckin(visita: Visita) {
     setMensaje(null)
     setCheckinDe(visita.id)
@@ -167,7 +112,7 @@ export default function AgendaScreen({ perfil }: Props) {
         DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
       )
       setCheckins((prev) => new Set(prev).add(visita.id))
-      setMensaje(`Check-in encolado en ${visita.persona_nombre}`)
+      setMensaje(avisoGeocerca(visita, pos.lat, pos.lng) ?? `Check-in encolado en ${visita.persona_nombre}`)
       if (!DEMO_MODE) await cargar()
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'No se pudo registrar el check-in')
@@ -217,7 +162,7 @@ export default function AgendaScreen({ perfil }: Props) {
         {item.estado === 'programada' && !checkins.has(item.id) && (
           <TouchableOpacity
             style={styles.botonCheckin}
-            onPress={() => handleCheckin(item)}
+            onPress={() => void handleCheckin(item)}
             disabled={checkinDe === item.id}
           >
             {checkinDe === item.id ? (
@@ -230,7 +175,7 @@ export default function AgendaScreen({ perfil }: Props) {
         {item.estado === 'programada' && checkins.has(item.id) && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: '#1D4ED8' }]}
-            onPress={() => handleCompletar(item)}
+            onPress={() => void handleCompletar(item)}
             disabled={checkinDe === item.id}
           >
             <Text style={styles.botonCheckinTexto}>Completar visita</Text>
@@ -260,7 +205,7 @@ export default function AgendaScreen({ perfil }: Props) {
             refreshing={refrescando}
             onRefresh={() => {
               setRefrescando(true)
-              cargar()
+              void cargar()
             }}
           />
         }

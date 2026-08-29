@@ -34,7 +34,7 @@ export default function SyncScreen({ colorPrimario }: Props) {
 
   return (
     <View style={styles.box}>
-      <Text style={styles.hint}>M-09 · cola local</Text>
+      <Text style={styles.hint}>Cola local · backoff automático</Text>
       <View style={styles.kpis}>
         <Kpi etiqueta="Pendientes" valor={resumen.pendientes} />
         <Kpi etiqueta="Errores" valor={resumen.errores} />

@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
@@ -33,7 +34,7 @@ export default function DepositosScreen({ perfil }: Props) {
   const [mostrar, setMostrar] = useState(false)
   const [monto, setMonto] = useState('')
   const [ref, setRef] = useState('')
-  const [foto, setFoto] = useState(false)
+  const [fotoUri, setFotoUri] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     if (DEMO_MODE) {
@@ -63,13 +64,13 @@ export default function DepositosScreen({ perfil }: Props) {
       await encolarYSync(
         {
           tipo: 'deposito',
-          payload: { monto: n, referencia: ref || (foto ? 'boleta.jpg' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+          payload: { monto: n, referencia: ref || (fotoUri ? 'boleta.jpg' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
           clienteKey: `deposito:${n}:${Date.now()}`,
         },
         ejecutarDemo,
       )
       setItems((prev) => [
-        { id: Date.now(), monto: n, referencia: ref || (foto ? 'boleta.jpg' : null), estado: 'pendiente' },
+        { id: Date.now(), monto: n, referencia: ref || (fotoUri ? 'boleta.jpg' : null), estado: 'pendiente' },
         ...prev,
       ])
       setMostrar(false)
@@ -78,7 +79,7 @@ export default function DepositosScreen({ perfil }: Props) {
     await encolarYSync(
       {
         tipo: 'deposito',
-        payload: { monto: n, referencia: ref.trim() || (foto ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+        payload: { monto: n, referencia: ref.trim() || (fotoUri ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
         clienteKey: `deposito:${n}:${Date.now()}`,
       },
       ejecutarMutacion(supabase),
@@ -86,7 +87,7 @@ export default function DepositosScreen({ perfil }: Props) {
     setMostrar(false)
     setMonto('')
     setRef('')
-    setFoto(false)
+    setFotoUri(null)
     await cargar()
   }
 
@@ -118,8 +119,27 @@ export default function DepositosScreen({ perfil }: Props) {
             onChangeText={setMonto}
           />
           <TextInput style={styles.input} placeholder="Referencia / boleta" value={ref} onChangeText={setRef} />
-          <TouchableOpacity onPress={() => setFoto((v) => !v)}>
-            <Text style={styles.link}>{foto ? '✓ Foto de boleta adjunta' : 'Adjuntar foto de boleta'}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              void (async () => {
+                const cam = await ImagePicker.requestCameraPermissionsAsync()
+                const launch =
+                  cam.status === 'granted'
+                    ? ImagePicker.launchCameraAsync
+                    : ImagePicker.launchImageLibraryAsync
+                if (cam.status !== 'granted') {
+                  const gal = await ImagePicker.requestMediaLibraryPermissionsAsync()
+                  if (gal.status !== 'granted') {
+                    Alert.alert('Permiso requerido', 'La foto de boleta necesita cámara o galería.')
+                    return
+                  }
+                }
+                const res = await launch({ quality: 0.7, allowsEditing: true })
+                if (!res.canceled && res.assets[0]?.uri) setFotoUri(res.assets[0].uri)
+              })()
+            }}
+          >
+            <Text style={styles.link}>{fotoUri ? '✓ Foto de boleta adjunta' : 'Adjuntar foto de boleta'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.boton} onPress={() => void registrar()}>
             <Text style={styles.botonTexto}>Enviar</Text>

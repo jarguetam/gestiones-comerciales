@@ -152,7 +152,7 @@ export default function FormulariosScreen({ perfil }: Props) {
         },
         DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
       )
-      Alert.alert(DEMO_MODE ? 'Encolado (demo)' : 'Encolado', `Score ${score ?? '—'}%. Ver M-09.`)
+      Alert.alert(DEMO_MODE ? 'Encolado (demo)' : 'Encolado', `Score ${score ?? '—'}%. Revisá la cola de sincronización.`)
       setValores({})
     } finally {
       setEnviando(false)
@@ -161,7 +161,7 @@ export default function FormulariosScreen({ perfil }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.box}>
-      <Text style={styles.hint}>M-05 · plantillas del tenant, no formularios compilados</Text>
+      <Text style={styles.hint}>Plantillas del tenant</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
         {plantillas.map((p) => (
           <TouchableOpacity

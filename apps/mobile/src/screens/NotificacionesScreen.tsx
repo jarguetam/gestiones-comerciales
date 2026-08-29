@@ -15,9 +15,10 @@ import {
 
 interface Props {
   colorPrimario: string
+  onDeepLink?: (url: string) => void
 }
 
-export default function NotificacionesScreen({ colorPrimario }: Props) {
+export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Props) {
   const [items, setItems] = useState<ItemNotificacion[]>(demoNotificaciones())
   const [error, setError] = useState<string | null>(null)
 
@@ -54,7 +55,10 @@ export default function NotificacionesScreen({ colorPrimario }: Props) {
   async function leer(item: ItemNotificacion) {
     setItems((prev) => marcarLeida(prev, item.id))
     const link = deepLinkDe(item.datos)
-    if (link) void Linking.openURL(link).catch(() => undefined)
+    if (link) {
+      if (onDeepLink) onDeepLink(link)
+      else void Linking.openURL(link).catch(() => undefined)
+    }
     if (DEMO_MODE) return
     const { error } = await supabase.from('notificacion').update({ leida: true }).eq('id', item.id)
     if (error) setError(error.message)
@@ -64,7 +68,7 @@ export default function NotificacionesScreen({ colorPrimario }: Props) {
 
   return (
     <View style={styles.box}>
-      <Text style={styles.hint}>M-08 · {pendientes} sin leer</Text>
+      <Text style={styles.hint}>{pendientes} sin leer</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
         data={items}

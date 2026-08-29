@@ -73,13 +73,13 @@ MODULOS OPTATIVOS (por tenant)
 | Móvil | React Native + Expo + SQLite offline + expo-location + FCM |
 | Jobs | pg_cron + pg_net → Edge `notify-jobs` |
 
-## Estado del proyecto (2026-08-26)
+## Estado del proyecto (2026-08-29)
 
 | Recurso | Detalle |
 |---|---|
 | Repo | `jarguetam/gestiones-comerciales` (privado) |
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
-| Fase actual | **F3 cerrada**. En `main`: P-05/P-06 backoffice, web W-01 MFA · W-02b · W-12 · W-13 · theming, móvil M-08/M-09 cola. Pendiente operativo: `db push` al proyecto Supabase, deploy Edge, HMAC; issues #9 y #11 (ya implementadas). |
+| Fase actual | **F3 cerrada**. Móvil candidato a producción (cola persistente, EAS, permisos de store, FCM). Pendiente operativo: `eas init` + cuentas Apple/Google, privacy policy, `db push`/Edge si faltan, HMAC. |
 
 ### Quickstart
 
@@ -110,4 +110,5 @@ apps/               → web / mobile / backoffice (scaffold en F1)
 ## Próximos pasos (según tasks.md)
 
 1. **Operación:** aplicar migraciones pendientes en el proyecto Supabase (`supabase db push`) y desplegar Edge `importer` + `webhook-tenant`; rotar el secreto HMAC en P-03.
-2. **Fuera de código en `main`:** enrolamiento MFA en backoffice, persistencia SQLite de la cola móvil, Detox, Storybook. Issues #9 y #11 cubren F1.11 y F1.3 — se pueden cerrar.
+2. **Móvil a tiendas:** ver `apps/mobile/README.md` — `eas init`, secretos `EXPO_PUBLIC_*`, Apple Developer / Play Console, política de privacidad, Detox smoke.
+3. **Fuera de código:** enrolamiento MFA en backoffice, Storybook. Issues #9 cubre F1.11 (implementada).

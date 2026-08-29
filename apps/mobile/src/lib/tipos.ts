@@ -8,6 +8,8 @@ export interface Visita {
   hora_inicio: string | null
   estado: 'programada' | 'completada' | 'aprobada' | 'rechazada' | 'anulada'
   actividad: string | null
+  latitud?: number | null
+  longitud?: number | null
 }
 
 export interface Persona {

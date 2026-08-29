@@ -8,6 +8,7 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
+import { sesionStorage } from './sesionStorage'
 
 // Base64 URL-safe sin Buffer (Hermes no lo incluye por defecto)
 function base64UrlDecode(input: string): string {
@@ -31,12 +32,22 @@ declare const process: { env: Record<string, string | undefined> }
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined
+const credencialesOk = Boolean(supabaseUrl && supabaseAnonKey)
 
-export const DEMO_MODE = !supabaseUrl || !supabaseAnonKey
+/** Preview local sin backend. Un binario de producción sin anon key NO cae a demo: falla al crear el cliente. */
+export const DEMO_MODE =
+  process.env.EXPO_PUBLIC_DEMO === '1' || (!credencialesOk && process.env.NODE_ENV !== 'production')
 
 export const supabase: SupabaseClient = DEMO_MODE
   ? ({} as SupabaseClient)
-  : createClient(supabaseUrl!, supabaseAnonKey!)
+  : createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        storage: sesionStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    })
 
 export type Rol = 'admin' | 'gerente' | 'supervisor' | 'asesor'
 
