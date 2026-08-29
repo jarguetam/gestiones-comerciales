@@ -12,7 +12,6 @@ export const TOKENS = {
   primaryDemo: '#6D28D9',
   font: '"Plus Jakarta Sans"',
   durationMs: 150,
-  railPx: 4,
   touchMinPx: 44,
 } as const
 

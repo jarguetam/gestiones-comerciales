@@ -9,4 +9,4 @@ export function emptyStateValido(m: EmptyStateModel): boolean {
 }
 
 export const EMPTY_STATE_ROOT =
-  'rounded-2xl border border-dashed border-line bg-surface px-6 py-14 text-center'
+  'rounded-lg border border-line bg-surface px-5 py-10 text-center'

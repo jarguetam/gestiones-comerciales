@@ -64,9 +64,20 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(campo.getByRole('link', { name: /cartera/i })).toBeVisible()
     await expect(campo.getByRole('link', { name: /^crm$/i })).toBeVisible()
     await expect(campo.getByRole('button', { name: /^más$/i })).toBeVisible()
+    await expect(campo.locator('svg').first()).toBeVisible()
+    const navH = await campo.evaluate((el) => el.getBoundingClientRect().height)
+    expect(navH).toBeGreaterThanOrEqual(56)
     await expect(page.getByRole('button', { name: 'Nueva visita', exact: true })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('button', { name: /^salir$/i })).toBeVisible()
     await campo.getByRole('button', { name: /^más$/i }).click()
     await expect(page.getByRole('link', { name: /^formularios$/i }).first()).toBeVisible()
+    await expect(page.locator('#nav-mas').getByRole('button', { name: /^salir$/i })).toBeVisible()
+  })
+
+  test('Salir queda visible en el header desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await expect(page.getByRole('banner').getByRole('button', { name: /^salir$/i })).toBeVisible()
   })
 
   test('W-04: la pantalla de personas lista la cartera y permite buscar', async ({ page }) => {

@@ -2,6 +2,7 @@ import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useTheme } from '../../theme'
 import { Boton } from './Boton'
+import { Icono } from './Icono'
 
 export function Vacio({
   titulo,
@@ -13,12 +14,9 @@ export function Vacio({
   cta?: { etiqueta: string; onPress: () => void }
 }) {
   const t = useTheme()
-  const marca = titulo.trim().slice(0, 1).toUpperCase() || '—'
   return (
     <View style={[styles.box, { borderColor: t.line, backgroundColor: t.surface }]}>
-      <Text style={[styles.marca, { color: t.ink }]} accessibilityElementsHidden>
-        {marca}
-      </Text>
+      <Icono name="vacio" color={t.muted} size={28} />
       <Text style={[styles.titulo, { color: t.ink }]}>{titulo}</Text>
       {descripcion ? <Text style={[styles.desc, { color: t.muted }]}>{descripcion}</Text> : null}
       {cta ? (
@@ -31,8 +29,7 @@ export function Vacio({
 }
 
 const styles = StyleSheet.create({
-  box: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 16, padding: 28, alignItems: 'center', margin: 12 },
-  marca: { fontSize: 56, fontWeight: '800', letterSpacing: -2, opacity: 0.15 },
-  titulo: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5, textAlign: 'center', marginTop: 8 },
-  desc: { fontSize: 13, textAlign: 'center', marginTop: 8 },
+  box: { borderWidth: 1, borderRadius: 10, padding: 20, alignItems: 'center', margin: 12 },
+  titulo: { fontSize: 16, fontWeight: '600', textAlign: 'center', marginTop: 10 },
+  desc: { fontSize: 13, textAlign: 'center', marginTop: 6 },
 })

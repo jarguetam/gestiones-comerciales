@@ -13,11 +13,12 @@ Identidad: herramienta de ruta (asesor en calle + supervisor en desktop).
 **Murió** la regla crema/Playfair. No reintroducir serif, canvas `#F3EEE4`,
 pasteles de evento, header púrpura, `PhoneMockup` ni bottom-nav de calendario.
 
-- Tipografía: Plus Jakarta Sans + `font-display` / tracking tight. Nada de italic serif.
+- Tipografía: Plus Jakarta Sans. Títulos humanos (`text-xl`), no hero de landing.
 - Tokens: `bg-canvas` `#FAFAF8`, `text-ink` `#111111`, `border-line`, `bg-primary`.
-  Estados: ok / warn / danger. Rail de 4px del primario en visitas/leads.
-- Campo (`< md` y móvil): targets ≥ 44px, 4 destinos + Más, jornada (hora + cliente
-  + estado + lugar), FAB/check-in enorme.
+  Estados: ok / warn / danger. **Sin rail** de acento en visitas/leads/cards.
+- Campo (`< md` y móvil): targets ≥ 44px, bottom nav ≥ 56px con iconos SVG,
+  4 destinos + Más, jornada (hora + cliente + estado + lugar), check-in con icono.
+  **Salir** visible en header (desktop y móvil).
 - Desktop: sidebar estrecho, nav texto, contenido full-bleed, kanban real.
 - IDs de spec (`W-03`, `P-05`, `M-02`) en `data-spec` o comentario de archivo,
   **nunca** como eyebrow visible. Playwright usa `[data-spec="…"]`.

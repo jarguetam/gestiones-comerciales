@@ -235,7 +235,7 @@ export function PersonasPage() {
                   type="button"
                   onClick={() => setSeleccion(p)}
                   className={cn(
-                    'rail w-full min-h-11 px-4 py-3 text-left transition-colors duration-campo hover:bg-canvas',
+                    'w-full min-h-11 px-4 py-3 text-left transition-colors duration-campo hover:bg-canvas',
                     seleccion?.id === p.id && 'bg-canvas',
                   )}
                 >
@@ -259,7 +259,7 @@ export function PersonasPage() {
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-display text-2xl tracking-tight">{seleccion.nombre}</h3>
+                  <h3 className="text-lg font-semibold">{seleccion.nombre}</h3>
                   <Badge tone="primary" className="mt-2">
                     {seleccion.categoria}
                   </Badge>
@@ -268,25 +268,25 @@ export function PersonasPage() {
               </div>
               <dl className="mt-6 grid gap-3 sm:grid-cols-2 text-sm">
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted">Documento</dt>
+                  <dt className="text-xs text-muted">Documento</dt>
                   <dd className="mt-0.5 font-medium">{seleccion.documento}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted">Teléfono</dt>
+                  <dt className="text-xs text-muted">Teléfono</dt>
                   <dd className="mt-0.5 font-medium">{seleccion.telefono}</dd>
                 </div>
                 <div className="sm:col-span-2">
-                  <dt className="text-xs uppercase tracking-wide text-muted">Dirección</dt>
+                  <dt className="text-xs text-muted">Dirección</dt>
                   <dd className="mt-0.5">{seleccion.direccion}</dd>
                 </div>
                 {seleccion.saldo ? (
                   <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted">Saldo</dt>
+                    <dt className="text-xs text-muted">Saldo</dt>
                     <dd className="mt-0.5 font-semibold">{seleccion.saldo}</dd>
                   </div>
                 ) : null}
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted">Visitas pendientes</dt>
+                  <dt className="text-xs text-muted">Visitas pendientes</dt>
                   <dd className="mt-0.5">{seleccion.visitasPendientes}</dd>
                 </div>
               </dl>

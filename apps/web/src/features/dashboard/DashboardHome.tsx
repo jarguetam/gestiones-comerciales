@@ -13,7 +13,7 @@ import {
 } from './dashboard'
 import { Button, PageHeader, PAGE, Select, KpiSkeleton } from '../../components/ui'
 
-const ESTILO_KPI = 'rounded-2xl bg-surface border border-line p-5 shadow-sm'
+const ESTILO_KPI = 'rounded-lg bg-surface border border-line p-4'
 
 function filaDeRpc(row: Record<string, unknown>): FilaDashboard {
   return {
@@ -115,25 +115,25 @@ export function DashboardHome() {
       ) : (
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <article className={ESTILO_KPI}>
-          <p className="text-[11px] uppercase tracking-wide text-muted">Visitas programadas</p>
-          <p className="mt-2 font-display text-4xl tracking-tight text-primary">{kpis.programadas}</p>
+          <p className="text-xs text-muted">Visitas programadas</p>
+          <p className="mt-1.5 text-2xl font-semibold tabular-nums text-ink">{kpis.programadas}</p>
         </article>
         <article className={ESTILO_KPI}>
-          <p className="text-[11px] uppercase tracking-wide text-muted">Completadas</p>
-          <p className="mt-2 font-display text-4xl tracking-tight text-primary">{kpis.pctCompletadas}%</p>
+          <p className="text-xs text-muted">Completadas</p>
+          <p className="mt-1.5 text-2xl font-semibold tabular-nums text-ink">{kpis.pctCompletadas}%</p>
           <p className="text-xs text-muted mt-1">
             {kpis.completadas} de {kpis.visitas} visitas
           </p>
         </article>
         <article className={ESTILO_KPI}>
-          <p className="text-[11px] uppercase tracking-wide text-muted">Asesores activos</p>
-          <p className="mt-2 font-display text-4xl tracking-tight">{kpis.asesoresActivos}</p>
+          <p className="text-xs text-muted">Asesores activos</p>
+          <p className="mt-1.5 text-2xl font-semibold tabular-nums text-ink">{kpis.asesoresActivos}</p>
         </article>
         <article className={ESTILO_KPI}>
-          <p className="text-[11px] uppercase tracking-wide text-muted">
+          <p className="text-xs text-muted">
             {modulos.includes('depositos') || DEMO_MODE ? 'Depósitos pendientes' : 'Personas'}
           </p>
-          <p className="mt-2 font-display text-4xl tracking-tight">
+          <p className="mt-1.5 text-2xl font-semibold tabular-nums text-ink">
             {modulos.includes('depositos') || DEMO_MODE ? depositosPendientes : personas.length}
           </p>
         </article>
@@ -148,7 +148,7 @@ export function DashboardHome() {
       )}
 
       <section className="grid lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-surface border border-line p-5">
+        <div className="rounded-lg bg-surface border border-line p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Próximas visitas</h3>
             <Link to="/visitas" className="text-sm text-primary font-medium">
@@ -157,7 +157,7 @@ export function DashboardHome() {
           </div>
           <ul className="space-y-2">
             {hoy.map((v) => (
-              <li key={v.id} className="rail rounded-xl border border-line px-3 py-2">
+              <li key={v.id} className="rounded-md border border-line px-3 py-2">
                 <p className="text-sm font-medium truncate">{v.title}</p>
                 <p className="text-xs text-muted">
                   {v.date} · {v.startTime}
@@ -171,7 +171,7 @@ export function DashboardHome() {
           </Button>
         </div>
 
-        <div className="rounded-2xl bg-surface border border-line p-5">
+        <div className="rounded-lg bg-surface border border-line p-4">
           <h3 className="font-semibold mb-3">Ranking de equipos</h3>
           {ranking.length === 0 ? (
             <ul className="space-y-2">

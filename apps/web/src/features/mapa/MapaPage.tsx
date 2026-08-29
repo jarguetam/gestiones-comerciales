@@ -139,7 +139,7 @@ export function MapaPage() {
   if (!puede) {
     return (
       <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-14">
-        <h2 className="font-display text-2xl tracking-tight">Sin acceso al mapa</h2>
+        <h2 className="text-lg font-semibold">Sin acceso al mapa</h2>
         <p className="text-sm text-muted mt-2">El mapa de asesores es para supervisor, gerente y admin.</p>
       </div>
     )
@@ -157,7 +157,7 @@ export function MapaPage() {
 
       <div className="flex flex-wrap gap-3 items-end">
         <div className="text-sm">
-          <label htmlFor="mapa-fecha" className="block text-[11px] uppercase tracking-wide text-muted mb-1">
+          <label htmlFor="mapa-fecha" className="block text-xs text-muted mb-1">
             Fecha
           </label>
           <input
@@ -170,7 +170,7 @@ export function MapaPage() {
         </div>
         {mostrarFiltro && (
           <div className="text-sm">
-            <label htmlFor="filtro-equipo" className="block text-[11px] uppercase tracking-wide text-muted mb-1">
+            <label htmlFor="filtro-equipo" className="block text-xs text-muted mb-1">
               Equipo
             </label>
             <select

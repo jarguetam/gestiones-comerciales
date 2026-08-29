@@ -22,7 +22,7 @@ import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
 import { fechaLocalHoy } from '../lib/visita'
 import NuevaVisitaModal from './NuevaVisitaModal'
-import { BadgeEstado, Cargando, Vacio } from '../components/ui'
+import { BadgeEstado, Cargando, Icono, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 import { formatearFechaJornada, progresoJornada } from '../lib/jornada'
 
@@ -181,7 +181,6 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   function renderVisita({ item }: { item: Visita }) {
     return (
       <View style={[styles.tarjeta, { borderColor: t.line, backgroundColor: t.surface }]}>
-        <View style={[styles.rail, { backgroundColor: t.primary }]} />
         <View style={styles.tarjetaFila}>
           <Text style={[styles.hora, { color: t.ink }]}>{item.hora_inicio ? item.hora_inicio.slice(0, 5) : '--:--'}</Text>
           <View style={{ flex: 1 }}>
@@ -203,7 +202,10 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
             {checkinDe === item.id ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.botonCheckinTexto}>Check-in GPS</Text>
+              <View style={styles.checkinFila}>
+                <Icono name="checkin" color="#fff" size={16} />
+                <Text style={styles.botonCheckinTexto}>Check-in GPS</Text>
+              </View>
             )}
           </TouchableOpacity>
         )}
@@ -307,36 +309,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  hero: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 14 },
-  heroFecha: { fontSize: 28, fontWeight: '800', letterSpacing: -0.8 },
-  heroLinea: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 8 },
-  heroPct: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  hero: { borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 12 },
+  heroFecha: { fontSize: 18, fontWeight: '600' },
+  heroLinea: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 6 },
+  heroPct: { fontSize: 16, fontWeight: '600' },
   heroMeta: { fontSize: 13 },
   barra: { height: 6, borderRadius: 999, overflow: 'hidden', marginTop: 10 },
   barraFill: { height: '100%', borderRadius: 999 },
   tarjeta: {
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     padding: 14,
-    paddingLeft: 16,
     marginBottom: 10,
-    overflow: 'hidden',
   },
-  rail: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   tarjetaFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  nombre: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  nombre: { fontSize: 15, fontWeight: '600' },
   actividad: { fontSize: 13, marginTop: 2 },
   direccion: { fontSize: 12, marginTop: 2 },
-  hora: { fontSize: 18, fontWeight: '800', letterSpacing: -0.6, width: 56 },
+  hora: { fontSize: 16, fontWeight: '600', width: 56 },
   botonCheckin: {
     marginTop: 12,
-    borderRadius: 12,
+    borderRadius: 10,
     minHeight: 52,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   botonCheckinTexto: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  checkinFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fab: {
     position: 'absolute',
     right: 16,

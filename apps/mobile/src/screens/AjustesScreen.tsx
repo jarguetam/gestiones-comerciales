@@ -110,7 +110,7 @@ export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, 
         {onAbrirCola ? (
           <Boton etiqueta="Cola de sincronización" variante="secondary" onPress={onAbrirCola} />
         ) : null}
-        <Boton etiqueta="Cerrar sesión" variante="ghost" onPress={() => void handleLogout()} />
+        <Boton etiqueta="Salir" variante="ghost" onPress={() => void handleLogout()} />
       </View>
     </ScrollView>
   )
@@ -118,7 +118,7 @@ export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, 
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1, padding: 16 },
-  etiqueta: { fontSize: 11, textTransform: 'uppercase', marginTop: 8 },
+  etiqueta: { fontSize: 12, marginTop: 8 },
   valor: { fontSize: 15, fontWeight: '500', marginTop: 2 },
   ayuda: { fontSize: 12, marginTop: 4 },
   fila: { flexDirection: 'row', alignItems: 'center' },

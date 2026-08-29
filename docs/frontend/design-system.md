@@ -27,12 +27,12 @@ plataforma (backoffice).
 | muted | `--gc-muted` | `#52525B` | `#52525B` |
 | ok / warn / danger | `--gc-ok` `--gc-warn` `--gc-danger` | `#047857` / `#B45309` / `#B91C1C` | igual |
 | primary | `--gc-primary` | tenant (demo `#6D28D9`) | `#111111` |
-| rail | `4px` inset | primario | primario |
 | motion | `--gc-ease` | `150ms ease` | `150ms ease` |
-| touch | `min-h-11` | ≥ 44px | ≥ 44px |
+| touch | `min-h-11` | ≥ 44px (bottom nav ≥ 56px) | ≥ 44px |
 
-**Tipografía:** una sola familia, Plus Jakarta Sans. Títulos con `font-display`
-(`tracking-tight`, peso 700). Nada de italic serif.
+**Tipografía:** una sola familia, Plus Jakarta Sans. Títulos de pantalla en
+`text-xl font-semibold` (tamaño humano, no hero). Nada de italic serif, ni
+`tracking-[0.2em]` / uppercase en chrome.
 
 **Estados:** 3 semánticos (ok / warn / danger) + primary. Badges secos: pill con
 borde, sin barra pastel.
@@ -56,21 +56,25 @@ Importar desde `src/components/ui`.
 | `Alert` | Demo, error persistente, éxito inline. `role="alert"` en errores. |
 | `Dialog` | Modales. Focus trap, Escape, `aria-modal`. Header claro, no barra púrpura. |
 | `ToastProvider` `useToast` | Resultado de mutaciones. Códigos `GC-*` vía `mensajeToast`. |
-| `EmptyState` | Cero filas. Ilustración tipográfica (inicial grande), CTA si hay acción. |
+| `EmptyState` | Cero filas. Icono SVG mudo + título, CTA si hay acción. |
 | `Skeleton` `TableSkeleton` | Carga de tablas/KPI. |
-| `PageHeader` | Título display. El id de spec va en `data-spec`, **nunca** como eyebrow. |
-| `JornadaHeader` | Fecha grande + % completado del día (web visitas). |
+| `PageHeader` | Título de tamaño humano. El id de spec va en `data-spec`, **nunca** como eyebrow. |
+| `JornadaHeader` | Fecha + % completado del día (web visitas). Sin rail. |
 | `Tabs` `TabPanel` | Secciones (`role="tab"`). Targets ≥ 44px. |
 | `FilterChips` | Filtros de un valor. Scroll horizontal en móvil, no chips recortados. |
 | `BrandMark` | Logo http(s) o monograma sans. |
+| `Icon` | SVG inline (`currentColor`). Nav de campo, Salir, campana, check-in. |
 
 ## Campo (viewport < md) y móvil nativo
 
-- Bottom nav: 4 destinos (Hoy, Jornada, Cartera, CRM) + overflow **Más**.
-- Acción primaria del día (nueva visita / check-in) como FAB o botón ≥ 52px.
-- Agenda tipo jornada: hora + cliente + estado + lugar, con **rail** de 4px.
-- Empty states tipográficos. Sin clipart.
-- Header de jornada: fecha grande + % en una línea + barra de progreso.
+- Bottom nav: 4 destinos (Hoy, Jornada, Cartera, CRM) + overflow **Más**. Iconos
+  SVG, label, indicador de activo, altura ≥ 56px.
+- **Salir** siempre visible: header desktop y header (o Más) en móvil.
+- Acción primaria del día (nueva visita / check-in) con icono, ≥ 52px. No un FAB
+  genérico de `+`.
+- Agenda tipo jornada: hora + cliente + estado + lugar. **Sin rail** de color.
+- Empty states con icono mudo. Sin letra gigante ni clipart.
+- Header de jornada: fecha + % + barra de progreso. Sin barra vertical de acento.
 
 ## Desktop (supervisor)
 
@@ -113,6 +117,7 @@ Fuente: `tenant.branding` (`nombre_comercial`, `color_primario`, `logo_url`).
 1. La pantalla nueva importa primitivos de `components/ui` (o el kit móvil).
 2. Hay `PageHeader spec="W-xx"` o `data-spec` equivalente.
 3. Empty / skeleton / toast cubren cero datos, carga y error `GC-*`.
-4. El primario del tenant pinta CTA, rail y progreso; no tintes pastel.
+4. El primario del tenant pinta CTA y progreso; **no** rails laterales ni tintes pastel.
 5. Playwright busca `[data-spec="W-xx"]`, no el texto `W-xx`.
 6. `pnpm --filter @gc/<app> typecheck` y `test` en verde.
+7. Logout visible. Nav de campo con iconos SVG, no fila de texto plano.

@@ -65,10 +65,10 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas p-6" data-spec="P-01">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm">
+      <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8">
         <div className="mb-4 flex items-center justify-center gap-2">
           <BrandMark nombre="GC Platform" />
-          <h1 className="font-display text-2xl tracking-tight text-ink">GC Platform</h1>
+          <h1 className="text-xl font-semibold text-ink">GC Platform</h1>
         </div>
         <p className="mb-6 text-center text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Backoffice de plataforma'}
