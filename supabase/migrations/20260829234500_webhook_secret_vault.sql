@@ -6,6 +6,22 @@
 -- cuando esta migración corre en una base local nueva.
 create extension if not exists supabase_vault cascade;
 
+revoke all on schema vault from public;
+revoke all on schema vault from anon;
+revoke all on schema vault from authenticated;
+revoke all on table vault.secrets from public;
+revoke all on table vault.secrets from anon;
+revoke all on table vault.secrets from authenticated;
+revoke all on table vault.decrypted_secrets from public;
+revoke all on table vault.decrypted_secrets from anon;
+revoke all on table vault.decrypted_secrets from authenticated;
+revoke all on function vault.create_secret(text, text, text, uuid) from public;
+revoke all on function vault.create_secret(text, text, text, uuid) from anon;
+revoke all on function vault.create_secret(text, text, text, uuid) from authenticated;
+revoke all on function vault.update_secret(uuid, text, text, text, uuid) from public;
+revoke all on function vault.update_secret(uuid, text, text, text, uuid) from anon;
+revoke all on function vault.update_secret(uuid, text, text, text, uuid) from authenticated;
+
 create schema if not exists private;
 revoke all on schema private from public;
 revoke all on schema private from anon;
@@ -68,6 +84,10 @@ begin
    where configuracion ? 'webhook_secret';
 end
 $$;
+
+alter table public.tenant
+  add constraint tenant_configuracion_sin_webhook_secret
+  check (not (configuracion ? 'webhook_secret'));
 
 -- Mantiene nombre y parámetro para clientes existentes; el retorno ahora es
 -- JSON canónico y el plaintext solo existe en esta respuesta inmediata.
