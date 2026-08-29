@@ -1,6 +1,9 @@
 name: Preflight
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['supabase/**', 'scripts/ops/**', '.github/workflows/preflight.yml']
   pull_request:
     paths: ['supabase/**', 'scripts/ops/**', '.github/workflows/preflight.yml']
 permissions:
@@ -16,7 +19,16 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
-      - run: pnpm ops:preflight
+      - name: Ops unit tests
+        run: node --experimental-strip-types --test scripts/ops/*.test.ts
+      - name: Preflight (local-only, PR)
+        if: github.event_name == 'pull_request'
+        run: pnpm ops:preflight
+        env:
+          PREFLIGHT_LOCAL_ONLY: '1'
+      - name: Preflight (full, dispatch/main)
+        if: github.event_name != 'pull_request'
+        run: pnpm ops:preflight
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || 'xcoeipsnykceorcvjwve' }}

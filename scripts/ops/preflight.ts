@@ -143,6 +143,24 @@ async function writeInventory(report: PreflightReport): Promise<void> {
   await writeFile(INVENTORY_PATH, `${JSON.stringify(redact(report), null, 2)}\n`, 'utf8')
 }
 
+function isLocalOnly(env: NodeJS.ProcessEnv): boolean {
+  return env.PREFLIGHT_LOCAL_ONLY === '1'
+}
+
+function fail(
+  base: PreflightReport,
+  code: PreflightCode,
+  canCreateProject: boolean,
+): PreflightReport {
+  return finalizePreflight({
+    ...base,
+    canCreateProject,
+    code,
+    ok: false,
+    message: preflightMessage(code),
+  })
+}
+
 export async function main(env: NodeJS.ProcessEnv = process.env): Promise<PreflightReport> {
   const localMigrations = await listLocalMigrations()
   const localFunctions = await listLocalFunctions()
@@ -155,11 +173,21 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
     canCreateProject: false,
   }
 
+  if (isLocalOnly(env)) {
+    const report: PreflightReport = {
+      ...base,
+      ok: true,
+      message: 'preflight ok (local-only)',
+    }
+    await writeInventory(report)
+    return report
+  }
+
   let token: string
   try {
     token = requireToken(env)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'GC-OPS-001: falta SUPABASE_ACCESS_TOKEN'
+    const message = preflightMessage('GC-OPS-001')
     const report: PreflightReport = {
       ...base,
       ok: false,
@@ -176,26 +204,15 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
   const projectRes = await safeGetJson(`${API}/projects/${projectRef}`, token)
   if (projectRes.status === 401) {
     const code = createCheck.code ?? 'GC-OPS-002'
-    const report: PreflightReport = {
-      ...base,
-      canCreateProject: createCheck.canCreateProject,
-      code,
-      ok: false,
-      message: preflightMessage(code),
-    }
-    await writeInventory(finalizePreflight(report))
-    return finalizePreflight(report)
+    const report = fail(base, code, createCheck.canCreateProject)
+    await writeInventory(report)
+    return report
   }
   if (projectRes.status !== 200) {
-    const report: PreflightReport = {
-      ...base,
-      canCreateProject: createCheck.canCreateProject,
-      code: createCheck.code ?? 'GC-OPS-003',
-      ok: false,
-      message: 'GC-OPS-003: no puede leer proyecto',
-    }
-    await writeInventory(finalizePreflight(report))
-    return finalizePreflight(report)
+    const code = createCheck.code ?? 'GC-OPS-003'
+    const report = fail(base, code, createCheck.canCreateProject)
+    await writeInventory(report)
+    return report
   }
 
   const migrationsRes = await safeGetJson(
@@ -204,51 +221,29 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
   )
   if (migrationsRes.status === 401) {
     const code = createCheck.code ?? 'GC-OPS-002'
-    const report: PreflightReport = {
-      ...base,
-      canCreateProject: createCheck.canCreateProject,
-      code,
-      ok: false,
-      message: preflightMessage(code),
-    }
-    await writeInventory(finalizePreflight(report))
-    return finalizePreflight(report)
+    const report = fail(base, code, createCheck.canCreateProject)
+    await writeInventory(report)
+    return report
   }
   if (migrationsRes.status !== 200) {
-    const report: PreflightReport = {
-      ...base,
-      canCreateProject: createCheck.canCreateProject,
-      code: createCheck.code ?? 'GC-OPS-004',
-      ok: false,
-      message: 'GC-OPS-004: no puede listar migraciones',
-    }
-    await writeInventory(finalizePreflight(report))
-    return finalizePreflight(report)
+    const code = createCheck.code ?? 'GC-OPS-004'
+    const report = fail(base, code, createCheck.canCreateProject)
+    await writeInventory(report)
+    return report
   }
 
   const functionsRes = await safeGetJson(`${API}/projects/${projectRef}/functions`, token)
   if (functionsRes.status === 401) {
     const code = createCheck.code ?? 'GC-OPS-002'
-    const report: PreflightReport = {
-      ...base,
-      canCreateProject: createCheck.canCreateProject,
-      code,
-      ok: false,
-      message: preflightMessage(code),
-    }
-    await writeInventory(finalizePreflight(report))
-    return finalizePreflight(report)
+    const report = fail(base, code, createCheck.canCreateProject)
+    await writeInventory(report)
+    return report
   }
   if (functionsRes.status !== 200) {
-    const report: PreflightReport = {
-      ...base,
-      canCreateProject: createCheck.canCreateProject,
-      code: createCheck.code ?? 'GC-OPS-005',
-      ok: false,
-      message: 'GC-OPS-005: no puede listar functions',
-    }
-    await writeInventory(finalizePreflight(report))
-    return finalizePreflight(report)
+    const code = createCheck.code ?? 'GC-OPS-005'
+    const report = fail(base, code, createCheck.canCreateProject)
+    await writeInventory(report)
+    return report
   }
 
   const projectBody = projectRes.body as ProjectBody
@@ -278,12 +273,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Prefli
 
   report = finalizePreflight(report)
   if (!createCheck.canCreateProject && report.ok) {
-    report = {
-      ...report,
-      ok: false,
-      code: 'GC-OPS-006',
-      message: 'GC-OPS-006: no puede crear/administrar staging',
-    }
+    report = fail(report, 'GC-OPS-006', createCheck.canCreateProject)
   }
 
   await writeInventory(report)
