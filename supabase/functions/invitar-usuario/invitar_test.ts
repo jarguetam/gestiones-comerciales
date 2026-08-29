@@ -91,6 +91,72 @@ Deno.test("superadmin con AAL1 no consulta membresía ni crea usuarios", async (
   assertEquals(created, 0);
 });
 
+Deno.test("el bearer AAL2 se verifica explícitamente y llega a la orquestación", async () => {
+  type RequireActorFromBearer = (
+    req: Request,
+    auth: {
+      getUser: (jwt: string) => Promise<{
+        data: { user: { id: string } | null };
+        error: Error | null;
+      }>;
+      getAuthenticatorAssuranceLevel: (jwt: string) => Promise<{
+        data: { currentLevel: string | null } | null;
+        error: Error | null;
+      }>;
+    },
+  ) => Promise<{ userId: string; aal: string }>;
+
+  const inviteModule = await import("./invitar.ts");
+  const requireActorFromBearer = (inviteModule as unknown as {
+    requireActorFromBearer: RequireActorFromBearer;
+  }).requireActorFromBearer;
+  const authCalls: string[] = [];
+  const orchestrationCalls: string[] = [];
+  const req = request();
+  req.headers.set("Authorization", "Bearer jwt-aal2");
+
+  const res = await invitarUsuario(
+    deps({
+      requireActor: (request) =>
+        requireActorFromBearer(request, {
+          getUser: async (jwt) => {
+            authCalls.push(`getUser:${jwt}`);
+            return {
+              data: { user: { id: "platform-admin" } },
+              error: null,
+            };
+          },
+          getAuthenticatorAssuranceLevel: async (jwt) => {
+            authCalls.push(`getAal:${jwt}`);
+            return {
+              data: { currentLevel: "aal2" },
+              error: null,
+            };
+          },
+        }),
+      isPlatformSuperadmin: async (userId) => {
+        orchestrationCalls.push(`isPlatformSuperadmin:${userId}`);
+        return true;
+      },
+      createUser: async () => {
+        orchestrationCalls.push("createUser");
+        return { id: "auth-new" };
+      },
+    }),
+    req,
+  );
+
+  assertEquals(res.status, 200);
+  assertEquals(authCalls, [
+    "getUser:jwt-aal2",
+    "getAal:jwt-aal2",
+  ]);
+  assertEquals(orchestrationCalls, [
+    "isPlatformSuperadmin:platform-admin",
+    "createUser",
+  ]);
+});
+
 Deno.test("invita en el tenant del request y conserva jefe_id y zona_id", async () => {
   const calls: string[] = [];
   let createInput: Parameters<InviteDeps["createUser"]>[0] | undefined;
@@ -233,8 +299,38 @@ Deno.test("si el rollback falla conserva el error de perfil y registra ambos sin
     stage: "invite_profile",
     error_code: "GC-AUTH-002",
     rollback_outcome: "error",
-    rollback_error_code: "UNCLASSIFIED",
+    rollback_error_code: "GC-AUTH-012",
   }]);
   assertEquals(JSON.stringify(logs).includes("Persona@Example.com"), false);
   assertStringIncludes(JSON.stringify(logs), "request-rollback-failed");
+});
+
+Deno.test("un error PostgREST no catalogado se responde y registra sin PII", async () => {
+  const logs: InviteLogEntry[] = [];
+  const providerMessage =
+    "duplicate key for Persona@Example.com in usuario_email_key";
+
+  const res = await invitarUsuario(
+    deps({
+      inviteProfile: async () => {
+        throw new Error(providerMessage);
+      },
+      log: (entry) => logs.push(entry),
+    }),
+    request(validBody, "request-postgrest-error"),
+  );
+
+  assertEquals(res.status, 500);
+  assertEquals(await res.json(), {
+    error: "GC-AUTH-012: no se pudo completar la invitación",
+  });
+  assertEquals(logs, [{
+    request_id: "request-postgrest-error",
+    outcome: "error",
+    stage: "invite_profile",
+    error_code: "GC-AUTH-012",
+    rollback_outcome: "ok",
+  }]);
+  assertEquals(JSON.stringify(logs).includes(providerMessage), false);
+  assertEquals(JSON.stringify(logs).includes("Persona@Example.com"), false);
 });
