@@ -8,6 +8,27 @@ import {
   type PlantillaBase,
   type TipoPlantilla,
 } from './catalogos'
+import {
+  Badge,
+  Button,
+  EmptyStateInline,
+  FilterChips,
+  Input,
+  Select,
+  Table,
+  TBody,
+  Td,
+  Textarea,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui'
+
+const RUBRO_CODIGOS = RUBROS_PLANTILLA.map((r) => r.codigo)
+const RUBRO_ETIQUETAS = Object.fromEntries(RUBROS_PLANTILLA.map((r) => [r.codigo, r.nombre])) as Record<
+  string,
+  string
+>
 
 interface Props {
   plantillas: PlantillaBase[]
@@ -67,7 +88,10 @@ export function PlantillasPanel({ plantillas, onChange, onGuardar, onError, onAv
     const payload = payloadActual()
     if (!payload) return
     const err = validarPayloadPlantilla(tipo, payload)
-    if (err) { onError(err); return }
+    if (err) {
+      onError(err)
+      return
+    }
     onError(null)
     try {
       const id = await onGuardar({ id: editId, rubro, tipo, nombre: n, payload, activo: true })
@@ -101,104 +125,129 @@ export function PlantillasPanel({ plantillas, onChange, onGuardar, onError, onAv
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {RUBROS_PLANTILLA.map((r) => (
-          <button
-            key={r.codigo}
-            type="button"
-            onClick={() => { setRubro(r.codigo); setEditId(null) }}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${rubro === r.codigo ? 'bg-teal-700 text-white' : 'bg-white border border-slate-200'}`}
-          >
-            {r.nombre}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        opciones={RUBRO_CODIGOS}
+        valor={rubro}
+        onChange={(v) => {
+          setRubro(v)
+          setEditId(null)
+        }}
+        etiquetas={RUBRO_ETIQUETAS}
+      />
 
       <form
-        onSubmit={(e) => { e.preventDefault(); void guardar() }}
-        className="rounded-lg bg-white p-4 shadow grid gap-3 md:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void guardar()
+        }}
+        className="rounded-2xl border border-line bg-surface p-4 grid gap-3 md:grid-cols-2"
       >
         <h3 className="md:col-span-2 font-medium">{editId ? 'Editar plantilla' : 'Nueva plantilla'}</h3>
-        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoPlantilla)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+        <Select id="plantilla-tipo" label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoPlantilla)}>
           {TIPOS_PLANTILLA.map((t) => (
-            <option key={t.codigo} value={t.codigo}>{t.nombre}</option>
+            <option key={t.codigo} value={t.codigo}>
+              {t.nombre}
+            </option>
           ))}
-        </select>
-        <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+        </Select>
+        <Input id="plantilla-nombre" label="Nombre" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
         {tipo === 'actividad' && (
-          <textarea
-            value={subs}
-            onChange={(e) => setSubs(e.target.value)}
-            placeholder="Subactividades (una por línea)"
-            rows={4}
-            className="md:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm"
-          />
+          <div className="md:col-span-2">
+            <Textarea
+              id="plantilla-subs"
+              label="Subactividades"
+              value={subs}
+              onChange={(e) => setSubs(e.target.value)}
+              placeholder="Subactividades (una por línea)"
+              rows={4}
+            />
+          </div>
         )}
         {tipo === 'hora' && (
-          <input
+          <Input
+            id="plantilla-cantidad"
+            label="Cantidad (horas)"
             type="number"
             min="0.5"
             step="0.5"
             value={cantidad}
             onChange={(e) => setCantidad(e.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
         )}
         {tipo === 'formulario' && (
           <>
-            <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" className="md:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <textarea
-              value={esquema}
-              onChange={(e) => setEsquema(e.target.value)}
-              rows={6}
-              className="md:col-span-2 rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
-            />
+            <div className="md:col-span-2">
+              <Input
+                id="plantilla-descripcion"
+                label="Descripción"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Textarea
+                id="plantilla-esquema"
+                label="Esquema JSON"
+                value={esquema}
+                onChange={(e) => setEsquema(e.target.value)}
+                rows={6}
+                className="font-mono text-xs"
+              />
+            </div>
           </>
         )}
         <div className="md:col-span-2 flex gap-2">
-          <button type="submit" className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white">
-            {editId ? 'Actualizar' : 'Crear'}
-          </button>
-          {editId && (
-            <button type="button" onClick={() => { setEditId(null); setNombre(''); setSubs('') }} className="rounded-md border border-slate-300 px-4 py-2 text-sm">
+          <Button type="submit">{editId ? 'Actualizar' : 'Crear'}</Button>
+          {editId ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEditId(null)
+                setNombre('')
+                setSubs('')
+              }}
+            >
               Cancelar
-            </button>
-          )}
+            </Button>
+          ) : null}
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Tipo</th>
-              <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtradas.length === 0 ? (
-              <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-500">Sin plantillas para este rubro.</td></tr>
-            ) : (
-              filtradas.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 capitalize">{p.tipo}</td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => cargar(p)} className="text-teal-800 hover:underline">
-                      {p.nombre}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => void toggleActivo(p)} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">
-                      {p.activo ? 'activa' : 'inactiva'}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <THead>
+          <tr>
+            <Th>Tipo</Th>
+            <Th>Nombre</Th>
+            <Th>Estado</Th>
+          </tr>
+        </THead>
+        <TBody>
+          {filtradas.length === 0 ? (
+            <Tr>
+              <Td colSpan={3}>
+                <EmptyStateInline>Sin plantillas para este rubro.</EmptyStateInline>
+              </Td>
+            </Tr>
+          ) : (
+            filtradas.map((p) => (
+              <Tr key={p.id}>
+                <Td className="capitalize">{p.tipo}</Td>
+                <Td>
+                  <button type="button" onClick={() => cargar(p)} className="text-primary hover:underline">
+                    {p.nombre}
+                  </button>
+                </Td>
+                <Td>
+                  <button type="button" onClick={() => void toggleActivo(p)}>
+                    <Badge tone={p.activo ? 'success' : 'neutral'}>{p.activo ? 'activa' : 'inactiva'}</Badge>
+                  </button>
+                </Td>
+              </Tr>
+            ))
+          )}
+        </TBody>
+      </Table>
     </div>
   )
 }

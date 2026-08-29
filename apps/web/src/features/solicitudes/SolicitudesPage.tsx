@@ -1,6 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
+import { quetzales } from '../../lib/formato'
+import {
+  Badge,
+  Button,
+  EmptyState,
+  FilterChips,
+  PageHeader,
+  PAGE,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+  toneDeEstado,
+} from '../../components/ui'
 
 const ESTADOS = ['todas', 'borrador', 'enviada', 'firmada', 'aprobada', 'rechazada'] as const
 
@@ -20,10 +36,6 @@ const DEMO: SolicitudDemo[] = [
   { id: 's3', persona: 'Agropecuaria Sur', estado: 'borrador', monto: 12000, descripcion: 'Capital de trabajo', fecha: '2026-08-25' },
   { id: 's4', persona: 'Distribuidora Norte', estado: 'aprobada', monto: 80000, descripcion: 'Ampliación de cupo', fecha: '2026-08-10', pdf: 'documentos/demo/s4.pdf' },
 ]
-
-function quetzales(n: number) {
-  return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n)
-}
 
 export function SolicitudesPage() {
   const { fuente, personas } = useDominio()
@@ -68,77 +80,54 @@ export function SolicitudesPage() {
   )
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-06</p>
-        <h2 className="font-serif text-3xl">Solicitudes</h2>
-        <p className="text-sm text-slate-600">
-          Bandeja por estado del flujo. {visibles.length} registros
-          {personas.length ? ` · cartera ${personas.length}` : ''}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {ESTADOS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => setFiltro(e)}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-              filtro === e ? 'bg-brand-700 text-white' : 'bg-white border border-[#E4DCC8] text-slate-600'
-            }`}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
+    <div className={PAGE}>
+      <PageHeader
+        spec="W-06"
+        title="Solicitudes"
+        description={`Bandeja por estado del flujo. ${visibles.length} registros${personas.length ? ` · cartera ${personas.length}` : ''}`}
+      />
+      <FilterChips opciones={ESTADOS} valor={filtro} onChange={setFiltro} />
+      {visibles.length === 0 ? (
+        <EmptyState titulo="No hay solicitudes" descripcion="Cuando el módulo esté activo, las solicitudes del flujo aparecen aquí." />
+      ) : (
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Persona</th>
-              <th className="px-4 py-3 hidden md:table-cell">Descripción</th>
-              <th className="px-4 py-3">Monto</th>
-              <th className="px-4 py-3">Estado</th>
+              <Th>Fecha</Th>
+              <Th>Persona</Th>
+              <Th className="hidden md:table-cell">Descripción</Th>
+              <Th>Monto</Th>
+              <Th>Estado</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+          </THead>
+          <TBody>
             {visibles.map((s) => (
-              <tr
-                key={s.id}
-                className="hover:bg-[#F8F4EA] cursor-pointer"
-                onClick={() => setDetalle(s)}
-              >
-                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{s.fecha}</td>
-                <td className="px-4 py-3 font-medium">{s.persona}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-slate-600">{s.descripcion}</td>
-                <td className="px-4 py-3">{quetzales(s.monto)}</td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize">
-                    {s.estado}
-                  </span>
-                </td>
-              </tr>
+              <Tr key={s.id} className="cursor-pointer" onClick={() => setDetalle(s)}>
+                <Td className="text-muted whitespace-nowrap">{s.fecha}</Td>
+                <Td className="font-medium">{s.persona}</Td>
+                <Td className="hidden md:table-cell text-muted">{s.descripcion}</Td>
+                <Td>{quetzales(s.monto)}</Td>
+                <Td>
+                  <Badge tone={toneDeEstado(s.estado)}>{s.estado}</Badge>
+                </Td>
+              </Tr>
             ))}
-          </tbody>
-        </table>
-      </div>
-
+          </TBody>
+        </Table>
+      )}
       {detalle && (
-        <div className="rounded-2xl border border-[#E4DCC8] bg-white p-5">
+        <div className="rounded-2xl border border-line bg-surface p-5">
           <div className="flex justify-between gap-3">
             <h3 className="font-serif text-xl">{detalle.persona}</h3>
-            <button type="button" className="text-sm text-slate-500" onClick={() => setDetalle(null)}>
+            <Button variant="ghost" size="sm" onClick={() => setDetalle(null)}>
               Cerrar
-            </button>
+            </Button>
           </div>
-          <p className="text-sm text-slate-600 mt-1">{detalle.descripcion}</p>
+          <p className="text-sm text-muted mt-1">{detalle.descripcion}</p>
           <p className="mt-2 text-sm">
             Monto {quetzales(detalle.monto)} · estado <strong className="capitalize">{detalle.estado}</strong>
           </p>
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-muted">
             Archivos y firma: {detalle.pdf ? `PDF ${detalle.pdf}` : 'sin PDF todavía. La firma (PNG) dispara pdf-solicitud.'}
           </p>
         </div>

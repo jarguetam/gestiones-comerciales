@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
+import { quetzales } from '../../lib/formato'
+import {
+  Badge,
+  EmptyState,
+  Input,
+  PageHeader,
+  PAGE,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui'
 
 interface CuentaDemo {
   id: string
@@ -19,10 +33,6 @@ const DEMO: CuentaDemo[] = [
   { id: 'c2', persona: 'Cooperativa La Esperanza', codigo: 'C0021301', producto: 'Inversión', monto: 80000, estado: 'activa', diasAtraso: 0, rangoMora: '—', capitalRiesgo: 0 },
   { id: 'c3', persona: 'Agropecuaria Sur', codigo: 'C0021188', producto: 'Avío', monto: 12500, estado: 'activa', diasAtraso: 12, rangoMora: '1-30', capitalRiesgo: 3200 },
 ]
-
-function quetzales(n: number) {
-  return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n)
-}
 
 export function CuentasPage() {
   const { fuente, personas } = useDominio()
@@ -79,53 +89,52 @@ export function CuentasPage() {
   }, [items, q])
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-08</p>
-        <h2 className="font-serif text-3xl">Cuentas y movimientos</h2>
-        <p className="text-sm text-slate-600">
-          Cartera, saldo y mora ({visibles.length}). Solo lectura; los movimientos llegan por ingesta.
-          {personas.length ? ` · ${personas.length} personas en cartera` : ''}
-        </p>
-      </div>
-
-      <input
+    <div className={PAGE}>
+      <PageHeader
+        spec="W-08"
+        title="Cuentas y movimientos"
+        description={`Cartera, saldo y mora (${visibles.length}). Solo lectura; los movimientos llegan por ingesta.${personas.length ? ` · ${personas.length} personas en cartera` : ''}`}
+      />
+      <Input
+        id="buscar-cuenta"
+        label="Buscar"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Buscar por persona, contrato o producto"
-        className="w-full max-w-md rounded-lg border border-[#E4DCC8] bg-white px-3 py-2 text-sm"
+        className="max-w-md"
       />
-
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
+      {visibles.length === 0 ? (
+        <EmptyState titulo="No hay cuentas" descripcion="Cuando el módulo de créditos esté activo, la cartera aparece aquí." />
+      ) : (
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Contrato</th>
-              <th className="px-4 py-3">Persona</th>
-              <th className="px-4 py-3 hidden md:table-cell">Producto</th>
-              <th className="px-4 py-3">Monto</th>
-              <th className="px-4 py-3">Mora</th>
-              <th className="px-4 py-3">Riesgo</th>
+              <Th>Contrato</Th>
+              <Th>Persona</Th>
+              <Th className="hidden md:table-cell">Producto</Th>
+              <Th>Monto</Th>
+              <Th>Mora</Th>
+              <Th>Riesgo</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+          </THead>
+          <TBody>
             {visibles.map((c) => (
-              <tr key={c.id} className="hover:bg-[#F8F4EA]">
-                <td className="px-4 py-3 font-mono text-xs">{c.codigo}</td>
-                <td className="px-4 py-3 font-medium">{c.persona}</td>
-                <td className="px-4 py-3 hidden md:table-cell">{c.producto}</td>
-                <td className="px-4 py-3">{quetzales(c.monto)}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${c.diasAtraso > 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-50 text-emerald-800'}`}>
+              <Tr key={c.id}>
+                <Td className="font-mono text-xs">{c.codigo}</Td>
+                <Td className="font-medium">{c.persona}</Td>
+                <Td className="hidden md:table-cell">{c.producto}</Td>
+                <Td>{quetzales(c.monto)}</Td>
+                <Td>
+                  <Badge tone={c.diasAtraso > 0 ? 'danger' : 'success'}>
                     {c.diasAtraso > 0 ? `${c.diasAtraso}d · ${c.rangoMora}` : 'al día'}
-                  </span>
-                </td>
-                <td className="px-4 py-3">{quetzales(c.capitalRiesgo)}</td>
-              </tr>
+                  </Badge>
+                </Td>
+                <Td>{quetzales(c.capitalRiesgo)}</Td>
+              </Tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
 import { GeografiaPanel } from './GeografiaPanel'
 import { ModulosPanel } from './ModulosPanel'
 import { PlantillasPanel } from './PlantillasPanel'
+import { Alert, PAGE, PageHeader, TabPanel, Tabs } from '../../components/ui'
 
 type Tab = 'geografia' | 'modulos' | 'plantillas'
 
@@ -129,41 +130,30 @@ export function CatalogosPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-4 space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">P-05</p>
-        <h2 className="text-2xl font-bold text-slate-900">Catálogos globales</h2>
-        <p className="text-sm text-slate-500">
-          Departamentos y municipios compartidos, catálogo de módulos y plantillas base por rubro.
-        </p>
-      </div>
+    <main className={PAGE}>
+      <PageHeader
+        spec="P-05"
+        title="Catálogos globales"
+        description="Departamentos y municipios compartidos, catálogo de módulos y plantillas base por rubro."
+      />
 
       {!live && (
-        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-          Preview estático — los cambios no se persisten.
-        </p>
+        <Alert tone="warning">Preview estático — los cambios no se persisten.</Alert>
       )}
-      {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {aviso && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{aviso}</p>}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {aviso && <Alert tone="success">{aviso}</Alert>}
 
-      <div className="flex flex-wrap gap-2">
-        {([
-          ['geografia', 'Geografía'],
-          ['modulos', 'Módulos'],
-          ['plantillas', 'Plantillas'],
-        ] as const).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${tab === id ? 'bg-teal-700 text-white' : 'bg-white border border-slate-200'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'geografia', label: 'Geografía' },
+          { id: 'modulos', label: 'Módulos' },
+          { id: 'plantillas', label: 'Plantillas' },
+        ]}
+        valor={tab}
+        onChange={(id) => setTab(id as Tab)}
+      />
 
-      {tab === 'geografia' && (
+      <TabPanel id="geografia" valor={tab}>
         <GeografiaPanel
           departamentos={departamentos}
           municipios={municipios}
@@ -175,8 +165,8 @@ export function CatalogosPage() {
           onError={setError}
           onAviso={setAviso}
         />
-      )}
-      {tab === 'modulos' && (
+      </TabPanel>
+      <TabPanel id="modulos" valor={tab}>
         <ModulosPanel
           modulos={modulos}
           onChange={setModulos}
@@ -184,8 +174,8 @@ export function CatalogosPage() {
           onError={setError}
           onAviso={setAviso}
         />
-      )}
-      {tab === 'plantillas' && (
+      </TabPanel>
+      <TabPanel id="plantillas" valor={tab}>
         <PlantillasPanel
           plantillas={plantillas}
           onChange={setPlantillas}
@@ -193,7 +183,7 @@ export function CatalogosPage() {
           onError={setError}
           onAviso={setAviso}
         />
-      )}
+      </TabPanel>
     </main>
   )
 }

@@ -94,7 +94,7 @@ describe('resumenSalud', () => {
           errores_integracion_24h: 0,
         },
       ],
-    })
+    }, new Date('2026-08-28T12:00:00.000Z'))
     assert.equal(r.tenants, 2)
     assert.equal(r.tenantsActivos, 1)
     assert.equal(r.dispositivos, 5)

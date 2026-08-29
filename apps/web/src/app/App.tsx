@@ -26,10 +26,9 @@ function RequiereAdmin({ children }: { children: ReactNode }) {
   const { rol } = useAuth()
   if (!mostrarAuditoria(rol, DEMO_MODE)) {
     return (
-      <div className="max-w-lg rounded-2xl border border-[#E4DCC8] bg-white p-6">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-12</p>
+      <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-12">
         <h2 className="font-serif text-2xl mt-1">Solo administradores</h2>
-        <p className="text-sm text-slate-600 mt-2">La bitácora de auditoría es exclusiva del admin de la empresa.</p>
+        <p className="text-sm text-muted mt-2">La bitácora de auditoría es exclusiva del admin de la empresa.</p>
       </div>
     )
   }
@@ -40,10 +39,9 @@ function RequiereModulo({ codigo, children }: { codigo: string; children: ReactN
   const { modulos, fuente } = useDominio()
   if (DEMO_MODE || fuente === 'demo' || modulos.includes(codigo)) return <>{children}</>
   return (
-    <div className="max-w-lg rounded-2xl border border-[#E4DCC8] bg-white p-6">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">Módulo inactivo</p>
+    <div className="max-w-lg rounded-2xl border border-line bg-surface p-6">
       <h2 className="font-serif text-2xl mt-1">Este módulo no está activo</h2>
-      <p className="text-sm text-slate-600 mt-2">
+      <p className="text-sm text-muted mt-2">
         Tu empresa no tiene habilitado el módulo <code>{codigo}</code>. Un admin de plataforma puede activarlo.
       </p>
     </div>

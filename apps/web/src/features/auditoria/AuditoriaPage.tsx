@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { demoAuditoria, filtrarAuditoria, textoDiff, type ItemAuditoria } from './auditoria'
+import { Alert, Input, PageHeader, PAGE, Table, TBody, Td, Th, THead, Tr, TableSkeleton } from '../../components/ui'
 
 export function AuditoriaPage() {
   const { fuente } = useDominio()
   const live = !DEMO_MODE && fuente === 'supabase'
-  const [rows, setRows] = useState<ItemAuditoria[]>(demoAuditoria())
+  const [rows, setRows] = useState<ItemAuditoria[] | null>(null)
   const [q, setQ] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -41,58 +42,49 @@ export function AuditoriaPage() {
     void cargar()
   }, [cargar])
 
-  const visibles = useMemo(() => filtrarAuditoria(rows, q), [rows, q])
+  const visibles = useMemo(() => filtrarAuditoria(rows ?? [], q), [rows, q])
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-12</p>
-        <h2 className="font-serif text-3xl">Auditoría</h2>
-        <p className="text-sm text-slate-600">Log de cambios por tabla y registro, con diff.</p>
-      </div>
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
-      {!live && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Preview: bitácora de demostración.
-        </p>
-      )}
-      <input
+    <div className={PAGE}>
+      <PageHeader spec="W-12" title="Auditoría" description="Log de cambios por tabla y registro, con diff." />
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {!live && <Alert tone="warning">Preview: bitácora de demostración.</Alert>}
+      <Input
+        id="buscar-auditoria"
+        label="Buscar"
         type="search"
         placeholder="Buscar tabla, acción o registro…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
       />
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+      {rows === null ? (
+        <TableSkeleton cols={6} />
+      ) : (
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Cuándo</th>
-              <th className="px-4 py-3">Tabla</th>
-              <th className="px-4 py-3">Acción</th>
-              <th className="px-4 py-3">Registro</th>
-              <th className="px-4 py-3">Usuario</th>
-              <th className="px-4 py-3">Diff</th>
+              <Th>Cuándo</Th>
+              <Th>Tabla</Th>
+              <Th>Acción</Th>
+              <Th>Registro</Th>
+              <Th>Usuario</Th>
+              <Th>Diff</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+          </THead>
+          <TBody>
             {visibles.map((r) => (
-              <tr key={r.id}>
-                <td className="px-4 py-3 whitespace-nowrap text-slate-500">
-                  {new Date(r.creado_en).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 font-medium">{r.tabla}</td>
-                <td className="px-4 py-3">{r.accion}</td>
-                <td className="px-4 py-3 font-mono text-xs">{r.registro_id}</td>
-                <td className="px-4 py-3">{r.usuario_nombre ?? r.usuario_id ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-600">{textoDiff(r.cambios)}</td>
-              </tr>
+              <Tr key={r.id}>
+                <Td className="whitespace-nowrap text-muted">{new Date(r.creado_en).toLocaleString()}</Td>
+                <Td className="font-medium">{r.tabla}</Td>
+                <Td>{r.accion}</Td>
+                <Td className="font-mono text-xs">{r.registro_id}</Td>
+                <Td>{r.usuario_nombre ?? r.usuario_id ?? '—'}</Td>
+                <Td className="text-muted">{textoDiff(r.cambios)}</Td>
+              </Tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      )}
     </div>
   )
 }

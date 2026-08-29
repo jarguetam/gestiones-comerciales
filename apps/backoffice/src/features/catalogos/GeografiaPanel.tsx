@@ -5,6 +5,8 @@ import {
   type Departamento,
   type Municipio,
 } from './catalogos'
+import { Button, EmptyStateInline, fieldClass, Textarea } from '../../components/ui'
+import { cn } from '../../lib/cn'
 
 interface Props {
   departamentos: Departamento[]
@@ -113,20 +115,22 @@ export function GeografiaPanel({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <section className="rounded-lg bg-white p-4 shadow space-y-3">
+      <section className="rounded-2xl border border-line bg-surface p-4 space-y-3">
         <h3 className="font-medium">Departamentos</h3>
         <div className="flex gap-2">
           <input
+            id="nuevo-depto"
+            aria-label="Nuevo departamento"
             value={nuevoDepto}
             onChange={(e) => setNuevoDepto(e.target.value)}
             placeholder="Nuevo departamento"
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={`flex-1 ${fieldClass}`}
           />
-          <button type="button" onClick={() => void altaDepto()} className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white">
+          <Button type="button" onClick={() => void altaDepto()}>
             Agregar
-          </button>
+          </Button>
         </div>
-        <ul className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-md">
+        <ul className="max-h-80 overflow-auto divide-y divide-line border border-line rounded-lg">
           {departamentos.map((d) => (
             <li key={d.id}>
               <button
@@ -137,7 +141,10 @@ export function GeografiaPanel({
                   setMuniId(null)
                   setNombreMuni('')
                 }}
-                className={`w-full text-left px-3 py-2 text-sm ${d.id === deptoId ? 'bg-teal-50 font-medium text-teal-900' : 'hover:bg-slate-50'}`}
+                className={cn(
+                  'w-full text-left px-3 py-2 text-sm',
+                  d.id === deptoId ? 'bg-canvas font-medium text-ink' : 'hover:bg-canvas/80',
+                )}
               >
                 {d.nombre}
               </button>
@@ -147,42 +154,54 @@ export function GeografiaPanel({
         {deptoSel && (
           <div className="flex gap-2">
             <input
+              id="renombrar-depto"
+              aria-label="Renombrar departamento"
               value={nombreDepto}
               onChange={(e) => setNombreDepto(e.target.value)}
               placeholder="Renombrar departamento"
-              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className={`flex-1 ${fieldClass}`}
             />
-            <button type="button" onClick={() => void renombrarDepto()} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <Button type="button" variant="secondary" onClick={() => void renombrarDepto()}>
               Renombrar
-            </button>
+            </Button>
           </div>
         )}
       </section>
 
-      <section className="rounded-lg bg-white p-4 shadow space-y-3">
+      <section className="rounded-2xl border border-line bg-surface p-4 space-y-3">
         <h3 className="font-medium">Municipios {deptoSel ? `de ${deptoSel.nombre}` : ''}</h3>
         <div className="flex gap-2">
           <input
+            id="nuevo-muni"
+            aria-label="Nuevo municipio"
             value={nuevoMuni}
             onChange={(e) => setNuevoMuni(e.target.value)}
             placeholder="Nuevo municipio"
             disabled={deptoId == null}
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
+            className={`flex-1 ${fieldClass}`}
           />
-          <button type="button" onClick={() => void altaMuni()} disabled={deptoId == null} className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+          <Button type="button" onClick={() => void altaMuni()} disabled={deptoId == null}>
             Agregar
-          </button>
+          </Button>
         </div>
-        <ul className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-md">
+        <ul className="max-h-80 overflow-auto divide-y divide-line border border-line rounded-lg">
           {munis.length === 0 ? (
-            <li className="px-3 py-4 text-sm text-slate-500">Sin municipios en este departamento.</li>
+            <li>
+              <EmptyStateInline>Sin municipios en este departamento.</EmptyStateInline>
+            </li>
           ) : (
             munis.map((m) => (
               <li key={m.id}>
                 <button
                   type="button"
-                  onClick={() => { setMuniId(m.id); setNombreMuni(m.nombre) }}
-                  className={`w-full text-left px-3 py-2 text-sm ${m.id === muniId ? 'bg-teal-50 font-medium text-teal-900' : 'hover:bg-slate-50'}`}
+                  onClick={() => {
+                    setMuniId(m.id)
+                    setNombreMuni(m.nombre)
+                  }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 text-sm',
+                    m.id === muniId ? 'bg-canvas font-medium text-ink' : 'hover:bg-canvas/80',
+                  )}
                 >
                   {m.nombre}
                 </button>
@@ -193,35 +212,33 @@ export function GeografiaPanel({
         {muniId != null && (
           <div className="flex gap-2">
             <input
+              id="renombrar-muni"
+              aria-label="Renombrar municipio"
               value={nombreMuni}
               onChange={(e) => setNombreMuni(e.target.value)}
               placeholder="Renombrar municipio"
-              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className={`flex-1 ${fieldClass}`}
             />
-            <button type="button" onClick={() => void renombrarMuni()} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <Button type="button" variant="secondary" onClick={() => void renombrarMuni()}>
               Renombrar
-            </button>
+            </Button>
           </div>
         )}
       </section>
 
-      <section className="lg:col-span-2 rounded-lg bg-white p-4 shadow space-y-3">
-        <h3 className="font-medium">Importar CSV</h3>
-        <p className="text-xs text-slate-500">Columnas <code>departamento,municipio</code>. Se crean departamentos faltantes.</p>
-        <textarea
+      <section className="lg:col-span-2 rounded-2xl border border-line bg-surface p-4 space-y-3">
+        <Textarea
+          id="geo-csv"
+          label="Importar CSV"
+          hint="Columnas departamento,municipio. Se crean departamentos faltantes."
           value={csv}
           onChange={(e) => setCsv(e.target.value)}
           rows={6}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
+          className="font-mono text-xs"
         />
-        <button
-          type="button"
-          onClick={() => void importar()}
-          disabled={importando}
-          className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="button" onClick={() => void importar()} disabled={importando}>
           {importando ? 'Importando…' : 'Importar'}
-        </button>
+        </Button>
       </section>
     </div>
   )

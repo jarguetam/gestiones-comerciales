@@ -1,6 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
+import { quetzales } from '../../lib/formato'
+import { mensajeToast } from '../../lib/erroresUi'
+import {
+  Badge,
+  Button,
+  EmptyState,
+  FilterChips,
+  PageHeader,
+  PAGE,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+  toneDeEstado,
+} from '../../components/ui'
+import { useToast } from '../../components/ui/Toast'
 
 type EstadoDepo = 'pendiente' | 'confirmado' | 'rechazado'
 
@@ -20,15 +38,13 @@ const DEMO: DepositoDemo[] = [
   { id: 'd4', asesor: 'Asesor C', monto: 900, referencia: 'BOLETA-1021', estado: 'rechazado', fecha: '2026-08-19' },
 ]
 
-function quetzales(n: number) {
-  return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(n)
-}
+const FILTROS = ['pendiente', 'confirmado', 'rechazado', 'todos'] as const
 
 export function DepositosPage() {
   const { fuente } = useDominio()
-  const [filtro, setFiltro] = useState<'todos' | EstadoDepo>('pendiente')
+  const { push } = useToast()
+  const [filtro, setFiltro] = useState<(typeof FILTROS)[number]>('pendiente')
   const [items, setItems] = useState<DepositoDemo[]>(DEMO)
-  const [aviso, setAviso] = useState<string | null>(null)
 
   useEffect(() => {
     if (DEMO_MODE || fuente === 'demo') return
@@ -64,88 +80,64 @@ export function DepositosPage() {
   async function confirmar(id: string, estado: 'confirmado' | 'rechazado') {
     if (DEMO_MODE || fuente === 'demo') {
       setItems((prev) => prev.map((d) => (d.id === id ? { ...d, estado } : d)))
-      setAviso(`Depósito ${estado} (demo)`)
+      push({ tone: estado === 'confirmado' ? 'success' : 'info', titulo: `Depósito ${estado} (demo)` })
       return
     }
     const { error } = await supabase.rpc('deposito_confirmar', { p_id: Number(id), p_estado: estado })
     if (error) {
-      setAviso(error.message)
+      const t = mensajeToast(error)
+      push({ tone: 'error', titulo: t.titulo, descripcion: t.descripcion })
       return
     }
     setItems((prev) => prev.map((d) => (d.id === id ? { ...d, estado } : d)))
-    setAviso(`Depósito ${estado}`)
+    push({ tone: 'success', titulo: `Depósito ${estado}` })
   }
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-07</p>
-        <h2 className="font-serif text-3xl">Depósitos</h2>
-        <p className="text-sm text-slate-600">Pendientes y confirmados. Confirmación vía deposito_confirmar.</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(['pendiente', 'confirmado', 'rechazado', 'todos'] as const).map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => setFiltro(e)}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-              filtro === e ? 'bg-brand-700 text-white' : 'bg-white border border-[#E4DCC8] text-slate-600'
-            }`}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-
-      {aviso && <p className="text-sm text-brand-800">{aviso}</p>}
-
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
+    <div className={PAGE}>
+      <PageHeader spec="W-07" title="Depósitos" description="Pendientes y confirmados. Confirmación vía deposito_confirmar." />
+      <FilterChips opciones={FILTROS} valor={filtro} onChange={setFiltro} />
+      {visibles.length === 0 ? (
+        <EmptyState titulo="No hay depósitos" descripcion="Cuando el módulo esté activo, los depósitos pendientes aparecen aquí." />
+      ) : (
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Asesor</th>
-              <th className="px-4 py-3">Referencia</th>
-              <th className="px-4 py-3">Monto</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3" />
+              <Th>Fecha</Th>
+              <Th>Asesor</Th>
+              <Th>Referencia</Th>
+              <Th>Monto</Th>
+              <Th>Estado</Th>
+              <Th />
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+          </THead>
+          <TBody>
             {visibles.map((d) => (
-              <tr key={d.id} className="hover:bg-[#F8F4EA]">
-                <td className="px-4 py-3 text-slate-600">{d.fecha}</td>
-                <td className="px-4 py-3 font-medium">{d.asesor}</td>
-                <td className="px-4 py-3">{d.referencia}</td>
-                <td className="px-4 py-3">{quetzales(d.monto)}</td>
-                <td className="px-4 py-3 capitalize">{d.estado}</td>
-                <td className="px-4 py-3 text-right space-x-2">
+              <Tr key={d.id}>
+                <Td className="text-muted">{d.fecha}</Td>
+                <Td className="font-medium">{d.asesor}</Td>
+                <Td>{d.referencia}</Td>
+                <Td>{quetzales(d.monto)}</Td>
+                <Td>
+                  <Badge tone={toneDeEstado(d.estado)}>{d.estado}</Badge>
+                </Td>
+                <Td className="text-right space-x-2">
                   {d.estado === 'pendiente' && (
                     <>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-emerald-800"
-                        onClick={() => void confirmar(d.id, 'confirmado')}
-                      >
+                      <Button variant="ghost" size="sm" className="text-emerald-800" onClick={() => void confirmar(d.id, 'confirmado')}>
                         Confirmar
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-rose-700"
-                        onClick={() => void confirmar(d.id, 'rechazado')}
-                      >
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-rose-700" onClick={() => void confirmar(d.id, 'rechazado')}>
                         Rechazar
-                      </button>
+                      </Button>
                     </>
                   )}
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      )}
     </div>
   )
 }

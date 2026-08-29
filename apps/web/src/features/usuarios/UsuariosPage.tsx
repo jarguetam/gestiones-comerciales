@@ -3,6 +3,9 @@ import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { mensajeGc } from '../../lib/persistir'
 import { useDominio } from '../../app/DominioContext'
 import { useAuth } from '../auth/useAuth'
+import { Alert, Button, PageHeader, PAGE, Table, THead, Th, TBody, Tr, Td, Badge } from '../../components/ui'
+import { useToast } from '../../components/ui/Toast'
+import { fieldClass } from '../../components/ui'
 
 const ROLES = ['admin', 'gerente', 'supervisor', 'asesor'] as const
 type Rol = (typeof ROLES)[number]
@@ -26,6 +29,7 @@ const DEMO_USUARIOS: UsuarioEmpresa[] = [
 export function UsuariosPage() {
   const { fuente } = useDominio()
   const { rol: rolAuth, tenantId: tenantAuth } = useAuth()
+  const { push } = useToast()
   const live = !DEMO_MODE && fuente === 'supabase'
   const rolSesion = rolAuth ?? (DEMO_MODE ? 'admin' : undefined)
   const puedeEditar = DEMO_MODE || rolSesion === 'admin'
@@ -78,6 +82,7 @@ export function UsuariosPage() {
         setNombre('')
         setPassword('')
         setAviso('Usuario agregado (demo)')
+        push({ tone: 'success', titulo: 'Usuario agregado (demo)' })
         return
       }
       const tenantId = tenantAuth
@@ -98,9 +103,12 @@ export function UsuariosPage() {
       setNombre('')
       setPassword('')
       setAviso('Usuario invitado')
+      push({ tone: 'success', titulo: 'Usuario invitado' })
       await cargar()
     } catch (err) {
-      setError(mensajeGc(err))
+      const msg = mensajeGc(err)
+      setError(msg)
+      push({ tone: 'error', titulo: msg })
     } finally {
       setEnviando(false)
     }
@@ -137,89 +145,79 @@ export function UsuariosPage() {
   const nombreDe = (id: string | null) => usuarios.find((u) => u.id === id)?.nombre ?? '—'
 
   return (
-    <div className="max-w-5xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-11</p>
-        <h2 className="font-serif text-3xl">Usuarios</h2>
-        <p className="text-sm text-slate-600">Estructura comercial: gerente → supervisor → asesor.</p>
-      </div>
+    <div className={PAGE}>
+      <PageHeader spec="W-11" title="Usuarios" description="Estructura comercial: gerente → supervisor → asesor." />
 
-      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {aviso && <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{aviso}</p>}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {aviso && <Alert tone="success">{aviso}</Alert>}
 
       {puedeEditar && (
-        <form onSubmit={(e) => void invitar(e)} className="rounded-2xl border border-[#E4DCC8] bg-white p-4 grid gap-3 md:grid-cols-2">
+        <form onSubmit={(e) => void invitar(e)} className="rounded-2xl border border-line bg-surface p-4 grid gap-3 md:grid-cols-2">
           <h3 className="md:col-span-2 font-medium">Invitar usuario</h3>
-          <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <select value={rol} onChange={(e) => setRol(e.target.value as Rol)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={fieldClass} />
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className={fieldClass} />
+          <select value={rol} onChange={(e) => setRol(e.target.value as Rol)} className={fieldClass}>
             {ROLES.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
-          <select value={jefeId} onChange={(e) => setJefeId(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <select value={jefeId} onChange={(e) => setJefeId(e.target.value)} className={fieldClass}>
             <option value="">Sin jefe</option>
             {usuarios.map((u) => (
               <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
             ))}
           </select>
-          <input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mín. 8)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <button type="submit" disabled={enviando} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mín. 8)" className={fieldClass} />
+          <Button type="submit" disabled={enviando}>
             {enviando ? 'Invitando…' : 'Invitar'}
-          </button>
+          </Button>
         </form>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
-            <tr>
-              <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3 hidden md:table-cell">Email</th>
-              <th className="px-4 py-3">Rol</th>
-              <th className="px-4 py-3 hidden lg:table-cell">Jefe</th>
-              <th className="px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {usuarios.map((u) => (
-              <tr key={u.id} className="hover:bg-[#F8F4EA]">
-                <td className="px-4 py-3 font-medium">{u.nombre}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-slate-600">{u.email ?? '—'}</td>
-                <td className="px-4 py-3">
-                  {puedeEditar ? (
-                    <select
-                      value={u.rol}
-                      onChange={(e) => void gestionar(u.id, 'cambiar_rol', { rol: e.target.value })}
-                      className="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs capitalize"
-                    >
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="capitalize">{u.rol}</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 hidden lg:table-cell text-slate-600">{nombreDe(u.jefe_id)}</td>
-                <td className="px-4 py-3">
-                  {puedeEditar ? (
-                    <button
-                      type="button"
-                      onClick={() => void gestionar(u.id, u.activo ? 'desactivar' : 'activar')}
-                      className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold"
-                    >
-                      {u.activo ? 'activo' : 'inactivo'}
-                    </button>
-                  ) : (
-                    <span className="text-xs">{u.activo ? 'activo' : 'inactivo'}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <THead>
+          <tr>
+            <Th>Nombre</Th>
+            <Th className="hidden md:table-cell">Email</Th>
+            <Th>Rol</Th>
+            <Th className="hidden lg:table-cell">Jefe</Th>
+            <Th>Estado</Th>
+          </tr>
+        </THead>
+        <TBody>
+          {usuarios.map((u) => (
+            <Tr key={u.id}>
+              <Td className="font-medium">{u.nombre}</Td>
+              <Td className="hidden md:table-cell text-muted">{u.email ?? '—'}</Td>
+              <Td>
+                {puedeEditar ? (
+                  <select
+                    value={u.rol}
+                    onChange={(e) => void gestionar(u.id, 'cambiar_rol', { rol: e.target.value })}
+                    className="rounded border border-line bg-surface px-1 py-0.5 text-xs capitalize"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="capitalize">{u.rol}</span>
+                )}
+              </Td>
+              <Td className="hidden lg:table-cell text-muted">{nombreDe(u.jefe_id)}</Td>
+              <Td>
+                {puedeEditar ? (
+                  <Button variant="ghost" size="sm" onClick={() => void gestionar(u.id, u.activo ? 'desactivar' : 'activar')}>
+                    {u.activo ? 'activo' : 'inactivo'}
+                  </Button>
+                ) : (
+                  <Badge tone={u.activo ? 'success' : 'neutral'}>{u.activo ? 'activo' : 'inactivo'}</Badge>
+                )}
+              </Td>
+            </Tr>
+          ))}
+        </TBody>
+      </Table>
     </div>
   )
 }

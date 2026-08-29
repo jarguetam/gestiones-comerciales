@@ -3,6 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --gc-primary: #0F172A;
-  --gc-secondary: #64748B;
+  --gc-canvas: #f8fafc;
+  --gc-surface: #ffffff;
+  --gc-border: #e2e8f0;
+  --gc-ink: #0f172a;
+  --gc-muted: #64748b;
+  --gc-primary: #0f172a;
+  --gc-secondary: #64748b;
+  --gc-thead: #f1f5f9;
+}
+
+@layer base {
+  body {
+    background-color: var(--gc-canvas);
+    color: var(--gc-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gc-primary);
+    outline-offset: 2px;
+  }
 }

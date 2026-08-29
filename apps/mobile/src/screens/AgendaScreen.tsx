@@ -19,6 +19,8 @@ import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import type { PuntoGps, Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { BadgeEstado, Cargando, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -58,6 +60,7 @@ interface Props {
 }
 
 export default function AgendaScreen({ perfil }: Props) {
+  const t = useTheme()
   const [visitas, setVisitas] = useState<Visita[]>(DEMO_MODE ? DEMO_VISITAS : [])
   const [cargando, setCargando] = useState(!DEMO_MODE)
   const [refrescando, setRefrescando] = useState(false)
@@ -210,13 +213,11 @@ export default function AgendaScreen({ perfil }: Props) {
             {item.direccion && <Text style={styles.direccion}>{item.direccion}</Text>}
             {item.hora_inicio && <Text style={styles.hora}>{item.hora_inicio.slice(0, 5)}</Text>}
           </View>
-          <View style={[styles.badge, { backgroundColor: estilo.bg }]}>
-            <Text style={[styles.badgeTexto, { color: estilo.fg }]}>{estilo.texto}</Text>
-          </View>
+          <BadgeEstado estado={estilo.texto} />
         </View>
         {item.estado === 'programada' && !checkins.has(item.id) && (
           <TouchableOpacity
-            style={styles.botonCheckin}
+            style={[styles.botonCheckin, { backgroundColor: t.success }]}
             onPress={() => handleCheckin(item)}
             disabled={checkinDe === item.id}
           >
@@ -229,7 +230,7 @@ export default function AgendaScreen({ perfil }: Props) {
         )}
         {item.estado === 'programada' && checkins.has(item.id) && (
           <TouchableOpacity
-            style={[styles.botonCheckin, { backgroundColor: '#1D4ED8' }]}
+            style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => handleCompletar(item)}
             disabled={checkinDe === item.id}
           >
@@ -241,11 +242,7 @@ export default function AgendaScreen({ perfil }: Props) {
   }
 
   if (cargando) {
-    return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
-      </View>
-    )
+    return <Cargando etiqueta="Cargando agenda…" />
   }
 
   return (
@@ -265,9 +262,9 @@ export default function AgendaScreen({ perfil }: Props) {
           />
         }
         ListEmptyComponent={
-          <Text style={styles.vacio}>
-            {DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'Sin visitas programadas para hoy.'}
-          </Text>
+          <Vacio
+            titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'Sin visitas programadas para hoy.'}
+          />
         }
         contentContainerStyle={{ padding: 16 }}
       />
@@ -299,7 +296,6 @@ const styles = StyleSheet.create({
   badgeTexto: { fontSize: 11, fontWeight: '600' },
   botonCheckin: {
     marginTop: 10,
-    backgroundColor: '#047857',
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',

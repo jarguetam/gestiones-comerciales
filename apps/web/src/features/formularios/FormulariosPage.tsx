@@ -3,6 +3,7 @@ import { useDominio } from '../../app/DominioContext'
 import { camposDe, scorePorcentajeCompletado, validarRespuestas } from '../../lib/formulario'
 import { mensajeGc, persistirFormulario } from '../../lib/persistir'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { Alert, Button, PageHeader, PAGE, Table, TBody, Td, Th, THead, Tr } from '../../components/ui'
 import { FormularioRenderer } from './FormularioRenderer'
 import { PLANTILLAS_DEMO, RESPUESTAS_DEMO, type PlantillaFormulario, type RespuestaFormulario } from './plantillasDemo'
 
@@ -156,30 +157,23 @@ export function FormulariosPage() {
   }
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-05</p>
-        <h2 className="font-serif text-3xl">Formularios</h2>
-        <p className="text-sm text-slate-600">
-          Renderer único desde el esquema de cada plantilla. {plantillas.length} plantillas
-          {personas.length ? ` · cartera ${personas.length}` : ''}
-        </p>
-      </div>
+    <div className={PAGE}>
+      <PageHeader
+        spec="W-05"
+        title="Formularios"
+        description={`Renderer único desde el esquema de cada plantilla. ${plantillas.length} plantillas${personas.length ? ` · cartera ${personas.length}` : ''}`}
+      />
 
       {error && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       )}
-      {aviso && (
-        <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          {aviso}
-        </p>
-      )}
+      {aviso && <Alert tone="success">{aviso}</Alert>}
       {!live && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Alert tone="warning">
           Modo demo AgroMoney: plantillas de ficha de cultivo y verificación de garantías. El envío no llega a Supabase.
-        </p>
+        </Alert>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
@@ -191,12 +185,12 @@ export function FormulariosPage() {
               onClick={() => elegirPlantilla(p.id)}
               className={`w-full rounded-xl border px-3 py-3 text-left ${
                 p.id === plantilla?.id
-                  ? 'border-brand-700 bg-brand-700 text-white'
-                  : 'border-[#E4DCC8] bg-white hover:bg-[#F8F4EA]'
+                  ? 'border-primary bg-primary text-white'
+                  : 'border-line bg-surface hover:bg-canvas'
               }`}
             >
               <p className="text-sm font-semibold">{p.nombre}</p>
-              <p className={`mt-1 text-xs ${p.id === plantilla?.id ? 'text-white/80' : 'text-slate-500'}`}>
+              <p className={`mt-1 text-xs ${p.id === plantilla?.id ? 'text-white/80' : 'text-muted'}`}>
                 {p.descripcion}
               </p>
             </button>
@@ -204,14 +198,14 @@ export function FormulariosPage() {
         </aside>
 
         {plantilla && (
-          <section className="rounded-2xl border border-[#E4DCC8] bg-white p-5 space-y-4">
+          <section className="rounded-2xl border border-line bg-surface p-5 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="font-serif text-2xl">{plantilla.nombre}</h3>
-                <p className="text-sm text-slate-600">{plantilla.descripcion}</p>
+                <p className="text-sm text-muted">{plantilla.descripcion}</p>
               </div>
               {score !== null && (
-                <p aria-live="polite" className="rounded-full bg-[#EFE8D8] px-3 py-1 text-sm font-semibold text-brand-800">
+                <p aria-live="polite" className="rounded-full bg-[var(--gc-thead)] px-3 py-1 text-sm font-semibold text-primary">
                   Score {score}%
                 </p>
               )}
@@ -219,58 +213,51 @@ export function FormulariosPage() {
 
             <FormularioRenderer campos={campos} valores={valores} onChange={cambiarCampo} disabled={enviando} />
 
-            <button
-              type="button"
-              onClick={() => void enviar()}
-              disabled={enviando}
-              className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
+            <Button onClick={() => void enviar()} disabled={enviando}>
               {enviando ? 'Enviando…' : 'Enviar formulario'}
-            </button>
+            </Button>
           </section>
         )}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <div className="border-b border-[#E4DCC8] bg-[#EFE8D8] px-4 py-3">
+      <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="border-b border-line bg-[var(--gc-thead)] px-4 py-3">
           <h3 className="text-sm font-semibold">Historial de respuestas</h3>
-          <p className="text-xs text-slate-600">
-            {historialPlantilla.length} envíos de esta plantilla
-          </p>
+          <p className="text-xs text-muted">{historialPlantilla.length} envíos de esta plantilla</p>
         </div>
-        <table className="w-full text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-wide text-slate-600">
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Plantilla</th>
-              <th className="px-4 py-3">Score</th>
-              <th className="px-4 py-3 hidden md:table-cell">Resumen</th>
+              <Th>Fecha</Th>
+              <Th>Plantilla</Th>
+              <Th>Score</Th>
+              <Th className="hidden md:table-cell">Resumen</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+          </THead>
+          <TBody>
             {historialPlantilla.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-slate-500">
+              <Tr>
+                <Td colSpan={4} className="text-muted">
                   Todavía no hay respuestas para esta plantilla.
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             ) : (
               historialPlantilla.map((h) => (
-                <tr key={h.id} className="hover:bg-[#F8F4EA]">
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatearFecha(h.enviadoEn)}</td>
-                  <td className="px-4 py-3 font-medium">{h.plantillaNombre}</td>
-                  <td className="px-4 py-3">{h.resultado != null ? `${h.resultado}%` : '—'}</td>
-                  <td className="px-4 py-3 hidden md:table-cell text-slate-500 truncate max-w-sm">
+                <Tr key={h.id}>
+                  <Td className="whitespace-nowrap text-muted">{formatearFecha(h.enviadoEn)}</Td>
+                  <Td className="font-medium">{h.plantillaNombre}</Td>
+                  <Td>{h.resultado != null ? `${h.resultado}%` : '—'}</Td>
+                  <Td className="hidden md:table-cell text-muted truncate max-w-sm">
                     {Object.entries(h.respuestas)
                       .slice(0, 3)
                       .map(([k, v]) => `${k}: ${String(v)}`)
                       .join(' · ')}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </section>
     </div>
   )

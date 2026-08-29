@@ -25,6 +25,8 @@ export interface DominioState {
   setLeads: (leads: LeadItem[]) => void
   abrirNuevaVisita: (personaNombre?: string) => void
   convertirLead: (lead: LeadItem) => void
+  setBranding: (b: BrandingTenant) => void
+  setTenantNombre: (n: string) => void
 }
 
 const DominioContext = createContext<DominioState | null>(null)

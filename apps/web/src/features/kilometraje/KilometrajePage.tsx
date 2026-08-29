@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { DEMO_MODE, supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
+import { Alert, Button, Input, PageHeader, PAGE, Table, TBody, Td, Th, THead, Tr } from '../../components/ui'
+import { useToast } from '../../components/ui/Toast'
+import { mensajeToast } from '../../lib/erroresUi'
 
 interface KmDemo {
   id: string
@@ -25,6 +28,7 @@ function mesLabel(iso: string) {
 
 export function KilometrajePage() {
   const { fuente } = useDominio()
+  const { push } = useToast()
   const [items, setItems] = useState<KmDemo[]>(DEMO)
   const [inicial, setInicial] = useState('0')
   const [finalKm, setFinalKm] = useState('0')
@@ -61,11 +65,13 @@ export function KilometrajePage() {
     const kf = Number(finalKm)
     if (Number.isNaN(ki) || Number.isNaN(kf)) {
       setAviso('Kilómetros inválidos')
+      push({ tone: 'error', titulo: 'Kilómetros inválidos' })
       return
     }
     if (DEMO_MODE || fuente === 'demo') {
       if (kf < ki) {
         setAviso('GC-KM-001: km_final no puede ser menor que km_inicial')
+        push({ tone: 'error', titulo: 'km_final no puede ser menor que km_inicial', descripcion: 'GC-KM-001' })
         return
       }
       setItems((prev) => {
@@ -74,6 +80,7 @@ export function KilometrajePage() {
         return [{ id: 'k-demo', asesor: 'Tú (demo)', periodo: PERIODO_DEMO, kmInicial: ki, kmFinal: kf }, ...prev]
       })
       setAviso('Kilometraje del mes registrado (demo)')
+      push({ tone: 'success', titulo: 'Kilometraje del mes registrado (demo)' })
       return
     }
     const { error } = await supabase.rpc('km_registrar', {
@@ -81,71 +88,49 @@ export function KilometrajePage() {
       p_km_inicial: ki,
       p_km_final: kf,
     })
-    setAviso(error ? error.message : 'Kilometraje del mes registrado')
+    if (error) {
+      const t = mensajeToast(error)
+      setAviso(error.message)
+      push({ tone: 'error', titulo: t.titulo, descripcion: t.descripcion })
+    } else {
+      setAviso('Kilometraje del mes registrado')
+      push({ tone: 'success', titulo: 'Kilometraje del mes registrado' })
+    }
   }
 
   return (
-    <div className="max-w-6xl space-y-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-brand-700">W-09</p>
-        <h2 className="font-serif text-3xl">Kilometraje</h2>
-        <p className="text-sm text-slate-600 capitalize">Carga del mes · {mesLabel(PERIODO_DEMO)}</p>
-      </div>
+    <div className={PAGE}>
+      <PageHeader spec="W-09" title="Kilometraje" description={<span className="capitalize">Carga del mes · {mesLabel(PERIODO_DEMO)}</span>} />
 
-      <form
-        onSubmit={(e) => void registrar(e)}
-        className="rounded-2xl border border-[#E4DCC8] bg-white p-5 flex flex-wrap gap-3 items-end"
-      >
-        <label className="text-sm">
-          <span className="block text-[11px] uppercase tracking-wide text-slate-500">Km inicial</span>
-          <input
-            value={inicial}
-            onChange={(e) => setInicial(e.target.value)}
-            type="number"
-            step="0.1"
-            className="mt-1 rounded-lg border border-[#E4DCC8] px-3 py-2 w-32"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="block text-[11px] uppercase tracking-wide text-slate-500">Km final</span>
-          <input
-            value={finalKm}
-            onChange={(e) => setFinalKm(e.target.value)}
-            type="number"
-            step="0.1"
-            className="mt-1 rounded-lg border border-[#E4DCC8] px-3 py-2 w-32"
-          />
-        </label>
-        <button type="submit" className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white">
-          Registrar periodo
-        </button>
-        {aviso && <p className="text-sm text-brand-800">{aviso}</p>}
+      <form onSubmit={(e) => void registrar(e)} className="rounded-2xl border border-line bg-surface p-5 flex flex-wrap gap-3 items-end">
+        <Input id="km-inicial" label="Km inicial" value={inicial} onChange={(e) => setInicial(e.target.value)} type="number" step="0.1" className="w-32" />
+        <Input id="km-final" label="Km final" value={finalKm} onChange={(e) => setFinalKm(e.target.value)} type="number" step="0.1" className="w-32" />
+        <Button type="submit">Registrar periodo</Button>
+        {aviso && <Alert tone={aviso.startsWith('GC-') ? 'danger' : 'success'}>{aviso}</Alert>}
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#EFE8D8] text-[11px] uppercase tracking-wide text-slate-600">
-            <tr>
-              <th className="px-4 py-3">Asesor</th>
-              <th className="px-4 py-3">Periodo</th>
-              <th className="px-4 py-3">Km inicial</th>
-              <th className="px-4 py-3">Km final</th>
-              <th className="px-4 py-3">Recorrido</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {items.map((k) => (
-              <tr key={k.id} className="hover:bg-[#F8F4EA]">
-                <td className="px-4 py-3 font-medium">{k.asesor}</td>
-                <td className="px-4 py-3 capitalize">{mesLabel(k.periodo)}</td>
-                <td className="px-4 py-3">{k.kmInicial}</td>
-                <td className="px-4 py-3">{k.kmFinal}</td>
-                <td className="px-4 py-3 font-semibold">{(k.kmFinal - k.kmInicial).toFixed(1)} km</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <THead>
+          <tr>
+            <Th>Asesor</Th>
+            <Th>Periodo</Th>
+            <Th>Km inicial</Th>
+            <Th>Km final</Th>
+            <Th>Recorrido</Th>
+          </tr>
+        </THead>
+        <TBody>
+          {items.map((k) => (
+            <Tr key={k.id}>
+              <Td className="font-medium">{k.asesor}</Td>
+              <Td className="capitalize">{mesLabel(k.periodo)}</Td>
+              <Td>{k.kmInicial}</Td>
+              <Td>{k.kmFinal}</Td>
+              <Td className="font-semibold">{(k.kmFinal - k.kmInicial).toFixed(1)} km</Td>
+            </Tr>
+          ))}
+        </TBody>
+      </Table>
     </div>
   )
 }

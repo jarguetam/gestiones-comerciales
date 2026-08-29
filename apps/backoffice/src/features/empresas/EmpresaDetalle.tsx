@@ -3,6 +3,28 @@ import { Link, useParams } from 'react-router-dom'
 import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
 import { ejemploCurlWebhook, urlWebhookTenant } from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  Input,
+  PAGE,
+  PageHeader,
+  Select,
+  Skeleton,
+  TabPanel,
+  Tabs,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+  fieldClass,
+} from '../../components/ui'
+import { cn } from '../../lib/cn'
+import { buttonClass } from '../../components/ui/buttonVariants'
 
 interface TenantDetalle {
   id: string
@@ -266,79 +288,85 @@ export function EmpresaDetalle() {
   }
 
   if (!tenant) {
-    return <main className="p-6 text-slate-500">Cargando empresa…</main>
+    return (
+      <main className={PAGE}>
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-48 rounded-2xl" />
+      </main>
+    )
   }
 
   const moduloActivo = (codigo: string) => modulos.find((m) => m.codigo === codigo)?.activo ?? false
 
   return (
-    <main className="mx-auto max-w-5xl p-4 space-y-4">
+    <main className={PAGE}>
       <div className="flex items-center justify-between gap-3">
-        <Link to="/" className="text-sm text-teal-800 hover:underline">← Empresas</Link>
-        <Link to="/salud" className="text-sm text-teal-800 hover:underline">Salud de plataforma</Link>
+        <Link to="/" className="text-sm text-primary hover:underline">← Empresas</Link>
+        <Link to="/salud" className="text-sm text-primary hover:underline">Salud de plataforma</Link>
       </div>
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-teal-800">Detalle de empresa</p>
-        <h2 className="text-2xl font-bold text-slate-900">{tenant.nombre}</h2>
-        <p className="text-sm text-slate-500">{tenant.codigo} · {nombreRubro(tenant.rubro)}</p>
-      </div>
+      <PageHeader
+        spec={tab === 'usuarios' ? 'P-04' : 'P-03'}
+        title={tenant.nombre}
+        description={`${tenant.codigo} · ${nombreRubro(tenant.rubro)}`}
+      />
 
-      {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {aviso && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{aviso}</p>}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {aviso && <Alert tone="success">{aviso}</Alert>}
 
-      <div className="flex gap-2">
-        <button type="button" onClick={() => setTab('config')} className={`rounded-full px-3 py-1 text-xs font-medium ${tab === 'config' ? 'bg-teal-700 text-white' : 'bg-white border border-slate-200'}`}>
-          Configuración
-        </button>
-        <button type="button" onClick={() => setTab('usuarios')} className={`rounded-full px-3 py-1 text-xs font-medium ${tab === 'usuarios' ? 'bg-teal-700 text-white' : 'bg-white border border-slate-200'}`}>
-          Usuarios
-        </button>
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'config', label: 'Configuración' },
+          { id: 'usuarios', label: 'Usuarios' },
+        ]}
+        valor={tab}
+        onChange={(id) => setTab(id as 'config' | 'usuarios')}
+      />
 
-      {tab === 'config' && (
+      <TabPanel id="config" valor={tab}>
         <div className="space-y-4">
-          <div className="rounded-lg bg-white p-4 shadow space-y-3">
-            <label className="block text-sm font-medium">Nombre</label>
-            <input value={tenant.nombre} onChange={(e) => setTenant({ ...tenant, nombre: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <label className="block text-sm font-medium">Rubro</label>
+          <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
+            <Input id="emp-nombre" label="Nombre" value={tenant.nombre} onChange={(e) => setTenant({ ...tenant, nombre: e.target.value })} />
+            <p className="block text-sm font-medium text-ink">Rubro</p>
             <div className="flex flex-wrap gap-2">
               {RUBROS.map((r) => (
                 <button
                   key={r.codigo}
                   type="button"
                   onClick={() => setTenant({ ...tenant, rubro: r.codigo })}
-                  className={`rounded-md border px-3 py-1.5 text-sm ${
+                  className={cn(
+                    'rounded-md border px-3 py-1.5 text-sm',
                     (tenant.rubro === r.codigo || (r.codigo === 'agro' && tenant.rubro === 'agromoney'))
-                      ? 'border-teal-700 bg-teal-50 font-semibold'
-                      : 'border-slate-300'
-                  }`}
+                      ? 'border-primary bg-primary/10 font-semibold'
+                      : 'border-line',
+                  )}
                 >
                   {r.nombre}
                 </button>
               ))}
             </div>
-            <label className="block text-sm font-medium">Plan</label>
+            <p className="block text-sm font-medium text-ink">Plan</p>
             <div className="flex gap-2">
               {PLANES.map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setTenant({ ...tenant, plan: p })}
-                  className={`rounded-md border px-3 py-1.5 text-sm capitalize ${tenant.plan === p ? 'border-teal-700 bg-teal-50 font-semibold' : 'border-slate-300'}`}
+                  className={cn('rounded-md border px-3 py-1.5 text-sm capitalize', tenant.plan === p ? 'border-primary bg-primary/10 font-semibold' : 'border-line')}
                 >
                   {p}
                 </button>
               ))}
               {!PLANES.includes(tenant.plan as Plan) && (
-                <span className="text-xs text-slate-500 self-center">actual: {tenant.plan}</span>
+                <span className="self-center text-xs text-muted">actual: {tenant.plan}</span>
               )}
             </div>
-            <label className="block text-sm font-medium">Color de marca</label>
+            <label htmlFor="emp-color" className="block text-sm font-medium text-ink">Color de marca</label>
             <input
+              id="emp-color"
               type="color"
               value={tenant.branding?.color_primario ?? '#0f766e'}
               onChange={(e) => setTenant({ ...tenant, branding: { ...tenant.branding, color_primario: e.target.value } })}
-              className="h-10 w-20 rounded border"
+              className="h-10 w-20 rounded border border-line"
             />
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -348,140 +376,142 @@ export function EmpresaDetalle() {
               />
               Empresa activa
             </label>
-            <button type="button" onClick={() => void guardarConfig()} disabled={guardando} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            <Button onClick={() => void guardarConfig()} disabled={guardando}>
               {guardando ? 'Guardando…' : 'Guardar cambios'}
-            </button>
+            </Button>
           </div>
 
-          <div className="rounded-lg bg-white p-4 shadow">
-            <h3 className="font-medium mb-3">Módulos</h3>
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <h3 className="mb-3 font-medium">Módulos</h3>
             <div className="space-y-2">
               {catalogoModulos.map((m) => (
-                <label key={m.codigo} className="flex items-center gap-3 rounded-md border border-slate-200 p-3">
+                <label key={m.codigo} className="flex items-center gap-3 rounded-md border border-line p-3">
                   <input
                     type="checkbox"
                     checked={moduloActivo(m.codigo)}
                     onChange={(e) => void toggleModulo(m.codigo, e.target.checked)}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm">{m.nombre} <span className="text-xs text-slate-400">({m.codigo})</span></span>
+                  <span className="text-sm">{m.nombre} <span className="text-xs text-muted">({m.codigo})</span></span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="rounded-lg bg-white p-4 shadow space-y-3">
+          <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
             <h3 className="font-medium">Webhook del rubro</h3>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted">
               Los sistemas externos firman el cuerpo con HMAC-SHA256 y envían
               {' '}<code className="text-xs">X-GC-Signature</code> + <code className="text-xs">X-GC-Tenant-Id</code>.
             </p>
-            <label className="block text-xs font-medium text-slate-500">URL</label>
+            <label htmlFor="emp-webhook-url" className="block text-xs font-medium text-muted">URL</label>
             <div className="flex gap-2">
               <input
+                id="emp-webhook-url"
                 readOnly
                 value={webhookUrl}
-                className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-mono"
+                className={cn(fieldClass, 'font-mono text-xs')}
               />
-              <button type="button" onClick={() => void copiar(webhookUrl, 'URL')} className="shrink-0 rounded-md border px-3 py-2 text-xs">
+              <Button variant="secondary" size="sm" onClick={() => void copiar(webhookUrl, 'URL')}>
                 Copiar
-              </button>
+              </Button>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               {tenant.configuracion?.webhook_secret
                 ? 'Hay un secreto configurado. Rotarlo invalida el anterior.'
                 : 'Aún no hay secreto. Generá uno para habilitar el webhook.'}
             </p>
-            <button
-              type="button"
-              onClick={() => void rotarWebhook()}
-              disabled={rotando}
-              className="rounded-md border border-teal-700 px-4 py-2 text-sm font-medium text-teal-800 disabled:opacity-50"
-            >
+            <Button variant="secondary" onClick={() => void rotarWebhook()} disabled={rotando}>
               {rotando ? 'Rotando…' : 'Rotar secreto HMAC'}
-            </button>
+            </Button>
             {webhookSecret && (
               <div>
-                <label className="block text-xs font-medium text-slate-500">Secreto (una sola vez)</label>
+                <label htmlFor="emp-webhook-secret" className="block text-xs font-medium text-muted">Secreto (una sola vez)</label>
                 <div className="mt-1 flex gap-2">
                   <input
+                    id="emp-webhook-secret"
                     readOnly
                     value={webhookSecret}
-                    className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-mono"
+                    className={cn(fieldClass, 'border-amber-300 bg-amber-50 font-mono text-xs')}
                   />
-                  <button type="button" onClick={() => void copiar(webhookSecret, 'Secreto')} className="shrink-0 rounded-md border px-3 py-2 text-xs">
+                  <Button variant="secondary" size="sm" onClick={() => void copiar(webhookSecret, 'Secreto')}>
                     Copiar
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
-            <details className="text-xs text-slate-600">
+            <details className="text-xs text-muted">
               <summary className="cursor-pointer font-medium">Ejemplo curl</summary>
-              <pre className="mt-2 overflow-x-auto rounded-md bg-slate-900 p-3 text-[11px] text-slate-100">
+              <pre className="mt-2 overflow-x-auto rounded-md bg-ink p-3 text-[11px] text-canvas">
                 {ejemploCurlWebhook(SUPABASE_URL ?? 'https://ejemplo.supabase.co', tenant.id)}
               </pre>
             </details>
           </div>
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'usuarios' && (
+      <TabPanel id="usuarios" valor={tab}>
         <div className="space-y-4">
-          <form onSubmit={(e) => void invitar(e)} className="rounded-lg bg-white p-4 shadow grid gap-3 md:grid-cols-2">
-            <h3 className="md:col-span-2 font-medium">Invitar usuario</h3>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <select value={rol} onChange={(e) => setRol(e.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <form onSubmit={(e) => void invitar(e)} className="grid gap-3 rounded-2xl border border-line bg-surface p-4 md:grid-cols-2">
+            <h3 className="font-medium md:col-span-2">Invitar usuario</h3>
+            <Input id="inv-email" label="Email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+            <Input id="inv-nombre" label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
+            <Select id="inv-rol" label="Rol" value={rol} onChange={(e) => setRol(e.target.value)}>
               {['admin', 'gerente', 'supervisor', 'asesor'].map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
-            </select>
-            <input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <button type="submit" className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white">Invitar</button>
+            </Select>
+            <Input id="inv-pass" label="Contraseña inicial" required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial" />
+            <div className="md:col-span-2">
+              <Button type="submit">Invitar</Button>
+            </div>
           </form>
 
-          <div className="overflow-hidden rounded-lg bg-white shadow">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Nombre</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Rol</th>
-                  <th className="px-4 py-3">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+          {usuarios.length === 0 ? (
+            <EmptyState titulo="Sin usuarios en esta empresa" />
+          ) : (
+            <Table>
+              <THead>
+                <Tr>
+                  <Th>Nombre</Th>
+                  <Th>Email</Th>
+                  <Th>Rol</Th>
+                  <Th>Estado</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {usuarios.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-4 py-3 font-medium">{u.nombre}</td>
-                    <td className="px-4 py-3 text-slate-600">{u.email ?? '—'}</td>
-                    <td className="px-4 py-3">
+                  <Tr key={u.id}>
+                    <Td className="font-medium">{u.nombre}</Td>
+                    <Td className="text-muted">{u.email ?? '—'}</Td>
+                    <Td>
                       <select
                         value={u.rol}
                         onChange={(e) => void gestionarUsuario(u.id, 'cambiar_rol', { rol: e.target.value })}
-                        className="rounded border border-slate-200 px-1 py-0.5 text-xs"
+                        className="rounded border border-line px-1 py-0.5 text-xs"
+                        aria-label={`Rol de ${u.nombre}`}
                       >
                         {['admin', 'gerente', 'supervisor', 'asesor'].map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
-                    </td>
-                    <td className="px-4 py-3">
+                    </Td>
+                    <Td>
                       <button
                         type="button"
                         onClick={() => void gestionarUsuario(u.id, u.activo ? 'desactivar' : 'activar')}
-                        className="rounded-full bg-slate-100 px-2 py-0.5 text-xs"
+                        className={buttonClass('ghost', 'sm')}
                       >
-                        {u.activo ? 'activo' : 'inactivo'}
+                        <Badge tone={u.activo ? 'success' : 'neutral'}>{u.activo ? 'activo' : 'inactivo'}</Badge>
                       </button>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TBody>
+            </Table>
+          )}
         </div>
-      )}
+      </TabPanel>
     </main>
   )
 }
