@@ -3,9 +3,9 @@ import {
   assertStringIncludes,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  invitarUsuario,
   type InviteDeps,
   type InviteLogEntry,
-  invitarUsuario,
 } from "./invitar.ts";
 
 const validBody = {

@@ -8,11 +8,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
-import {
-  type InviteDeps,
-  InviteError,
-  invitarUsuario,
-} from "./invitar.ts";
+import { invitarUsuario, type InviteDeps, InviteError } from "./invitar.ts";
 
 type InviteRpcClient = {
   rpc: (
@@ -48,14 +44,14 @@ Deno.serve(async (req) => {
       userClient = createClient(url, anon, {
         global: { headers: { Authorization: authHeader } },
       });
-      const { data: userData, error: userError } =
-        await userClient.auth.getUser();
+      const { data: userData, error: userError } = await userClient.auth
+        .getUser();
       if (userError || !userData.user) {
         throw new InviteError("GC-AUTH-001: sin autorización", 401);
       }
 
-      const { data: assurance, error: assuranceError } =
-        await userClient.auth.mfa.getAuthenticatorAssuranceLevel();
+      const { data: assurance, error: assuranceError } = await userClient.auth
+        .mfa.getAuthenticatorAssuranceLevel();
       if (assuranceError || !assurance) {
         throw new InviteError(
           "GC-AUTH-012: no se pudo verificar el nivel de seguridad",

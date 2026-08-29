@@ -6,7 +6,12 @@ export type InviteActor = {
 export type InviteLogEntry = {
   request_id: string;
   outcome: "ok" | "error";
-  stage: "authorize" | "validate" | "create_user" | "invite_profile" | "complete";
+  stage:
+    | "authorize"
+    | "validate"
+    | "create_user"
+    | "invite_profile"
+    | "complete";
   error_code?: string;
   rollback_outcome?: "ok" | "error";
   rollback_error_code?: string;
@@ -62,7 +67,9 @@ function json(body: unknown, status = 200): Response {
 function generarPassword(): string {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
-  return `${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}Aa1!`;
+  return `${
+    Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  }Aa1!`;
 }
 
 function requestId(req: Request): string {
@@ -108,7 +115,9 @@ function safeLog(deps: InviteDeps, entry: InviteLogEntry): void {
 async function parseBody(req: Request): Promise<InviteBody> {
   try {
     const body = await req.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      throw new Error();
+    }
     return body as InviteBody;
   } catch {
     throw new InviteError("GC-AUTH-013: payload inválido", 400);
