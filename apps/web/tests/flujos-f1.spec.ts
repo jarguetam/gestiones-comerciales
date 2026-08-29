@@ -36,6 +36,14 @@ test.describe('F1 MVP web (modo demo)', () => {
     await expect(page.getByText(/nombre es requerido/i).first()).toBeVisible()
   })
 
+  test('W-03: filtros de estado quedan en la URL', async ({ page }) => {
+    await page.goto('/#/visitas')
+    await expect(page.locator('[data-spec="W-03"]').first()).toBeVisible()
+    await page.getByLabel(/^estado$/i).selectOption('completada')
+    await expect(page).toHaveURL(/estado=completada/)
+    await expect(page.getByText(/completada/i).first()).toBeVisible()
+  })
+
   test('W-04: la pantalla de personas lista la cartera y permite buscar', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: /personas/i }).first().click()
@@ -67,7 +75,7 @@ test.describe('F1 MVP web (modo demo)', () => {
     await page.getByLabel(/estado fenológico/i).selectOption('Cosecha')
     await expect(page.getByText(/score \d+%/i).first()).toBeVisible()
     await page.getByRole('button', { name: /enviar formulario/i }).click()
-    await expect(page.getByRole('status')).toContainText(/envío demo|enviado/i)
+    await expect(page.getByRole('status').filter({ hasText: /envío demo|enviado/i })).toBeVisible()
     await expect(page.getByText(/maíz/i).first()).toBeVisible()
   })
 
