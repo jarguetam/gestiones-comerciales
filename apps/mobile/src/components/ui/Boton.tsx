@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react'
+import React from 'react'
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native'
 import { useTheme } from '../../theme'
 
@@ -44,6 +44,6 @@ export function Boton({
 }
 
 const styles = StyleSheet.create({
-  boton: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center' },
-  texto: { fontWeight: '700', fontSize: 15 },
+  boton: { borderRadius: 12, minHeight: 48, paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+  texto: { fontWeight: '700', fontSize: 16 },
 })

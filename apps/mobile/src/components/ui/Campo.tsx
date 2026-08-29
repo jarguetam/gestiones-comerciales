@@ -30,6 +30,6 @@ export function Campo({
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12 },
   label: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, minHeight: 48 },
   hint: { fontSize: 11, marginTop: 4 },
 })
