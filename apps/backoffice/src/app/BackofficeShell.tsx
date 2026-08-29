@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { DEMO_MODE, supabase } from '../lib/supabase'
+import { BACKEND_CONFIGURADO, desactivarSesionDemo, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { BrandMark } from '../components/ui/BrandMark'
 import { cn } from '../lib/cn'
@@ -24,7 +24,8 @@ export function BackofficeShell() {
   }, [location.pathname])
 
   async function cerrarSesion() {
-    if (!DEMO_MODE) await supabase.auth.signOut()
+    desactivarSesionDemo()
+    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     navigate('/login', { replace: true })
   }
 

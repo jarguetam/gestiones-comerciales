@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('P-01 MFA (modo demo)', () => {
+  test('login demo: Entrar al backoffice abre empresas', async ({ page }) => {
+    await page.goto('/#/login')
+    await expect(page.locator('[data-spec="P-01"]')).toBeVisible()
+    await page.getByRole('button', { name: /entrar al backoffice/i }).click()
+    await expect(page.getByRole('link', { name: /empresas/i }).first()).toBeVisible()
+  })
+
   test('el menú incluye MFA y permite enrolar TOTP de demostración', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: /^mfa$/i }).first().click()

@@ -169,7 +169,7 @@ export default function LeadsScreen({ perfil }: Props) {
             )
           }}
           ListEmptyComponent={
-            <Vacio titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'Sin leads asignados.'} />
+            <Vacio titulo={DEMO_MODE ? 'Modo demo: cartera de demostración (sin leads reales).' : 'Sin leads asignados.'} />
           }
         />
       )}

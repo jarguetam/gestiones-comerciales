@@ -12,6 +12,7 @@ import { claimsEmpresaDe, type Rol } from './claims'
 import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
 import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
+import { credencialesPublicasValidas, mensajePreviewSinBackend, varsFaltantesSupabase } from './supabaseEnv'
 
 export { claimsDe, type Rol } from './claims'
 export type { Perfil } from './perfil'
@@ -21,21 +22,31 @@ declare const process: { env: Record<string, string | undefined> }
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('GC-CFG-001: faltan EXPO_PUBLIC_SUPABASE_URL o EXPO_PUBLIC_SUPABASE_ANON_KEY')
+export const BACKEND_CONFIGURADO = credencialesPublicasValidas(supabaseUrl, supabaseAnonKey)
+export const FALTANTES_BACKEND = varsFaltantesSupabase(supabaseUrl, supabaseAnonKey)
+export const MENSAJE_BACKEND = mensajePreviewSinBackend(FALTANTES_BACKEND)
+
+/** Sin keys reales, o el asesor eligió demostración. Mutar solo desde Login/logout. */
+export let DEMO_MODE = !BACKEND_CONFIGURADO
+
+export function activarSesionDemo() {
+  DEMO_MODE = true
 }
 
-/** El binario de campo siempre habla con Supabase. No hay preview demo. */
-export const DEMO_MODE = false
+export function desactivarSesionDemo() {
+  DEMO_MODE = !BACKEND_CONFIGURADO
+}
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: sesionStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-})
+export const supabase: SupabaseClient = BACKEND_CONFIGURADO
+  ? createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        storage: sesionStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    })
+  : ({} as SupabaseClient)
 
 export const PERFIL_DEMO: Perfil = {
   id: 'demo-asesor',

@@ -272,7 +272,7 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
             titulo={DEMO_MODE ? 'Agenda de demostración vacía' : 'Sin visitas programadas para hoy'}
             descripcion={
               DEMO_MODE
-                ? 'En DEMO no hay backend. En vivo aparecen las visitas de visitas_del_dia().'
+                ? 'Agenda de demostración. Si el APK se compiló con EXPO_PUBLIC_SUPABASE_*, ingresá con tu cuenta para ver visitas reales.'
                 : 'Agendá una visita a un cliente de tu cartera o un prospecto.'
             }
           />

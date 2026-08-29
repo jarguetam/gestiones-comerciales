@@ -8,7 +8,7 @@ export function useAuth() {
 
   useEffect(() => {
     if (DEMO_MODE) {
-      // demo: sin backend, sin sesión — la UI muestra el login bloqueado
+      // demo / preview: sin sesión; RequireAuth deja pasar
       setLoading(false)
       return
     }

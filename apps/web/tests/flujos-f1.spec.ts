@@ -9,6 +9,15 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('F1 MVP web (modo demo)', () => {
+  test('W-01: Entrar al tablero funciona aunque el email no sea válido', async ({ page }) => {
+    await page.goto('/#/login')
+    await expect(page.locator('[data-spec="W-01"]')).toBeVisible()
+    await page.getByLabel(/^email$/i).fill('demo')
+    await page.getByLabel(/^contraseña$/i).fill('demo')
+    await page.getByRole('button', { name: /entrar al tablero/i }).click()
+    await expect(page.getByRole('link', { name: /dashboard/i }).first()).toBeVisible()
+  })
+
   test('la app carga y muestra la navegación principal', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveTitle(/gestiones/i)

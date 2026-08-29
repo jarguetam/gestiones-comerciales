@@ -28,7 +28,7 @@ import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { DEMO_MODE, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { demoNotificaciones, contarNoLeidas } from './lib/notificaciones'
@@ -197,7 +197,8 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
 
   async function handleLogout() {
     await detenerRastreo(DEMO_MODE ? undefined : supabase)
-    if (!DEMO_MODE) await supabase.auth.signOut()
+    desactivarSesionDemo()
+    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     onLogout()
   }
 

@@ -250,7 +250,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
             </View>
           )}
           ListEmptyComponent={
-            <Vacio titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'No hay registros.'} />
+            <Vacio titulo={DEMO_MODE ? 'Modo demo: cartera de demostración.' : 'No hay registros.'} />
           }
           contentContainerStyle={{ padding: 16 }}
         />

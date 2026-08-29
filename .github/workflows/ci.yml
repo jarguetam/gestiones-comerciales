@@ -168,6 +168,11 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Faltan secrets VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY. Pages queda en DEMO_MODE (sin backend). Cargalos en Settings → Secrets and variables → Actions."
+          else
+            echo "Build Pages con backend $VITE_SUPABASE_URL (anon key ${#VITE_SUPABASE_ANON_KEY} chars)."
+          fi
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
 
