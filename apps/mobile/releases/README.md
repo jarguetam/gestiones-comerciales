@@ -1,7 +1,7 @@
 # APK temporal (no es el artefacto de Play Store)
 
-`gestiones-comerciales-campo-arm64.apk` — build de prueba arm64, login real contra Supabase (sin modo demo). Incluye los fixes de `GC-AUTH-021` (decoder JWT) y `GC-AUTH-022` (perfil sin bloquear si falla el SELECT a usuario).
+`gestiones-comerciales-campo-arm64.apk` — login real, agendar visita, 4 tabs.
 
-Desinstalá cualquier `com.gc.mobile` anterior antes de instalar. Firmado con keystore de debug.
+**Antes de probar agendar:** aplicá en Supabase la migración `supabase/migrations/20260829010000_rls_jwt_app_metadata.sql` (SQL Editor). Sin eso, RLS sigue leyendo `tenant_id` en la raíz del JWT y `visita_crear` no existe.
 
-Este archivo se puede borrar del repo cuando ya no haga falta descargarlo.
+Desinstalá `com.gc.mobile` anterior. Keystore debug.
