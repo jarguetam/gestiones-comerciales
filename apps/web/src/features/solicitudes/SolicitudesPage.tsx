@@ -193,7 +193,7 @@ export function SolicitudesPage() {
       {detalle && (
         <div className="rounded-2xl border border-line bg-surface p-5 space-y-3">
           <div className="flex justify-between gap-3">
-            <h3 className="font-serif text-xl">{detalle.persona}</h3>
+            <h3 className="font-display text-xl tracking-tight">{detalle.persona}</h3>
             <Button variant="ghost" size="sm" onClick={() => setDetalle(null)}>
               Cerrar
             </Button>

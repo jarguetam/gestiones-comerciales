@@ -235,7 +235,7 @@ export function PersonasPage() {
                   type="button"
                   onClick={() => setSeleccion(p)}
                   className={cn(
-                    'w-full px-4 py-3 text-left hover:bg-canvas',
+                    'rail w-full min-h-11 px-4 py-3 text-left transition-colors duration-campo hover:bg-canvas',
                     seleccion?.id === p.id && 'bg-canvas',
                   )}
                 >
@@ -259,7 +259,7 @@ export function PersonasPage() {
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-serif text-2xl">{seleccion.nombre}</h3>
+                  <h3 className="font-display text-2xl tracking-tight">{seleccion.nombre}</h3>
                   <Badge tone="primary" className="mt-2">
                     {seleccion.categoria}
                   </Badge>

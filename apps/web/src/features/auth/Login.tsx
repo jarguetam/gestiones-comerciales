@@ -90,17 +90,17 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-ink flex items-center justify-center p-6" data-spec="W-01" style={varsDeBranding(branding) as CSSProperties}>
-      <div className="w-full max-w-md rounded-2xl bg-canvas p-8 shadow-xl">
+    <div className="flex min-h-screen items-center justify-center bg-canvas p-6" data-spec="W-01" style={varsDeBranding(branding) as CSSProperties}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm">
         <div className="flex items-center gap-3">
           <BrandMark nombre={marca} logoUrl={branding.logo_url} />
           <div>
-            <h1 className="font-serif text-3xl text-ink">Gestiones Comerciales</h1>
+            <h1 className="font-display text-3xl tracking-tight text-ink">Ruta de campo</h1>
             <p className="text-sm text-muted">{marca}</p>
           </div>
         </div>
         <p className="mt-3 text-sm text-muted">
-          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Entrá a la operación de tu empresa.'}
+          {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Entrá a la jornada de tu empresa.'}
         </p>
         {DEMO_MODE && (
           <div className="mt-4">
@@ -129,7 +129,7 @@ export function Login() {
             />
             {error && <Alert tone="danger" role="alert">{error}</Alert>}
             <Button type="submit" size="lg" disabled={loading}>
-              {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar al tablero' : 'Ingresar'}
+              {loading ? 'Ingresando…' : DEMO_MODE ? 'Entrar a la jornada' : 'Ingresar'}
             </Button>
           </form>
         ) : (

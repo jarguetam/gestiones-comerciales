@@ -116,24 +116,24 @@ export function DashboardHome() {
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <article className={ESTILO_KPI}>
           <p className="text-[11px] uppercase tracking-wide text-muted">Visitas programadas</p>
-          <p className="mt-2 font-serif text-4xl text-primary">{kpis.programadas}</p>
+          <p className="mt-2 font-display text-4xl tracking-tight text-primary">{kpis.programadas}</p>
         </article>
         <article className={ESTILO_KPI}>
           <p className="text-[11px] uppercase tracking-wide text-muted">Completadas</p>
-          <p className="mt-2 font-serif text-4xl text-primary">{kpis.pctCompletadas}%</p>
+          <p className="mt-2 font-display text-4xl tracking-tight text-primary">{kpis.pctCompletadas}%</p>
           <p className="text-xs text-muted mt-1">
             {kpis.completadas} de {kpis.visitas} visitas
           </p>
         </article>
         <article className={ESTILO_KPI}>
           <p className="text-[11px] uppercase tracking-wide text-muted">Asesores activos</p>
-          <p className="mt-2 font-serif text-4xl">{kpis.asesoresActivos}</p>
+          <p className="mt-2 font-display text-4xl tracking-tight">{kpis.asesoresActivos}</p>
         </article>
         <article className={ESTILO_KPI}>
           <p className="text-[11px] uppercase tracking-wide text-muted">
             {modulos.includes('depositos') || DEMO_MODE ? 'Depósitos pendientes' : 'Personas'}
           </p>
-          <p className="mt-2 font-serif text-4xl">
+          <p className="mt-2 font-display text-4xl tracking-tight">
             {modulos.includes('depositos') || DEMO_MODE ? depositosPendientes : personas.length}
           </p>
         </article>
@@ -157,7 +157,7 @@ export function DashboardHome() {
           </div>
           <ul className="space-y-2">
             {hoy.map((v) => (
-              <li key={v.id} className="rounded-xl border border-line px-3 py-2">
+              <li key={v.id} className="rail rounded-xl border border-line px-3 py-2">
                 <p className="text-sm font-medium truncate">{v.title}</p>
                 <p className="text-xs text-muted">
                   {v.date} · {v.startTime}

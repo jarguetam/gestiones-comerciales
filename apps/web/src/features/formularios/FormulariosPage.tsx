@@ -201,7 +201,7 @@ export function FormulariosPage() {
           <section className="rounded-2xl border border-line bg-surface p-5 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="font-serif text-2xl">{plantilla.nombre}</h3>
+                <h3 className="font-display text-2xl tracking-tight">{plantilla.nombre}</h3>
                 <p className="text-sm text-muted">{plantilla.descripcion}</p>
               </div>
               {score !== null && (

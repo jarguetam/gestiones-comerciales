@@ -211,7 +211,7 @@ function BrandingPanel({
         <div className="mt-4 flex items-center gap-3">
           <BrandMark nombre={nombre || 'GC'} logoUrl={preview.logo_url} variant="dark" />
           <div>
-            <p className="font-serif text-xl">{nombre || 'Gestiones Comerciales'}</p>
+            <p className="font-display text-xl tracking-tight">{nombre || 'Gestiones Comerciales'}</p>
             <p className="text-xs text-white/60">Sidebar y login usan este logo, el primario y el secundario.</p>
           </div>
         </div>

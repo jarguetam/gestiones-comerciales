@@ -139,7 +139,7 @@ export function MapaPage() {
   if (!puede) {
     return (
       <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-14">
-        <h2 className="font-serif text-2xl">Sin acceso al mapa</h2>
+        <h2 className="font-display text-2xl tracking-tight">Sin acceso al mapa</h2>
         <p className="text-sm text-muted mt-2">El mapa de asesores es para supervisor, gerente y admin.</p>
       </div>
     )
