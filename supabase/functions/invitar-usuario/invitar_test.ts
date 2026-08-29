@@ -33,10 +33,17 @@ function request(
   });
 }
 
-function deps(overrides: Partial<InviteDeps> = {}): InviteDeps {
+type InviteDepsWithTenantCheck = InviteDeps & {
+  isTenantActive: (tenantId: string) => Promise<boolean>;
+};
+
+function deps(
+  overrides: Partial<InviteDepsWithTenantCheck> = {},
+): InviteDepsWithTenantCheck {
   return {
     requireActor: async () => ({ userId: "platform-admin", aal: "aal2" }),
     isPlatformSuperadmin: async () => true,
+    isTenantActive: async () => true,
     createUser: async () => ({ id: "auth-new" }),
     inviteProfile: async () => {},
     deleteUser: async () => {},
@@ -217,6 +224,43 @@ Deno.test("un rol inválido se rechaza antes de createUser", async () => {
   assertEquals(res.status, 400);
   assertEquals(await res.json(), { error: "GC-AUTH-002: rol inválido" });
   assertEquals(created, 0);
+});
+
+Deno.test("tenant inexistente o inactivo se rechaza antes de createUser", async () => {
+  const logs: InviteLogEntry[] = [];
+  const checkedTenants: string[] = [];
+  let created = 0;
+
+  const res = await invitarUsuario(
+    deps({
+      isTenantActive: async (tenantId) => {
+        checkedTenants.push(tenantId);
+        return false;
+      },
+      createUser: async () => {
+        created += 1;
+        return { id: "unexpected" };
+      },
+      log: (entry) => logs.push(entry),
+    }),
+    request(
+      { ...validBody, tenant_id: "tenant-inexistente-o-inactivo" },
+      "request-invalid-tenant",
+    ),
+  );
+
+  assertEquals(res.status, 400);
+  assertEquals(await res.json(), {
+    error: "GC-AUTH-015: tenant inexistente o inactivo",
+  });
+  assertEquals(checkedTenants, ["tenant-inexistente-o-inactivo"]);
+  assertEquals(created, 0);
+  assertEquals(logs, [{
+    request_id: "request-invalid-tenant",
+    outcome: "error",
+    stage: "validate",
+    error_code: "GC-AUTH-015",
+  }]);
 });
 
 Deno.test("si falla el perfil elimina de inmediato el usuario Auth", async () => {
