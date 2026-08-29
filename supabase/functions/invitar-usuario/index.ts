@@ -7,7 +7,7 @@
  * Auth: JWT verificado. Solo usuario_plataforma.es_superadmin con AAL2.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { handleOptions } from "../_shared/cors.ts";
+import { corsHeaders, handleOptions } from "../_shared/cors.ts";
 import {
   type InviteDeps,
   InviteError,
@@ -122,5 +122,9 @@ Deno.serve(async (req) => {
     },
   };
 
-  return await invitarUsuario(deps, req);
+  const response = await invitarUsuario(deps, req);
+  for (const [name, value] of Object.entries(corsHeaders)) {
+    response.headers.set(name, value);
+  }
+  return response;
 });

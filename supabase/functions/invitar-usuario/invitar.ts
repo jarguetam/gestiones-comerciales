@@ -1,5 +1,3 @@
-import { json } from "../_shared/cors.ts";
-
 export type InviteActor = {
   userId: string;
   aal: string;
@@ -53,6 +51,13 @@ type InviteBody = {
 };
 
 const ROLES = new Set(["admin", "gerente", "supervisor", "asesor"]);
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 function generarPassword(): string {
   const bytes = new Uint8Array(12);
