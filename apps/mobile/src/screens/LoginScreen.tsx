@@ -12,8 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { claimsDe, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
+import { supabase, type Perfil, cargarPerfil, resolverClaims } from '../lib/supabase'
 import { requierePasoTotp } from '../lib/mfa'
+import type { Session } from '@supabase/supabase-js'
 
 interface Props {
   onLogin: (perfil: Perfil) => void
@@ -38,6 +39,7 @@ export default function LoginScreen({ onLogin }: Props) {
         password,
       })
       if (error) throw error
+      if (!data.session) throw new Error('GC-AUTH-021: sesión incompleta')
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (requierePasoTotp(aal)) {
         const { data: factors, error: errF } = await supabase.auth.mfa.listFactors()
@@ -51,7 +53,7 @@ export default function LoginScreen({ onLogin }: Props) {
         setPaso('totp')
         return
       }
-      await hidratarSesion(data.session.access_token, data.user.id)
+      await hidratarSesion(data.session)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error de autenticación')
     } finally {
@@ -72,7 +74,7 @@ export default function LoginScreen({ onLogin }: Props) {
       if (error) throw error
       const { data } = await supabase.auth.getSession()
       if (!data.session) throw new Error('GC-AUTH-021: sesión MFA incompleta')
-      await hidratarSesion(data.session.access_token, data.session.user.id)
+      await hidratarSesion(data.session)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Código MFA inválido')
     } finally {
@@ -80,10 +82,10 @@ export default function LoginScreen({ onLogin }: Props) {
     }
   }
 
-  async function hidratarSesion(accessToken: string, userId: string) {
-    const claims = claimsDe(accessToken)
+  async function hidratarSesion(session: Session) {
+    const claims = await resolverClaims(session)
     if (!claims) throw new Error('GC-AUTH-021: usuario sin tenant asignado')
-    const perfil = await cargarPerfil(userId, claims.tenantId, claims.rol)
+    const perfil = await cargarPerfil(session.user.id, claims.tenantId, claims.rol)
     if (!perfil) throw new Error('GC-AUTH-022: no se pudo leer el perfil')
     onLogin(perfil)
   }

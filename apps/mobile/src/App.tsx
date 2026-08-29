@@ -16,7 +16,7 @@ import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { claimsDe, DEMO_MODE, supabase, type Perfil, cargarPerfil } from './lib/supabase'
+import { DEMO_MODE, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { colorPrimario } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { demoCola } from './lib/cola'
@@ -69,7 +69,7 @@ export default function App() {
     }
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
-        const claims = claimsDe(data.session.access_token)
+        const claims = await resolverClaims(data.session)
         if (claims) {
           const p = await cargarPerfil(data.session.user.id, claims.tenantId, claims.rol)
           if (p) setPerfil(p)

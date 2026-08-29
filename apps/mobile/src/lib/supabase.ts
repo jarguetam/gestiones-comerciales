@@ -6,27 +6,12 @@
  * En Expo las variables públicas se exponen como EXPO_PUBLIC_*.
  * En builds de desarrollo nativos, process.env se rellena en build time.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
 import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
+import { claimsEmpresaDe, type Rol } from './claims'
 import { sesionStorage } from './sesionStorage'
 
-// Base64 URL-safe sin Buffer (Hermes no lo incluye por defecto)
-function base64UrlDecode(input: string): string {
-  const b64 = input.replace(/-/g, '+').replace(/_/g, '/')
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-  let bin = ''
-  for (let i = 0, bc = 0, bs: string | undefined, buffer = 0, idx = 0; (bs = b64.charAt(idx++)); ) {
-    buffer = chars.indexOf(bs)
-    if (~buffer) {
-      bc = bc % 4 ? bc * 64 + buffer : buffer
-      if (bc++ % 4) bin += String.fromCharCode(255 & (bc >> ((-2 * bc) & 6)))
-    }
-  }
-  // UTF-8 decode
-  return decodeURIComponent(
-    bin.split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''),
-  )
-}
+export { claimsDe, type Rol } from './claims'
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -49,8 +34,6 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   },
 })
 
-export type Rol = 'admin' | 'gerente' | 'supervisor' | 'asesor'
-
 export interface Perfil {
   id: string
   tenantId: string
@@ -71,23 +54,39 @@ export const PERFIL_DEMO: Perfil = {
   branding: BRANDING_DEMO,
 }
 
-/** Decodifica los claims custom del JWT (tenant_id y rol, spec F0.3). */
-export function claimsDe(accessToken: string): { tenantId: string; rol: Rol } | null {
-  const partes = accessToken.split('.')
-  if (partes.length !== 3) return null
-  try {
-    const payload = JSON.parse(base64UrlDecode(partes[1])) as {
-      tenant_id?: string
-      rol?: Rol
-      app_metadata?: { tenant_id?: string; rol?: Rol }
+/**
+ * Hidrata tenant/rol como la web: JWT + app_metadata del user,
+ * refresh de sesión si faltan, y RPC tenant_id_actual / rol_actual.
+ */
+export async function resolverClaims(session: Session): Promise<{ tenantId: string; rol: Rol } | null> {
+  let actual = session
+  let claims = claimsEmpresaDe({
+    accessToken: actual.access_token,
+    appMetadata: actual.user.app_metadata,
+  })
+  if (!claims) {
+    const { data } = await supabase.auth.refreshSession()
+    if (data.session) {
+      actual = data.session
+      claims = claimsEmpresaDe({
+        accessToken: actual.access_token,
+        appMetadata: actual.user.app_metadata,
+      })
     }
-    const tenantId = payload.tenant_id || payload.app_metadata?.tenant_id
-    const rol = payload.rol || payload.app_metadata?.rol
-    if (!tenantId || !rol) return null
-    return { tenantId, rol }
-  } catch {
-    return null
   }
+  if (!claims) {
+    const [tenantRes, rolRes] = await Promise.all([
+      supabase.rpc('tenant_id_actual'),
+      supabase.rpc('rol_actual'),
+    ])
+    claims = claimsEmpresaDe({
+      accessToken: actual.access_token,
+      appMetadata: actual.user.app_metadata,
+      tenantIdDb: tenantRes.data != null ? String(tenantRes.data) : null,
+      rolDb: typeof rolRes.data === 'string' ? rolRes.data : null,
+    })
+  }
+  return claims
 }
 
 /** Carga el perfil del usuario autenticado (tabla public.usuario vía RLS). */
