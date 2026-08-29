@@ -39,6 +39,9 @@ type Harness = {
   logs: ImporterLogEntry[];
 };
 
+const GENERIC_IMPORT_ERROR = "GC-IMP-018: no se pudo completar la importación";
+const CREDIT_MODULE_ERROR = "GC-IMP-020: el módulo creditos no está activo";
+
 function multipartRequest(
   options: {
     authorization?: boolean;
@@ -76,6 +79,39 @@ function multipartRequest(
   request.formData = () => {
     events.push("body:formData");
     return nativeFormData();
+  };
+  return request;
+}
+
+function jsonRequest(
+  body: unknown = {
+    tipo: "personas",
+    tenant_id: "tenant-activo",
+    filas: [{ nombre: "Persona Privada", documento: "DOC-1" }],
+  },
+  options: {
+    authorization?: boolean;
+    requestId?: string;
+  } = {},
+  events: string[] = [],
+): TrackingRequest {
+  const headers = new Headers({
+    "content-type": "application/json",
+    "x-request-id": options.requestId ?? "request-json",
+  });
+  if (options.authorization !== false) {
+    headers.set("Authorization", "Bearer test-bearer");
+  }
+
+  const request = new TrackingRequest("http://local/importer", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  const nativeJson = request.json.bind(request);
+  request.json = () => {
+    events.push("body:json");
+    return nativeJson();
   };
   return request;
 }
@@ -197,6 +233,23 @@ Deno.test("superadmin con AAL1 no lee el body ni toca Storage", async () => {
   assertEquals(state.events, ["auth:actor"]);
 });
 
+Deno.test("admin o supervisor de tenant no ejecuta Request.json", async () => {
+  const state = harness({ platformSuperadmin: false });
+  const request = jsonRequest(undefined, {}, state.events);
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 403);
+  assertEquals(await response.json(), {
+    error: "GC-AUTH-001: requiere superadmin de plataforma",
+  });
+  assertEquals(request.bodyReads, 0);
+  assertEquals(state.events, [
+    "auth:actor",
+    "authz:platform:platform-admin",
+  ]);
+});
+
 Deno.test("el bearer se pasa explícitamente a getUser y a la API oficial de AAL", async () => {
   const calls: string[] = [];
   const request = multipartRequest();
@@ -256,6 +309,63 @@ Deno.test("superadmin AAL2 autoriza, parsea, valida tenant, sube y ejecuta RPC e
   );
 });
 
+Deno.test("JSON autoriza, lee, valida tenant y ejecuta RPC sin Storage en orden", async () => {
+  const state = harness();
+  const request = jsonRequest(undefined, {}, state.events);
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), {
+    tipo: "personas",
+    insertados: 1,
+    actualizados: 0,
+    errores: [],
+    total: 1,
+  });
+  assertEquals(state.events, [
+    "auth:actor",
+    "authz:platform:platform-admin",
+    "body:json",
+    "tenant:validate:tenant-activo",
+    "rpc:admin_importar_personas",
+    "invocation:record",
+  ]);
+  assertEquals(request.bodyReads, 1);
+  assertEquals(state.uploadedPaths, []);
+});
+
+Deno.test("JSON con tenant inválido no alcanza RPC ni efectos", async () => {
+  const state = harness({ tenantActive: false });
+  const request = jsonRequest(
+    {
+      tipo: "personas",
+      tenant_id: "tenant-inexistente",
+      filas: [{ nombre: "Persona Privada", documento: "DOC-1" }],
+    },
+    {},
+    state.events,
+  );
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 500);
+  assertEquals(await response.json(), { error: GENERIC_IMPORT_ERROR });
+  assertEquals(state.events, [
+    "auth:actor",
+    "authz:platform:platform-admin",
+    "body:json",
+    "tenant:validate:tenant-inexistente",
+  ]);
+  assertEquals(state.uploadedPaths, []);
+  assertEquals(state.logs.at(-1), {
+    request_id: "request-json",
+    outcome: "error",
+    stage: "validate",
+    error_code: "GC-IMP-018",
+  });
+});
+
 Deno.test("tenant inexistente o inactivo se rechaza antes de Storage", async () => {
   const state = harness({ tenantActive: false });
   const request = multipartRequest(
@@ -265,10 +375,8 @@ Deno.test("tenant inexistente o inactivo se rechaza antes de Storage", async () 
 
   const response = await importar(state.deps, request);
 
-  assertEquals(response.status, 400);
-  assertEquals(await response.json(), {
-    error: "GC-AUTH-015: tenant inexistente o inactivo",
-  });
+  assertEquals(response.status, 500);
+  assertEquals(await response.json(), { error: GENERIC_IMPORT_ERROR });
   assertEquals(state.uploadedPaths, []);
   assertEquals(state.events, [
     "auth:actor",
@@ -276,11 +384,18 @@ Deno.test("tenant inexistente o inactivo se rechaza antes de Storage", async () 
     "body:formData",
     "tenant:validate:tenant-inexistente",
   ]);
+  assertEquals(state.logs.at(-1), {
+    request_id: "request-test",
+    outcome: "error",
+    stage: "validate",
+    error_code: "GC-IMP-018",
+  });
 });
 
 Deno.test("si falla el RPC elimina el archivo subido y registra el rollback", async () => {
-  const rpcError = "GC-IMP-020: el módulo creditos no está activo";
-  const state = harness({ rpcError });
+  const providerRpcError =
+    "GC-IMP-020: provider detail for Persona Privada <persona@example.test>";
+  const state = harness({ rpcError: providerRpcError });
   const request = multipartRequest(
     {
       requestId: "request-rpc-failure",
@@ -290,9 +405,10 @@ Deno.test("si falla el RPC elimina el archivo subido y registra el rollback", as
   );
 
   const response = await importar(state.deps, request);
+  const responseBody = await response.json();
 
   assertEquals(response.status, 400);
-  assertEquals(await response.json(), { error: rpcError });
+  assertEquals(responseBody, { error: CREDIT_MODULE_ERROR });
   assertEquals(state.uploadedPaths.length, 1);
   assertEquals(state.deletedPaths, state.uploadedPaths);
   assertEquals(state.events.slice(-2), [
@@ -306,10 +422,15 @@ Deno.test("si falla el RPC elimina el archivo subido y registra el rollback", as
     error_code: "GC-IMP-020",
     rollback_outcome: "ok",
   });
+  const serialized = JSON.stringify({
+    response: responseBody,
+    logs: state.logs,
+  });
+  assertEquals(serialized.includes("persona@example.test"), false);
 });
 
 Deno.test("si falla el cleanup conserva el error RPC y registra sin PII", async () => {
-  const rpcError = "GC-IMP-020: el módulo creditos no está activo";
+  const rpcError = CREDIT_MODULE_ERROR;
   const cleanupProviderError =
     "storage failure for Persona Privada <persona@example.test>";
   const state = harness({ rpcError, cleanupError: cleanupProviderError });
@@ -342,4 +463,36 @@ Deno.test("si falla el cleanup conserva el error RPC y registra sin PII", async 
   const serializedLogs = JSON.stringify(state.logs);
   assertEquals(serializedLogs.includes(cleanupProviderError), false);
   assertEquals(serializedLogs.includes("persona@example.test"), false);
+});
+
+Deno.test("código GC desconocido y error de proveedor se vuelven GC-IMP-018 sin PII", async () => {
+  for (
+    const providerError of [
+      "GC-IMP-999: Persona Privada <persona@example.test>",
+      "duplicate key for Persona Privada <persona@example.test>",
+    ]
+  ) {
+    const state = harness({ rpcError: providerError });
+    const request = multipartRequest({
+      requestId: "request-provider-error",
+      tipo: "cuentas",
+    }, state.events);
+
+    const response = await importar(state.deps, request);
+    const responseBody = await response.json();
+
+    assertEquals(response.status, 500);
+    assertEquals(responseBody, { error: GENERIC_IMPORT_ERROR });
+    assertEquals(state.logs.at(-1), {
+      request_id: "request-provider-error",
+      outcome: "error",
+      stage: "rpc",
+      error_code: "GC-IMP-018",
+      rollback_outcome: "ok",
+    });
+    const serialized = JSON.stringify({ responseBody, logs: state.logs });
+    assertEquals(serialized.includes("Persona Privada"), false);
+    assertEquals(serialized.includes("persona@example.test"), false);
+    assertEquals(serialized.includes("GC-IMP-999"), false);
+  }
 });
