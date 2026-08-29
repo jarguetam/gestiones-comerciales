@@ -16,27 +16,19 @@ Implementado en `cursor/gate-1-security-9de6`.
 
 ## Contratos
 
-### `public.admin_webhook_rotar_secret(p_tenant_id uuid) -> jsonb`
+### `public.admin_webhook_rotar_secret(p_tenant_id uuid) -> text`
 
-Conserva nombre y parámetro del RPC anterior. Solo permite un usuario de
-plataforma que sea superadmin o pueda operar el tenant. Retorna:
-
-```json
-{
-  "tenantId": "uuid",
-  "configurado": true,
-  "rotadoEn": "timestamptz",
-  "last4": "abcd",
-  "secret": "plaintext emitido una vez"
-}
-```
+Conserva nombre, parámetro y retorno del RPC histórico. Solo permite exactamente
+una fila activa con `es_superadmin=true` para `auth.uid()`. Retorna únicamente
+el plaintext generado.
 
 La rotación toma lock del tenant, actualiza el mismo secreto de Vault cuando ya
 existe y registra auditoría sin plaintext.
 
 ### `public.admin_webhook_secret_estado(p_tenant_id uuid) -> jsonb`
 
-Usa la misma autorización de plataforma y retorna `WebhookSecretStatus`:
+Usa la misma autorización estricta de superadmin activo y retorna
+`WebhookSecretStatus`:
 
 ```json
 {
@@ -96,8 +88,9 @@ modificaron migraciones históricas.
 
 1. Habilita `supabase_vault` si falta.
 2. Crea schema/tabla privada.
-3. Para cada tenant con la key legado, llama `vault.create_secret`, guarda su
-   UUID y metadatos privados.
+3. La rutina privada `private.migrar_webhook_secrets_legacy()` toma un lock de
+   tabla incompatible con `UPDATE`, migra strings no vacíos y limpia también
+   valores `null`, no-string o vacíos sin crear secretos inválidos.
 4. Ejecuta `configuracion = configuracion - 'webhook_secret'`, conservando todas
    las demás keys.
 5. Agrega un `CHECK` que impide reintroducir la key en la tabla pública.
@@ -206,6 +199,62 @@ aplica. `apps/web/src/lib/cargarDominio.ts` ya no contenía ni modelaba
    privada por cascade, pero puede dejar el secreto cifrado huérfano en Vault.
    Resolver lifecycle/delete requiere una decisión separada y no se implementó
    con acceso directo a internals.
-4. El retorno del RPC de rotación cambia de `text` a JSON, aunque conserva
-   nombre y parámetro. Backoffice quedó migrado; consumidores externos deben
-   leer `secret` del objeto.
+4. El lock de migración y los permisos pgTAP tienen validación estática en esta
+   VM, pero su comportamiento debe confirmarse al ejecutar la suite en una base
+   Supabase real.
+
+## Addendum — hallazgos de revisión
+
+Commits TDD:
+
+- `85414c3 test: cover Task 4 review contracts`
+- `977cd0d fix: address Task 4 security review`
+
+Correcciones:
+
+- Rotación y estado consultan directamente `public.usuario_plataforma` y exigen
+  exactamente una fila del `auth.uid()` con `es_superadmin=true` y
+  `activo=true`. Los fixtures rechazan admin tenant, owner, soporte y
+  superadmin inactivo en ambos RPC.
+- La rutina privada de migración adquiere `SHARE ROW EXCLUSIVE` antes de leer;
+  el lock de transacción se conserva mientras se reemplaza el RPC legado.
+- `p0_webhook_secret.sql` y `006_importer_webhook.sql` son autónomos: crean
+  primero `auth.users`, luego tenants/perfiles/dependencias, y cambian de rol
+  con `SET LOCAL ROLE`/`RESET ROLE`.
+- pgTAP crea fixtures legacy string, `null`, objeto y vacío; verifica igualdad
+  del plaintext descifrado, metadata, conservación del resto del JSON,
+  ausencia de Vault para inválidos e idempotencia.
+- `admin_webhook_rotar_secret(uuid)` vuelve a `RETURNS text`; backoffice
+  refetchea `admin_webhook_secret_estado` después de rotar.
+- El plaintext de UI vive solo en estado React tras una respuesta exitosa.
+  Nueva rotación, cambio de tenant, desmontaje y la acción `Descartar` eliminan
+  o invalidan esa revelación.
+
+Evidencia RED:
+
+```text
+node --experimental-strip-types --test src/features/empresas/webhook.test.ts
+exit 1: webhook.ts no exportaba actualizarWebhookSecretRevelado
+```
+
+Evidencia GREEN:
+
+```text
+webhook.test.ts: 8 pass, 0 fail
+backoffice: 28 pass, 0 fail
+typecheck backoffice: exit 0
+typecheck web: exit 0
+build backoffice: 112 módulos, exit 0
+```
+
+Validación SQL:
+
+```text
+migración Task 4: 46 statements parseados
+p0_webhook_secret.sql: 76 statements; plan 37/aserciones 37
+006_importer_webhook.sql: 47 statements; plan 13/aserciones 13
+```
+
+pgTAP sigue sin runtime local por ausencia de Supabase CLI y Docker; no se
+repitió el intento fallido documentado anteriormente. No se tocó Task 6 ni
+TypeScript de Edge.
