@@ -68,8 +68,7 @@ type InviteBody = {
 
 const ROLES = new Set(["admin", "gerente", "supervisor", "asesor"]);
 const DEFAULT_ERROR_CODE = "GC-AUTH-012";
-const DEFAULT_ERROR_MESSAGE =
-  "GC-AUTH-012: no se pudo completar la invitación";
+const DEFAULT_ERROR_MESSAGE = "GC-AUTH-012: no se pudo completar la invitación";
 const CATALOGUED_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   "GC-AUTH-001": "GC-AUTH-001: sin autorización",
   "GC-AUTH-002": "GC-AUTH-002: rol inválido",
@@ -122,7 +121,9 @@ function extractedErrorCode(error: unknown): string | null {
 function errorMessage(error: unknown): string {
   if (error instanceof InviteError) return error.message;
   const code = extractedErrorCode(error);
-  return code ? CATALOGUED_ERROR_MESSAGES[code] ?? DEFAULT_ERROR_MESSAGE : DEFAULT_ERROR_MESSAGE;
+  return code
+    ? CATALOGUED_ERROR_MESSAGES[code] ?? DEFAULT_ERROR_MESSAGE
+    : DEFAULT_ERROR_MESSAGE;
 }
 
 function errorCode(error: unknown): string {
@@ -167,8 +168,8 @@ export async function requireActorFromBearer(
     throw new InviteError("GC-AUTH-001: sin autorización", 401);
   }
 
-  const { data: assurance, error: assuranceError } =
-    await auth.getAuthenticatorAssuranceLevel(bearer);
+  const { data: assurance, error: assuranceError } = await auth
+    .getAuthenticatorAssuranceLevel(bearer);
   if (assuranceError || !assurance) {
     throw new InviteError(
       "GC-AUTH-012: no se pudo verificar el nivel de seguridad",
