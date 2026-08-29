@@ -3,6 +3,7 @@ import type { CalendarEvent, EventCategory } from '../types'
 import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_ATTENDEES } from '../eventsData'
 import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
 import type { CatalogoActividad, CatalogoHora } from '../../../lib/catalogos'
+import { errorAltaPersona, mensajeGc } from '../../../lib/persistirHelpers'
 
 interface NewEventModalProps {
   onClose: () => void
@@ -121,7 +122,7 @@ export function NewEventModal({
         setLocation(guardada.direccion)
       }
     } catch (err) {
-      setErrorPersona(err instanceof Error ? err.message : 'No se pudo registrar el cliente')
+      setErrorPersona(errorAltaPersona(err))
     }
   }
 
@@ -170,7 +171,8 @@ export function NewEventModal({
       await onSave(newEv)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la visita')
+      const msg = mensajeGc(err)
+      setError(msg === 'No se pudo guardar' ? 'No se pudo guardar la visita' : msg)
     } finally {
       setGuardando(false)
     }
