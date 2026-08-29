@@ -1,5 +1,5 @@
 /**
- * M-01 Login. Email + contraseña + TOTP si aal1→aal2. En DEMO_MODE entra un perfil de campo.
+ * M-01 Login. Email + contraseña + TOTP si aal1→aal2.
  */
 import React, { useState } from 'react'
 import {
@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { claimsDe, DEMO_MODE, PERFIL_DEMO, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
+import { claimsDe, supabase, type Perfil, cargarPerfil } from '../lib/supabase'
 import { requierePasoTotp } from '../lib/mfa'
 
 interface Props {
@@ -29,18 +29,10 @@ export default function LoginScreen({ onLogin }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
 
-  async function entrarDemo() {
-    onLogin(PERFIL_DEMO)
-  }
-
   async function handlePassword() {
     setError(null)
     setCargando(true)
     try {
-      if (DEMO_MODE) {
-        await entrarDemo()
-        return
-      }
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -108,14 +100,6 @@ export default function LoginScreen({ onLogin }: Props) {
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Asesor de campo'}
         </Text>
 
-        {DEMO_MODE && (
-          <View style={styles.demo}>
-            <Text style={styles.demoTexto}>
-              Preview sin backend: el ingreso abre la jornada con datos de demostración.
-            </Text>
-          </View>
-        )}
-
         {paso === 'password' ? (
           <>
             <TextInput
@@ -141,12 +125,12 @@ export default function LoginScreen({ onLogin }: Props) {
             <TouchableOpacity
               style={[styles.boton, cargando && styles.botonDeshabilitado]}
               onPress={() => void handlePassword()}
-              disabled={cargando || (!DEMO_MODE && (!email || !password))}
+              disabled={cargando || !email || !password}
             >
               {cargando ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.botonTexto}>{DEMO_MODE ? 'Entrar al tablero' : 'Ingresar'}</Text>
+                <Text style={styles.botonTexto}>Ingresar</Text>
               )}
             </TouchableOpacity>
           </>
@@ -191,15 +175,6 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 11, color: '#1D4ED8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: 1.4 },
   titulo: { fontSize: 22, fontWeight: '700', color: '#1D4ED8', textAlign: 'center', marginTop: 4 },
   subtitulo: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20, marginTop: 2 },
-  demo: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 14,
-  },
-  demoTexto: { color: '#92400E', fontSize: 12 },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',

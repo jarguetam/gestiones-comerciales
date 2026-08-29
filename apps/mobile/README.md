@@ -2,16 +2,17 @@
 
 Expo SDK 51 · React Native 0.74 · asesor de campo (offline-first).
 
-## APK de prueba (demo)
+## APK de prueba
 
-Build local arm64 (teléfonos Android modernos), modo demo (sin backend):
+Build local arm64 contra el proyecto Supabase real. Pedirá email y contraseña de un asesor; no hay modo demo.
 
-1. En el teléfono: Ajustes → Seguridad → permitir instalar apps de fuentes desconocidas / el administrador de archivos.
+1. En el teléfono: Ajustes → Seguridad → permitir instalar apps de fuentes desconocidas.
 2. Copiá el APK al teléfono e instalalo. Paquete: `com.gc.mobile`.
-3. Abrí **Gestiones Comerciales** → **Entrar al tablero**.
+3. Abrí **Gestiones Comerciales** e ingresá con tu usuario de campo.
 
 Este APK está firmado con el keystore de debug (no Play Store). Solo incluye ABI `arm64-v8a`.
 
+## Desarrollo
 
 ```bash
 cp apps/mobile/.env.example apps/mobile/.env

@@ -32,22 +32,22 @@ declare const process: { env: Record<string, string | undefined> }
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined
-const credencialesOk = Boolean(supabaseUrl && supabaseAnonKey)
 
-/** Preview local sin backend. Un binario de producción sin anon key NO cae a demo: falla al crear el cliente. */
-export const DEMO_MODE =
-  process.env.EXPO_PUBLIC_DEMO === '1' || (!credencialesOk && process.env.NODE_ENV !== 'production')
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('GC-CFG-001: faltan EXPO_PUBLIC_SUPABASE_URL o EXPO_PUBLIC_SUPABASE_ANON_KEY')
+}
 
-export const supabase: SupabaseClient = DEMO_MODE
-  ? ({} as SupabaseClient)
-  : createClient(supabaseUrl!, supabaseAnonKey!, {
-      auth: {
-        storage: sesionStorage,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    })
+/** El binario de campo siempre habla con Supabase. No hay preview demo. */
+export const DEMO_MODE = false
+
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: sesionStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+})
 
 export type Rol = 'admin' | 'gerente' | 'supervisor' | 'asesor'
 
