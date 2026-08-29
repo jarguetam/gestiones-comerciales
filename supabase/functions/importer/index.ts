@@ -53,7 +53,6 @@ Deno.serve(async (req) => {
           if (!userClient) {
             throw new ImporterError(
               "GC-IMP-051: autenticación requerida",
-              401,
             );
           }
           return userClient.auth.mfa.getAuthenticatorAssuranceLevel(bearer);
@@ -70,7 +69,6 @@ Deno.serve(async (req) => {
       if (error) {
         throw new ImporterError(
           "GC-AUTH-012: no se pudo verificar la autorización",
-          500,
         );
       }
       return data !== null;
@@ -85,7 +83,6 @@ Deno.serve(async (req) => {
       if (error) {
         throw new ImporterError(
           "GC-AUTH-012: no se pudo verificar el tenant",
-          500,
         );
       }
       return data !== null;
@@ -102,7 +99,6 @@ Deno.serve(async (req) => {
       if (error) {
         throw new ImporterError(
           "GC-IMP-018: no se pudo guardar el archivo de importación",
-          500,
         );
       }
     },
@@ -111,7 +107,6 @@ Deno.serve(async (req) => {
       if (error) {
         throw new ImporterError(
           "GC-IMP-018: no se pudo eliminar el archivo de importación",
-          500,
         );
       }
     },
@@ -119,7 +114,6 @@ Deno.serve(async (req) => {
       if (!userClient) {
         throw new ImporterError(
           "GC-IMP-051: autenticación requerida",
-          401,
         );
       }
       const { data, error } = await (userClient as unknown as ImporterRpcClient)

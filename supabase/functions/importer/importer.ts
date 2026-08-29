@@ -55,7 +55,7 @@ export type ImporterDeps = {
 };
 
 export class ImporterError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string) {
     super(message);
     this.name = "ImporterError";
   }
@@ -68,18 +68,12 @@ export async function requireImporterActorFromBearer(
   const authorization = request.headers.get("Authorization");
   const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
   if (!bearer) {
-    throw new ImporterError(
-      "GC-IMP-051: autenticación requerida",
-      401,
-    );
+    throw new ImporterError("GC-IMP-051: autenticación requerida");
   }
 
   const { data: userData, error: userError } = await auth.getUser(bearer);
   if (userError || !userData.user) {
-    throw new ImporterError(
-      "GC-IMP-051: autenticación requerida",
-      401,
-    );
+    throw new ImporterError("GC-IMP-051: autenticación requerida");
   }
 
   const { data: assurance, error: assuranceError } = await auth
@@ -87,7 +81,6 @@ export async function requireImporterActorFromBearer(
   if (assuranceError || !assurance) {
     throw new ImporterError(
       "GC-AUTH-012: no se pudo verificar el nivel de seguridad",
-      500,
     );
   }
 
@@ -119,6 +112,74 @@ const MAX_FILAS = 5000;
 const LOTE = 500;
 const DEFAULT_ERROR_CODE = "GC-IMP-018";
 const DEFAULT_ERROR_MESSAGE = "GC-IMP-018: no se pudo completar la importación";
+const EXPOSED_ERRORS = {
+  "GC-AUTH-001": {
+    message: "GC-AUTH-001: requiere superadmin de plataforma",
+    status: 403,
+  },
+  "GC-AUTH-012": {
+    message: "GC-AUTH-012: no se pudo verificar la autorización",
+    status: 500,
+  },
+  "GC-AUTH-014": {
+    message: "GC-AUTH-014: se requiere autenticación AAL2",
+    status: 403,
+  },
+  "GC-IMP-001": {
+    message: "GC-IMP-001: nombre y documento son obligatorios",
+    status: 400,
+  },
+  "GC-IMP-002": {
+    message: "GC-IMP-002: exporte el Excel a CSV e inténtelo de nuevo",
+    status: 400,
+  },
+  "GC-IMP-003": {
+    message: `GC-IMP-003: máximo ${MAX_FILAS} filas por carga`,
+    status: 400,
+  },
+  "GC-IMP-006": {
+    message: "GC-IMP-006: CSV con comillas sin cerrar",
+    status: 400,
+  },
+  "GC-IMP-013": {
+    message: "GC-IMP-013: se requiere archivo CSV",
+    status: 400,
+  },
+  "GC-IMP-014": {
+    message: "GC-IMP-014: tipo debe ser personas, cuentas o catalogos",
+    status: 400,
+  },
+  "GC-IMP-015": {
+    message: "GC-IMP-015: tenant_id requerido",
+    status: 400,
+  },
+  "GC-IMP-016": {
+    message: "GC-IMP-016: el archivo no tiene filas",
+    status: 400,
+  },
+  "GC-IMP-017": {
+    message: "GC-IMP-017: payload inválido",
+    status: 400,
+  },
+  "GC-IMP-018": {
+    message: DEFAULT_ERROR_MESSAGE,
+    status: 500,
+  },
+  "GC-IMP-020": {
+    message: "GC-IMP-020: el módulo creditos no está activo",
+    status: 400,
+  },
+  "GC-IMP-050": {
+    message: "GC-IMP-050: método no permitido",
+    status: 405,
+  },
+  "GC-IMP-051": {
+    message: "GC-IMP-051: autenticación requerida",
+    status: 401,
+  },
+} as const;
+
+type ExposedErrorCode = keyof typeof EXPOSED_ERRORS;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -145,24 +206,21 @@ function rawErrorMessage(error: unknown): string | null {
   return null;
 }
 
-function errorCode(error: unknown): string {
-  return rawErrorMessage(error)?.match(/\bGC-[A-Z]+-\d{3}\b/)?.[0] ??
-    DEFAULT_ERROR_CODE;
+function errorCode(error: unknown): ExposedErrorCode {
+  const extracted = rawErrorMessage(error)?.match(
+    /\bGC-[A-Z]+-\d{3}\b/,
+  )?.[0];
+  return extracted && Object.hasOwn(EXPOSED_ERRORS, extracted)
+    ? extracted as ExposedErrorCode
+    : DEFAULT_ERROR_CODE;
 }
 
 function errorMessage(error: unknown): string {
-  const message = rawErrorMessage(error);
-  return message && /\bGC-[A-Z]+-\d{3}\b/.test(message)
-    ? message
-    : DEFAULT_ERROR_MESSAGE;
+  return EXPOSED_ERRORS[errorCode(error)].message;
 }
 
 function errorStatus(error: unknown): number {
-  if (error instanceof ImporterError) return error.status;
-  const code = errorCode(error);
-  if (code === "GC-AUTH-001" || code === "GC-AUTH-014") return 403;
-  if (code === DEFAULT_ERROR_CODE || code === "GC-AUTH-012") return 500;
-  return 400;
+  return EXPOSED_ERRORS[errorCode(error)].status;
 }
 
 function safeLog(deps: ImporterDeps, entry: ImporterLogEntry): void {
@@ -201,17 +259,13 @@ async function parseRequest(request: Request): Promise<ParsedImport> {
       const tenantId = String(form.get("tenant_id") ?? "").trim();
       const file = form.get("file") ?? form.get("archivo");
       if (!(file instanceof File)) {
-        throw new ImporterError(
-          "GC-IMP-013: se requiere archivo CSV",
-          400,
-        );
+        throw new ImporterError("GC-IMP-013: se requiere archivo CSV");
       }
 
       const archivoBytes = new Uint8Array(await file.arrayBuffer());
       if (esXlsx(archivoBytes)) {
         throw new ImporterError(
           "GC-IMP-002: exporte el Excel a CSV e inténtelo de nuevo",
-          400,
         );
       }
       const text = new TextDecoder("utf-8").decode(archivoBytes);
@@ -225,17 +279,14 @@ async function parseRequest(request: Request): Promise<ParsedImport> {
 
     const body = await request.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) {
-      throw new ImporterError("GC-IMP-017: payload inválido", 400);
+      throw new ImporterError("GC-IMP-017: payload inválido");
     }
     const payload = body as Record<string, unknown>;
     const tipo = String(payload.tipo ?? "").toLowerCase();
     const tenantId = String(payload.tenant_id ?? "").trim();
     const raw = payload.filas ?? payload.personas ?? payload.cuentas;
     if (!Array.isArray(raw)) {
-      throw new ImporterError(
-        "GC-IMP-001: se espera filas[] o un CSV",
-        400,
-      );
+      throw new ImporterError("GC-IMP-017: payload inválido");
     }
     return {
       tipo,
@@ -250,7 +301,7 @@ async function parseRequest(request: Request): Promise<ParsedImport> {
     ) {
       throw error;
     }
-    throw new ImporterError("GC-IMP-017: payload inválido", 400);
+    throw new ImporterError("GC-IMP-017: payload inválido");
   }
 }
 
@@ -258,22 +309,17 @@ function validateImport(parsed: ParsedImport): void {
   if (!TIPOS.has(parsed.tipo)) {
     throw new ImporterError(
       "GC-IMP-014: tipo debe ser personas, cuentas o catalogos",
-      400,
     );
   }
   if (!parsed.tenantId) {
-    throw new ImporterError("GC-IMP-015: tenant_id requerido", 400);
+    throw new ImporterError("GC-IMP-015: tenant_id requerido");
   }
   if (parsed.filas.length === 0) {
-    throw new ImporterError(
-      "GC-IMP-016: el archivo no tiene filas",
-      400,
-    );
+    throw new ImporterError("GC-IMP-016: el archivo no tiene filas");
   }
   if (parsed.filas.length > MAX_FILAS) {
     throw new ImporterError(
       `GC-IMP-003: máximo ${MAX_FILAS} filas por carga`,
-      400,
     );
   }
 }
@@ -315,13 +361,11 @@ export async function importar(
     if (actor.aal !== "aal2") {
       throw new ImporterError(
         "GC-AUTH-014: se requiere autenticación AAL2",
-        403,
       );
     }
     if (!await deps.isPlatformSuperadmin(actor.userId)) {
       throw new ImporterError(
         "GC-AUTH-001: requiere superadmin de plataforma",
-        403,
       );
     }
 
@@ -329,10 +373,7 @@ export async function importar(
     const parsed = await parseRequest(request);
     validateImport(parsed);
     if (!await deps.isTenantActive(parsed.tenantId)) {
-      throw new ImporterError(
-        "GC-AUTH-015: tenant inexistente o inactivo",
-        400,
-      );
+      throw new ImporterError(DEFAULT_ERROR_MESSAGE);
     }
 
     let uploadedPath: string | null = null;
