@@ -40,3 +40,4 @@ apps/web/playwright-report/
 *.apk
 *.aab
 *.ipa
+!releases/*.apk
