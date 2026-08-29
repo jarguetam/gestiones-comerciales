@@ -12,10 +12,26 @@ set search_path = public, extensions;
 select plan(13);
 
 -- secret de prueba (no es un secreto real de producción)
-update public.tenant
-   set configuracion = coalesce(configuracion, '{}'::jsonb)
-                    || jsonb_build_object('webhook_secret', 'test-hmac-secret-t1')
- where id = '11111111-1111-1111-1111-111111111111';
+insert into private.tenant_webhook_secret (
+  tenant_id,
+  vault_secret_id,
+  secret_last4,
+  rotated_at
+)
+values (
+  '11111111-1111-1111-1111-111111111111',
+  vault.create_secret(
+    'test-hmac-secret-t1',
+    'test-webhook-secret-t1',
+    'Secreto temporal para pgTAP'
+  ),
+  right('test-hmac-secret-t1', 4),
+  now()
+)
+on conflict (tenant_id) do update
+set vault_secret_id = excluded.vault_secret_id,
+    secret_last4 = excluded.secret_last4,
+    rotated_at = excluded.rotated_at;
 
 -- ---------- 1-2. admin T1 importa personas; reimportar actualiza ----------
 select tests.set_claims(
