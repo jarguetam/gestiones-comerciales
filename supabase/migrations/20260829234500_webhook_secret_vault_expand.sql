@@ -74,14 +74,18 @@ begin
      and up.es_superadmin
      and up.activo;
 
-  v_es_backfill := (
-    auth.uid() is null
-    and session_user = 'postgres'
-    and current_setting('app.webhook_secret_backfill', true) = '1'
-    and current_setting('role', true) in ('none', 'postgres')
+  v_es_backfill := coalesce(
+    (
+      auth.uid() is null
+      and session_user = 'postgres'
+      and current_setting('app.webhook_secret_backfill', true) = '1'
+      and current_setting('role', true) in ('none', 'postgres')
+    ),
+    false
   );
 
-  if not (v_es_superadmin or v_es_backfill) then
+  if not coalesce(v_es_superadmin, false)
+     and not coalesce(v_es_backfill, false) then
     raise exception 'GC-AUTH-001: requiere superadmin activo de plataforma';
   end if;
 
