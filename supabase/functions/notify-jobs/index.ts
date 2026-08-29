@@ -16,6 +16,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { json, handleOptions } from "../_shared/cors.ts";
+import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 const GT_OFFSET_MS = -6 * 60 * 60_000;
 
@@ -110,6 +111,11 @@ Deno.serve(async (req) => {
       resultado: { job, tenants_procesados: (tenants ?? []).length, notificaciones },
     }));
 
+    await registrarInvocacion(supabase, {
+      funcion: "notify-jobs",
+      ok: true,
+      duracionMs: Date.now() - inicio,
+    });
     return json({
       job,
       fecha_objetivo: maniana,

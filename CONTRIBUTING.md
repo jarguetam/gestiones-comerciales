@@ -7,6 +7,7 @@
 3. Migraciones SQL forwards-only en `supabase/migrations/` con timestamp: `YYYYMMDDHHMMSS_nombre.sql`.
 4. Edge Functions en `supabase/functions/<nombre>/index.ts` (Deno + TS).
 5. Todo PR pasa CI: lint + typecheck + tests + `supabase db diff` revisado por par.
+6. Edge Functions: `./scripts/deploy-functions.sh` (requiere `SUPABASE_ACCESS_TOKEN`). En `main`, el job **Desplegar Edge Functions** hace lo mismo si el secret existe. Sondeo: `SUPABASE_ANON_KEY=… ./scripts/probe-functions.sh`.
 
 ## Estructura
 

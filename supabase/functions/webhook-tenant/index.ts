@@ -10,6 +10,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { json, handleOptions } from "../_shared/cors.ts";
+import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
@@ -83,5 +84,12 @@ Deno.serve(async (req) => {
   }));
 
   const status = res?.estado === "procesado" ? 200 : 202;
+  await registrarInvocacion(admin, {
+    funcion: "webhook-tenant",
+    ok: !res?.error,
+    error: res?.error ?? null,
+    duracionMs: Date.now() - inicio,
+    tenantId,
+  });
   return json(res ?? { estado: "pendiente" }, status);
 });

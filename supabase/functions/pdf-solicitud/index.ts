@@ -8,6 +8,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { json, handleOptions } from "../_shared/cors.ts";
+import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -162,6 +163,12 @@ Deno.serve(async (req) => {
       resultado: "ok",
     }));
 
+    await registrarInvocacion(admin, {
+      funcion: "pdf-solicitud",
+      ok: true,
+      duracionMs: Date.now() - inicio,
+      tenantId: sol.tenant_id,
+    });
     return json({
       solicitud_id: solicitudId,
       firma_ruta: `firmas/${firmaPath}`,
