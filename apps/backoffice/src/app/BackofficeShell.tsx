@@ -41,7 +41,7 @@ export function BackofficeShell() {
           <BrandMark nombre="GC Platform" compact />
           <div>
             <p className="font-display text-base leading-tight tracking-tight">GC Platform</p>
-            <p className="text-[10px] uppercase tracking-wide text-muted">Backoffice</p>
+            <p className="text-xs text-muted">Backoffice</p>
           </div>
         </div>
         <nav className="flex-1 space-y-0.5 px-2 py-3" aria-label="Principal">
@@ -53,7 +53,15 @@ export function BackofficeShell() {
         </nav>
         <div className="border-t border-line px-4 py-4 text-[11px] text-muted">
           <p className="truncate">{email}</p>
-          <button type="button" onClick={() => void cerrarSesion()} className="mt-2 min-h-11 text-ink hover:text-primary">
+          <button
+            type="button"
+            onClick={() => void cerrarSesion()}
+            className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-ink hover:text-primary"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              <path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             Salir
           </button>
         </div>
@@ -67,7 +75,13 @@ export function BackofficeShell() {
           >
             Menú
           </button>
-          <span className="font-display shrink-0 tracking-tight">GC Platform</span>
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-medium"
+            onClick={() => void cerrarSesion()}
+          >
+            Salir
+          </button>
         </header>
         {menu && (
           <nav className="space-y-1 border-b border-line bg-surface px-3 pb-3 md:hidden" aria-label="Móvil">

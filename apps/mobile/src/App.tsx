@@ -23,7 +23,7 @@ import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } f
 import { abrirPersistenciaCola } from './lib/abrirCola'
 import { ejecutarDemo, ejecutarMutacion } from './lib/sync'
 import { ThemeProvider, useTheme } from './theme'
-import { Cargando, Marca } from './components/ui'
+import { Cargando, Icono, Marca, type IconoName } from './components/ui'
 
 type Tab =
   | 'agenda'
@@ -46,17 +46,6 @@ const TITULOS: Record<Tab, string> = {
   ajustes: 'Ajustes',
   notificaciones: 'Notificaciones',
   sync: 'Sincronización',
-}
-
-const ICONOS: Record<string, string> = {
-  agenda: '📅',
-  personas: '👤',
-  leads: '🎯',
-  formularios: '📋',
-  solicitudes: '📄',
-  depositos: '💰',
-  ajustes: '⚙',
-  mas: '⋯',
 }
 
 export default function App() {
@@ -120,7 +109,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const noLeidas = contarNoLeidas(demoNotificaciones())
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
 
-  const extras: { id: Tab; etiqueta: string }[] = [
+  const extras: { id: Extract<IconoName, 'solicitudes' | 'depositos' | 'ajustes'>; etiqueta: string }[] = [
     ...(DEMO_MODE || perfil.modulos.includes('solicitudes')
       ? [{ id: 'solicitudes' as const, etiqueta: 'Solicitudes' }]
       : []),
@@ -129,13 +118,18 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       : []),
     { id: 'ajustes', etiqueta: 'Ajustes' },
   ]
-  const principales: { id: Tab; etiqueta: string }[] = [
+  const principales: { id: Extract<IconoName, 'agenda' | 'personas' | 'leads' | 'formularios'>; etiqueta: string }[] = [
     { id: 'agenda', etiqueta: 'Agenda' },
     { id: 'personas', etiqueta: 'Cartera' },
     { id: 'leads', etiqueta: 'Leads' },
     { id: 'formularios', etiqueta: 'Fichas' },
   ]
   const masActivo = extras.some((e) => e.id === tab)
+
+  async function handleLogout() {
+    if (!DEMO_MODE) await supabase.auth.signOut()
+    onLogout()
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.canvas }]}>
@@ -151,7 +145,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           accessibilityLabel="Notificaciones"
           accessibilityState={{ selected: tab === 'notificaciones' }}
         >
-          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Inbox</Text>
+          <Icono name="inbox" color={t.ink} size={18} />
           {noLeidas > 0 ? (
             <View style={[styles.badge, { backgroundColor: t.primary }]}>
               <Text style={styles.badgeTexto}>{noLeidas}</Text>
@@ -164,12 +158,21 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           accessibilityLabel="Sincronización"
           accessibilityState={{ selected: tab === 'sync' }}
         >
-          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Cola</Text>
+          <Icono name="cola" color={t.ink} size={18} />
           {pendientes > 0 ? (
             <View style={[styles.badge, { backgroundColor: t.warn }]}>
               <Text style={styles.badgeTexto}>{pendientes}</Text>
             </View>
           ) : null}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.headerBtn, { borderColor: t.line }]}
+          onPress={() => void handleLogout()}
+          accessibilityLabel="Salir"
+          accessibilityRole="button"
+        >
+          <Icono name="salir" color={t.ink} size={18} />
+          <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Salir</Text>
         </TouchableOpacity>
       </View>
 
@@ -207,7 +210,8 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
               accessibilityLabel={item.etiqueta}
               accessibilityState={{ selected: activo }}
             >
-              <Text style={{ fontSize: 16 }}>{ICONOS[item.id]}</Text>
+              <View style={[styles.tabIndicador, { backgroundColor: activo ? t.primary : 'transparent' }]} />
+              <Icono name={item.id} color={activo ? t.primary : t.muted} size={22} />
               <Text style={[styles.tabTexto, { color: activo ? t.primary : t.muted, fontWeight: activo ? '700' : '500' }]}>
                 {item.etiqueta}
               </Text>
@@ -221,7 +225,8 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           accessibilityLabel="Más opciones"
           accessibilityState={{ selected: masActivo }}
         >
-          <Text style={{ fontSize: 16 }}>{ICONOS.mas}</Text>
+          <View style={[styles.tabIndicador, { backgroundColor: masActivo ? t.primary : 'transparent' }]} />
+          <Icono name="mas" color={masActivo ? t.primary : t.muted} size={22} />
           <Text style={[styles.tabTexto, { color: masActivo ? t.primary : t.muted, fontWeight: masActivo ? '700' : '500' }]}>
             Más
           </Text>
@@ -242,10 +247,22 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
                 accessibilityRole="button"
                 accessibilityLabel={item.etiqueta}
               >
-                <Text style={{ fontSize: 18 }}>{ICONOS[item.id]}</Text>
+                <Icono name={item.id} color={t.ink} size={20} />
                 <Text style={[styles.masTexto, { color: t.ink }]}>{item.etiqueta}</Text>
               </TouchableOpacity>
             ))}
+            <TouchableOpacity
+              style={[styles.masItem, { marginTop: 8, borderTopWidth: 1, borderTopColor: t.line, paddingTop: 16 }]}
+              onPress={() => {
+                setMas(false)
+                void handleLogout()
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Salir"
+            >
+              <Icono name="salir" color={t.ink} size={20} />
+              <Text style={[styles.masTexto, { color: t.ink }]}>Salir</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -264,19 +281,19 @@ const styles = StyleSheet.create({
     gap: 8,
     borderBottomWidth: 1,
   },
-  headerTitulo: { fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
+  headerTitulo: { fontSize: 17, fontWeight: '600' },
   headerSub: { fontSize: 12, marginTop: 2 },
   headerBtn: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 8,
     minHeight: 44,
     minWidth: 44,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerBtnTexto: { fontSize: 11, fontWeight: '700' },
+  headerBtnTexto: { fontSize: 10, fontWeight: '600' },
   badge: {
     position: 'absolute',
     top: -6,
@@ -292,9 +309,11 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    paddingBottom: 8,
+    paddingBottom: 6,
+    minHeight: 56,
   },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 52, paddingVertical: 8, gap: 2 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 56, paddingTop: 6, paddingBottom: 8, gap: 3 },
+  tabIndicador: { position: 'absolute', top: 0, width: 18, height: 2, borderRadius: 1 },
   tabTexto: { fontSize: 11 },
   masFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   masHoja: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 28, gap: 4 },

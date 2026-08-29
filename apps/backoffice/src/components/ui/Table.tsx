@@ -13,7 +13,7 @@ export function Table({ className, children, ...rest }: TableHTMLAttributes<HTML
 
 export function THead({ children }: { children: ReactNode }) {
   return (
-    <thead className="bg-[var(--gc-thead)] text-[11px] uppercase tracking-wide text-muted">
+    <thead className="bg-[var(--gc-thead)] text-[11px] font-medium text-muted">
       {children}
     </thead>
   )

@@ -37,12 +37,8 @@
 @layer utilities {
   .font-display {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    letter-spacing: -0.03em;
-    font-weight: 700;
-  }
-
-  .rail {
-    box-shadow: inset 4px 0 0 var(--gc-primary);
+    letter-spacing: -0.015em;
+    font-weight: 600;
   }
 }
 

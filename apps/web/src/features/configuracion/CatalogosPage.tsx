@@ -207,11 +207,11 @@ function BrandingPanel({
         <Button onClick={() => void guardar()}>Guardar branding</Button>
       </div>
       <div className="rounded-2xl border border-line bg-ink p-5 text-canvas">
-        <p className="text-xs uppercase tracking-wide text-white/50">Vista previa</p>
+        <p className="text-xs text-white/50">Vista previa</p>
         <div className="mt-4 flex items-center gap-3">
           <BrandMark nombre={nombre || 'GC'} logoUrl={preview.logo_url} variant="dark" />
           <div>
-            <p className="font-display text-xl tracking-tight">{nombre || 'Gestiones Comerciales'}</p>
+            <p className="text-lg font-semibold">{nombre || 'Gestiones Comerciales'}</p>
             <p className="text-xs text-white/60">Sidebar y login usan este logo, el primario y el secundario.</p>
           </div>
         </div>

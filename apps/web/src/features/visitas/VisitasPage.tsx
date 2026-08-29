@@ -164,7 +164,7 @@ export function VisitasPage() {
                 <button
                   type="button"
                   className={cn(
-                    'rail w-full min-h-11 rounded-xl border border-line bg-surface px-4 py-3 text-left transition-colors duration-campo',
+                    'w-full min-h-11 rounded-lg border border-line bg-surface px-4 py-3 text-left transition-colors duration-campo',
                     detalle?.id === v.id && 'bg-canvas',
                   )}
                   onClick={() => {
@@ -174,7 +174,7 @@ export function VisitasPage() {
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <p className="font-display text-lg tracking-tight tabular-nums">{v.startTime}</p>
+                    <p className="text-base font-semibold tabular-nums">{v.startTime}</p>
                     <Badge tone={toneDeEstado(v.estado)}>{v.estado ?? 'programada'}</Badge>
                   </div>
                   <p className="mt-1 font-semibold">{v.personaName ?? v.title}</p>

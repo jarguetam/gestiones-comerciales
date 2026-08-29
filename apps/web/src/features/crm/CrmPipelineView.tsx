@@ -208,7 +208,7 @@ export function CrmPipelineView({
                 >
                   <div
                     className={cn(
-                      'flex justify-between rounded-t-2xl px-3 py-2 text-[11px] font-bold uppercase tracking-wide',
+                      'flex justify-between rounded-t-lg px-3 py-2 text-xs font-semibold',
                       estado.esGanado && 'bg-primary/10 text-primary',
                       estado.esPerdido && 'bg-canvas text-muted',
                       !estado.esGanado && !estado.esPerdido && 'bg-[var(--gc-thead)] text-muted',
@@ -229,7 +229,7 @@ export function CrmPipelineView({
                         }}
                         onClick={() => setSeleccionado(lead)}
                         className={cn(
-                          'rail w-full rounded-xl border border-line bg-surface p-3 text-left transition-colors duration-campo hover:bg-canvas',
+                          'w-full rounded-lg border border-line bg-surface p-3 text-left transition-colors duration-campo hover:bg-canvas',
                           seleccionado?.id === lead.id && 'border-primary',
                         )}
                       >
@@ -371,7 +371,7 @@ function FichaLead({
       {lead.convertido && (
         <p className="mt-2 rounded-lg bg-primary/10 p-2 text-xs text-primary">Convertido a cliente</p>
       )}
-      <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-wide text-muted">Timeline</p>
+      <p className="mb-1.5 mt-4 text-xs font-medium text-muted">Timeline</p>
       {live && (actQ.data?.length ?? 0) > 0 ? (
         <ol className="mb-3 space-y-1.5 text-xs">
           {actQ.data!.map((a) => (
@@ -387,7 +387,7 @@ function FichaLead({
           Estado actual: {lead.estadoCodigo}. Sin filas en lead_actividad{live ? '' : ' (demo)'}.
         </p>
       )}
-      <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-wide text-muted">Mover a</p>
+      <p className="mb-1.5 mt-4 text-xs font-medium text-muted">Mover a</p>
       <div className="flex flex-wrap gap-2">
         {LEAD_ESTADOS.filter((e) => e.codigo !== lead.estadoCodigo).map((e) => (
           <button

@@ -172,9 +172,9 @@ export function SaludPage() {
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: number }) {
   return (
-    <article className="rounded-2xl border border-line bg-surface p-4">
-      <p className="text-[11px] uppercase tracking-wide text-muted">{etiqueta}</p>
-      <p className="mt-1 text-3xl font-semibold text-ink">{valor}</p>
+    <article className="rounded-lg border border-line bg-surface p-4">
+      <p className="text-xs text-muted">{etiqueta}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{valor}</p>
     </article>
   )
 }
