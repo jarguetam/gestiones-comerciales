@@ -71,6 +71,21 @@ Deno.serve(async (req) => {
       }
       return data !== null;
     },
+    isTenantActive: async (tenantId) => {
+      const { data, error } = await admin
+        .from("tenant")
+        .select("id")
+        .eq("id", tenantId)
+        .eq("activo", true)
+        .maybeSingle();
+      if (error) {
+        throw new InviteError(
+          "GC-AUTH-012: no se pudo verificar el tenant",
+          500,
+        );
+      }
+      return data !== null;
+    },
     createUser: async ({ email, password, metadata }) => {
       const { data, error } = await admin.auth.admin.createUser({
         email,

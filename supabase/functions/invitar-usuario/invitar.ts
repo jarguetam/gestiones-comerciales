@@ -31,6 +31,7 @@ export type InviteLogEntry = {
 export type InviteDeps = {
   requireActor: (req: Request) => Promise<InviteActor>;
   isPlatformSuperadmin: (userId: string) => Promise<boolean>;
+  isTenantActive: (tenantId: string) => Promise<boolean>;
   createUser: (input: {
     email: string;
     password: string;
@@ -78,6 +79,7 @@ const CATALOGUED_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   "GC-AUTH-012": DEFAULT_ERROR_MESSAGE,
   "GC-AUTH-013": "GC-AUTH-013: payload inválido",
   "GC-AUTH-014": "GC-AUTH-014: se requiere autenticación AAL2",
+  "GC-AUTH-015": "GC-AUTH-015: tenant inexistente o inactivo",
 };
 
 function json(body: unknown, status = 200): Response {
@@ -138,7 +140,8 @@ function errorStatus(error: unknown): number {
   if (code === "GC-AUTH-010") return 405;
   if (
     code === "GC-AUTH-002" || code === "GC-AUTH-003" ||
-    code === "GC-AUTH-011" || code === "GC-AUTH-013"
+    code === "GC-AUTH-011" || code === "GC-AUTH-013" ||
+    code === "GC-AUTH-015"
   ) {
     return 400;
   }
@@ -238,6 +241,12 @@ export async function invitarUsuario(
     if (!ROLES.has(rol)) {
       throw new InviteError("GC-AUTH-002: rol inválido", 400);
     }
+    if (!await deps.isTenantActive(tenantId)) {
+      throw new InviteError(
+        "GC-AUTH-015: tenant inexistente o inactivo",
+        400,
+      );
+    }
 
     const nombre = typeof body.nombre === "string" && body.nombre.trim()
       ? body.nombre.trim()
@@ -315,7 +324,8 @@ export async function invitarUsuario(
       stage: error instanceof InviteError &&
           (error.message.startsWith("GC-AUTH-002") ||
             error.message.startsWith("GC-AUTH-011") ||
-            error.message.startsWith("GC-AUTH-013"))
+            error.message.startsWith("GC-AUTH-013") ||
+            error.message.startsWith("GC-AUTH-015"))
         ? "validate"
         : "authorize",
       error_code: errorCode(error),
