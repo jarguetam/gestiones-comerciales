@@ -2,7 +2,16 @@
 
 Expo SDK 51 · React Native 0.74 · asesor de campo (offline-first).
 
-## Desarrollo
+## APK de prueba (demo)
+
+Build local arm64 (teléfonos Android modernos), modo demo (sin backend):
+
+1. En el teléfono: Ajustes → Seguridad → permitir instalar apps de fuentes desconocidas / el administrador de archivos.
+2. Copiá el APK al teléfono e instalalo. Paquete: `com.gc.mobile`.
+3. Abrí **Gestiones Comerciales** → **Entrar al tablero**.
+
+Este APK está firmado con el keystore de debug (no Play Store). Solo incluye ABI `arm64-v8a`.
+
 
 ```bash
 cp apps/mobile/.env.example apps/mobile/.env
