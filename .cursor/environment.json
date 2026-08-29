@@ -11,5 +11,8 @@
       "command": "pnpm --filter @gc/backoffice dev --host 0.0.0.0"
     }
   ],
-  "ports": [5173, 5174]
+  "ports": [
+    { "name": "web", "port": 5173 },
+    { "name": "backoffice", "port": 5174 }
+  ]
 }
