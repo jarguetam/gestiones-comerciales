@@ -21,6 +21,8 @@ import {
 import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { Boton, Card } from '../components/ui'
+import { useTheme } from '../theme'
 
 interface Plantilla {
   id: string
@@ -84,6 +86,7 @@ interface Props {
 }
 
 export default function FormulariosScreen({ perfil }: Props) {
+  const t = useTheme()
   const [plantillas, setPlantillas] = useState<Plantilla[]>(DEMO)
   const [plantillaId, setPlantillaId] = useState(DEMO[0].id)
   const [valores, setValores] = useState<Record<string, unknown>>({})
@@ -161,12 +164,11 @@ export default function FormulariosScreen({ perfil }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.box}>
-      <Text style={styles.hint}>M-05 · plantillas del tenant, no formularios compilados</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
         {plantillas.map((p) => (
           <TouchableOpacity
             key={p.id}
-            style={[styles.chip, p.id === plantilla?.id && styles.chipActivo]}
+            style={[styles.chip, p.id === plantilla?.id && { backgroundColor: t.primary, borderColor: t.primary }]}
             onPress={() => {
               setPlantillaId(p.id)
               setValores({})
@@ -178,39 +180,45 @@ export default function FormulariosScreen({ perfil }: Props) {
       </ScrollView>
 
       {plantilla && (
-        <View style={styles.card}>
+        <Card>
           <View style={styles.cabecera}>
             <Text style={styles.titulo}>{plantilla.nombre}</Text>
-            {score !== null && <Text style={styles.score}>Score {score}%</Text>}
+            {score !== null && <Text style={[styles.score, { color: t.primary }]}>Score {score}%</Text>}
           </View>
           <Text style={styles.meta}>{plantilla.descripcion}</Text>
           {campos.map((campo) => (
-            <Campo key={campo.clave} campo={campo} valor={valores[campo.clave]} onChange={setCampo} />
+            <CampoForm key={campo.clave} campo={campo} valor={valores[campo.clave]} onChange={setCampo} primario={t.primary} />
           ))}
-          <TouchableOpacity style={styles.boton} disabled={enviando} onPress={() => void enviar()}>
-            <Text style={styles.botonTexto}>{enviando ? 'Enviando…' : 'Enviar formulario'}</Text>
-          </TouchableOpacity>
-        </View>
+          <Boton etiqueta={enviando ? 'Enviando…' : 'Enviar formulario'} onPress={() => void enviar()} disabled={enviando} cargando={enviando} />
+        </Card>
       )}
     </ScrollView>
   )
 }
 
-function Campo({
+function CampoForm({
   campo,
   valor,
   onChange,
+  primario,
 }: {
   campo: CampoEsquema
   valor: unknown
   onChange: (clave: string, valor: unknown) => void
+  primario: string
 }) {
   const etiqueta = `${campo.etiqueta}${campo.requerido ? ' *' : ''}`
   if (campo.tipo === 'booleano') {
     const checked = valor === true
     return (
-      <TouchableOpacity style={styles.checkRow} onPress={() => onChange(campo.clave, !checked)}>
-        <Text style={styles.checkBox}>{checked ? '☑' : '☐'}</Text>
+      <TouchableOpacity
+        style={styles.checkRow}
+        onPress={() => onChange(campo.clave, !checked)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        accessibilityLabel={etiqueta}
+      >
+        <View style={[styles.checkBox, { borderColor: primario, backgroundColor: checked ? primario : 'transparent' }]} />
         <Text style={styles.label}>{etiqueta}</Text>
       </TouchableOpacity>
     )
@@ -220,8 +228,15 @@ function Campo({
       <View style={styles.campo}>
         <Text style={styles.label}>{etiqueta}</Text>
         {(campo.opciones ?? []).map((op) => (
-          <TouchableOpacity key={op} style={styles.opcion} onPress={() => onChange(campo.clave, op)}>
-            <Text style={valor === op ? styles.opcionActiva : styles.opcionTexto}>{op}</Text>
+          <TouchableOpacity
+            key={op}
+            style={styles.opcion}
+            onPress={() => onChange(campo.clave, op)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: valor === op }}
+            accessibilityLabel={op}
+          >
+            <Text style={valor === op ? [styles.opcionActiva, { color: primario }] : styles.opcionTexto}>{op}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -258,22 +273,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  chipActivo: { backgroundColor: '#1D4ED8', borderColor: '#1D4ED8' },
+  chipActivo: {},
   chipTexto: { fontSize: 12, fontWeight: '600', color: '#374151' },
   chipTextoActivo: { color: '#fff' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 14 },
   cabecera: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   titulo: { fontSize: 18, fontWeight: '700', flex: 1 },
-  score: { fontSize: 13, fontWeight: '700', color: '#1D4ED8' },
+  score: { fontSize: 13, fontWeight: '700' },
   meta: { color: '#6B7280', fontSize: 12, marginTop: 4, marginBottom: 12 },
   campo: { marginBottom: 12 },
   label: { fontSize: 13, fontWeight: '600', marginBottom: 6, color: '#111827' },
   input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, backgroundColor: '#F9FAFB' },
   opcion: { paddingVertical: 6 },
   opcionTexto: { color: '#4B5563' },
-  opcionActiva: { color: '#1D4ED8', fontWeight: '700' },
+  opcionActiva: { fontWeight: '700' },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  checkBox: { fontSize: 18, width: 24 },
-  boton: { backgroundColor: '#1D4ED8', borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 8 },
-  botonTexto: { color: '#fff', fontWeight: '700' },
+  checkBox: { width: 22, height: 22, borderRadius: 4, borderWidth: 2 },
 })

@@ -17,6 +17,8 @@ import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
 import type { Persona } from '../lib/tipos'
+import { Cargando, Vacio } from '../components/ui'
+import { useTheme } from '../theme'
 
 const CATEGORIAS = [
   'agricultor',
@@ -28,6 +30,7 @@ const CATEGORIAS = [
 ] as const
 
 export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) {
+  const t = useTheme()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -151,7 +154,7 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
           onChangeText={setBusqueda}
         />
         <TouchableOpacity
-          style={styles.botonNuevo}
+          style={[styles.botonNuevo, { backgroundColor: t.primary }]}
           onPress={() => setMostrarAlta((v) => !v)}
         >
           <Text style={styles.botonNuevoTexto}>{mostrarAlta ? 'Cancelar' : '+ Nuevo'}</Text>
@@ -193,7 +196,7 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
             {CATEGORIAS.map((c) => (
               <TouchableOpacity
                 key={c}
-                style={[styles.chip, categoria === c && styles.chipActivo]}
+                style={[styles.chip, categoria === c && { backgroundColor: t.primary, borderColor: t.primary }]}
                 onPress={() => setCategoria(categoria === c ? null : c)}
               >
                 <Text style={[styles.chipTexto, categoria === c && styles.chipTextoActivo]}>
@@ -204,7 +207,7 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
           </View>
           {error && <Text style={styles.error}>{error}</Text>}
           <TouchableOpacity
-            style={[styles.botonGuardar, guardando && { opacity: 0.6 }]}
+            style={[styles.botonGuardar, { backgroundColor: t.primary }, guardando && { opacity: 0.6 }]}
             onPress={handleGuardar}
             disabled={guardando}
           >
@@ -219,7 +222,7 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
 
       {cargando ? (
         <View style={styles.centro}>
-          <ActivityIndicator size="large" color="#1D4ED8" />
+          <ActivityIndicator size="large" color={t.primary} />
         </View>
       ) : (
         <FlatList
@@ -235,9 +238,7 @@ export default function PersonaScreen({ perfil: _perfil }: { perfil?: Perfil }) 
             </View>
           )}
           ListEmptyComponent={
-            <Text style={styles.vacio}>
-              {DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'No hay registros.'}
-            </Text>
+            <Vacio titulo={DEMO_MODE ? 'Modo demo: sin backend conectado.' : 'No hay registros.'} />
           }
           contentContainerStyle={{ padding: 16 }}
         />
@@ -262,10 +263,10 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   botonNuevo: {
-    backgroundColor: '#1D4ED8',
     borderRadius: 10,
     paddingHorizontal: 14,
     justifyContent: 'center',
+    backgroundColor: undefined,
   },
   botonNuevoTexto: { color: '#fff', fontWeight: '600', fontSize: 13 },
   formulario: {
@@ -300,7 +301,6 @@ const styles = StyleSheet.create({
   chipTextoActivo: { color: '#fff' },
   error: { color: '#DC2626', fontSize: 12, marginBottom: 8 },
   botonGuardar: {
-    backgroundColor: '#1D4ED8',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
