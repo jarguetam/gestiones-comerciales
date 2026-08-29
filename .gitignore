@@ -26,6 +26,9 @@ supabase/.temp
 *.local
 *.log
 
+# Ops inventory (generated; example committed in Task 4)
+docs/ops/inventory-latest.json
+
 # Testing
 coverage/
 test-results/

@@ -14,7 +14,8 @@
     "build:backoffice": "pnpm --filter @gc/backoffice build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "ops:preflight": "node --experimental-strip-types scripts/ops/preflight.ts"
   },
   "pnpm": {
     "overrides": {
