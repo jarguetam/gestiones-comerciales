@@ -47,8 +47,9 @@ test.describe('flujos staging post-demo', () => {
     test.skip(!asesorPassword, 'E2E_ASESOR_PASSWORD requerido')
     await login(page, asesorEmail, asesorPassword)
     await page.goto('/#/configuracion')
+    await expect(page.getByRole('link', { name: /dashboard|hoy/i }).first()).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('[data-spec="W-10"]')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: /configuración|catálogo/i })).toHaveCount(0)
+    await expect(page.getByText(/GC-AUTH-001/)).toBeVisible()
   })
 
   test('admin ve invitar usuario (W-11) sin completar Auth si rate-limit', async ({ page }) => {
