@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import {
-  DEMO_DEPARTAMENTOS,
-  DEMO_MUNICIPIOS,
-  DEMO_MODULOS,
-  DEMO_PLANTILLAS,
   type Departamento,
   type Municipio,
   type ModuloCatalogo,
@@ -19,18 +15,15 @@ import { Alert, PAGE, PageHeader, TabPanel, Tabs } from '../../components/ui'
 type Tab = 'geografia' | 'modulos' | 'plantillas'
 
 export function CatalogosPage() {
-  const live = !DEMO_MODE
   const [tab, setTab] = useState<Tab>('geografia')
-  const [departamentos, setDepartamentos] = useState<Departamento[]>(DEMO_DEPARTAMENTOS)
-  const [municipios, setMunicipios] = useState<Municipio[]>(DEMO_MUNICIPIOS)
-  const [modulos, setModulos] = useState<ModuloCatalogo[]>(DEMO_MODULOS)
-  const [plantillas, setPlantillas] = useState<PlantillaBase[]>(DEMO_PLANTILLAS)
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([])
+  const [municipios, setMunicipios] = useState<Municipio[]>([])
+  const [modulos, setModulos] = useState<ModuloCatalogo[]>([])
+  const [plantillas, setPlantillas] = useState<PlantillaBase[]>([])
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
-  const nextId = useCallback(() => Date.now() + Math.floor(Math.random() * 1000), [])
 
   const cargar = useCallback(async () => {
-    if (!live) return
     setError(null)
     const [dRes, mRes, modRes, pRes] = await Promise.all([
       supabase.from('departamento').select('id, nombre').order('nombre'),
@@ -47,14 +40,13 @@ export function CatalogosPage() {
     setMunicipios((mRes.data ?? []) as Municipio[])
     setModulos((modRes.data ?? []) as ModuloCatalogo[])
     setPlantillas((pRes.data ?? []) as PlantillaBase[])
-  }, [live])
+  }, [])
 
   useEffect(() => {
     void cargar()
   }, [cargar])
 
   async function guardarDepto(id: number | null, nombre: string): Promise<number> {
-    if (!live) return nextId()
     const { data, error } = await supabase.rpc('admin_departamento_guardar', {
       p_id: id,
       p_nombre: nombre,
@@ -64,7 +56,6 @@ export function CatalogosPage() {
   }
 
   async function guardarMuni(id: number | null, departamentoId: number, nombre: string): Promise<number> {
-    if (!live) return nextId()
     const { data, error } = await supabase.rpc('admin_municipio_guardar', {
       p_id: id,
       p_departamento_id: departamentoId,
@@ -75,30 +66,12 @@ export function CatalogosPage() {
   }
 
   async function importar(filas: { departamento: string; municipio: string }[]) {
-    if (!live) {
-      const depts = [...departamentos]
-      const munis = [...municipios]
-      for (const f of filas) {
-        let d = depts.find((x) => x.nombre === f.departamento)
-        if (!d) {
-          d = { id: nextId(), nombre: f.departamento }
-          depts.push(d)
-        }
-        if (!munis.some((m) => m.departamento_id === d.id && m.nombre === f.municipio)) {
-          munis.push({ id: nextId(), departamento_id: d.id, nombre: f.municipio })
-        }
-      }
-      setDepartamentos(depts)
-      setMunicipios(munis)
-      return
-    }
     const { error } = await supabase.rpc('admin_geografia_importar', { p_filas: filas })
     if (error) throw new Error(error.message)
     await cargar()
   }
 
   async function guardarModulo(codigo: string, nombre: string, nucleo: boolean): Promise<number> {
-    if (!live) return nextId()
     const { data, error } = await supabase.rpc('admin_modulo_catalogo_guardar', {
       p_codigo: codigo,
       p_nombre: nombre,
@@ -116,7 +89,6 @@ export function CatalogosPage() {
     payload: Record<string, unknown>
     activo: boolean
   }): Promise<number> {
-    if (!live) return p.id ?? nextId()
     const { data, error } = await supabase.rpc('admin_plantilla_guardar', {
       p_id: p.id,
       p_rubro: p.rubro,
@@ -137,9 +109,6 @@ export function CatalogosPage() {
         description="Departamentos y municipios compartidos, catálogo de módulos y plantillas base por rubro."
       />
 
-      {!live && (
-        <Alert tone="warning">Preview estático — los cambios no se persisten.</Alert>
-      )}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {aviso && <Alert tone="success">{aviso}</Alert>}
 

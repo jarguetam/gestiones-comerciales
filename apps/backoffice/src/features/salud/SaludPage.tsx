@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import {
-  demoSalud,
   estadoJob,
   etiquetaEstado,
   formatearBytes,
@@ -40,10 +39,6 @@ export function SaludPage() {
 
   const cargar = useCallback(async () => {
     setError(null)
-    if (DEMO_MODE) {
-      setSalud(demoSalud())
-      return
-    }
     const { data, error } = await supabase.rpc('admin_salud_plataforma')
     if (error) {
       setError(error.message)
@@ -72,14 +67,13 @@ export function SaludPage() {
         }
       />
 
-      {DEMO_MODE && (
-        <Alert tone="warning">Preview estático — métricas de demostración sin backend.</Alert>
-      )}
       {error && (
         <Alert tone="danger" role="alert">{error}</Alert>
       )}
 
-      {!salud || !resumen ? (
+      {error && !salud ? (
+        <EmptyState titulo="No se pudo cargar la salud" descripcion="Reintentá o revisá el backend." />
+      ) : !salud || !resumen ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />

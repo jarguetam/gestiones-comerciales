@@ -1,4 +1,4 @@
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import type { PersonaItem } from '../calendar/personasData'
 
 function telefonoDe(detalles: unknown): string {
@@ -9,7 +9,6 @@ function telefonoDe(detalles: unknown): string {
 }
 
 export async function fetchPersonas(): Promise<PersonaItem[]> {
-  if (DEMO_MODE) return []
   const { data, error } = await supabase
     .from('persona')
     .select('id, nombre, categoria, documento, direccion, detalles, activo')

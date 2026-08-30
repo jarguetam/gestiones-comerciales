@@ -127,6 +127,6 @@ export function demoFilasDashboard(): FilaDashboard[] {
   ]
 }
 
-export function puedeDrillDown(rol: string | undefined, demo: boolean): boolean {
-  return demo || rol === 'admin' || rol === 'gerente'
+export function puedeDrillDown(rol: string | undefined): boolean {
+  return rol === 'admin' || rol === 'gerente'
 }

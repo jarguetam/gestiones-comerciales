@@ -1,16 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  activarSesionDemo,
-  BACKEND_CONFIGURADO,
-  DEMO_MODE,
-  desactivarSesionDemo,
-  SUPABASE_ANON_KEY,
-  SUPABASE_URL,
-  supabase,
-} from '../../lib/supabase'
+import { Link, useNavigate } from 'react-router-dom'
+import { BACKEND_CONFIGURADO, SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase'
 import { varsFaltantesSupabase } from '../../lib/supabaseEnv'
-import { BRANDING_DEMO, nombreComercial, varsDeBranding } from '../../lib/branding'
+import { nombreComercial, varsDeBranding } from '../../lib/branding'
 import { brandingPreLogin } from '../../lib/brandingPreLogin'
 import { requierePasoTotp } from './mfa'
 import { BrandMark } from '../../components/ui/BrandMark'
@@ -21,13 +13,7 @@ import { mensajeToast } from '../../lib/erroresUi'
 import type { CSSProperties } from 'react'
 
 /**
- * Login (W-01).
- * Gap: no hay RPC público host/codigo → tenant.branding (RLS tenant_select es
- * authenticated). No se enumeran tenants al cliente. Pre-sesión: ?tenant=,
- * localStorage de la última sesión (host/codigo) y DEMO.
- *
- * El botón de demostración es type=button: type=email + submit HTML5 bloqueaba
- * el ingreso si el usuario escribía "demo" u otro valor que no es un email.
+ * Login (W-01). Sin sesión demo: exige backend + credenciales reales.
  */
 export function Login() {
   const [email, setEmail] = useState('')
@@ -42,34 +28,28 @@ export function Login() {
   const branding = useMemo(
     () =>
       brandingPreLogin({
-        demo: DEMO_MODE && !BACKEND_CONFIGURADO,
+        demo: false,
         host: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
         search: typeof window !== 'undefined' ? window.location.search : '',
         hash: typeof window !== 'undefined' ? window.location.hash : '',
       }),
     [],
   )
-  const marca = nombreComercial(branding, DEMO_MODE ? nombreComercial(BRANDING_DEMO, 'Gestiones Comerciales') : 'Gestiones Comerciales')
+  const marca = nombreComercial(branding, 'Gestiones Comerciales')
   const faltantes = varsFaltantesSupabase(SUPABASE_URL, SUPABASE_ANON_KEY, {
     url: 'VITE_SUPABASE_URL',
     key: 'VITE_SUPABASE_ANON_KEY',
   })
 
-  function entrarDemo() {
-    activarSesionDemo()
-    navigate('/', { replace: true })
-  }
-
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
     if (!BACKEND_CONFIGURADO) {
-      entrarDemo()
+      setError('GC-CORE-001')
       return
     }
     setError(null)
     setLoading(true)
     try {
-      desactivarSesionDemo()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -111,6 +91,10 @@ export function Login() {
     }
   }
 
+  const avisoConfig = BACKEND_CONFIGURADO
+    ? null
+    : `Faltan ${faltantes.join(' y ') || 'VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY'} (GC-CORE-001).`
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas p-6" data-spec="W-01" style={varsDeBranding(branding) as CSSProperties}>
       <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8">
@@ -124,26 +108,21 @@ export function Login() {
         <p className="mt-3 text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Entrá a la jornada de tu empresa.'}
         </p>
-        <div className="mt-4">
-          {BACKEND_CONFIGURADO ? (
-            <Alert tone="info">
-              Backend conectado. Ingresá con tu cuenta o usá «Entrar al tablero» para el preview de demostración.
+        {avisoConfig && (
+          <div className="mt-4">
+            <Alert tone="danger" role="alert">
+              {avisoConfig}
             </Alert>
-          ) : (
-            <Alert tone="warning">
-              Preview sin backend: faltan {faltantes.join(' y ') || 'VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY'}.
-              El botón «Entrar al tablero» abre datos de demostración.
-            </Alert>
-          )}
-        </div>
+          </div>
+        )}
         {paso === 'password' ? (
-          <form onSubmit={(e) => void handlePassword(e)} className="mt-6 space-y-4" noValidate={!BACKEND_CONFIGURADO}>
+          <form onSubmit={(e) => void handlePassword(e)} className="mt-6 space-y-4">
             <Input
               id="email"
               label="Email"
-              type={BACKEND_CONFIGURADO ? 'email' : 'text'}
+              type="email"
               autoComplete="username"
-              required={BACKEND_CONFIGURADO}
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -152,19 +131,19 @@ export function Login() {
               label="Contraseña"
               type="password"
               autoComplete="current-password"
-              required={BACKEND_CONFIGURADO}
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             {error && <Alert tone="danger" role="alert">{error}</Alert>}
-            {BACKEND_CONFIGURADO && (
-              <Button type="submit" size="lg" disabled={loading}>
-                {loading ? 'Ingresando…' : 'Ingresar'}
-              </Button>
-            )}
-            <Button type="button" size="lg" variant={BACKEND_CONFIGURADO ? 'secondary' : 'primary'} disabled={loading} onClick={entrarDemo}>
-              Entrar al tablero
+            <Button type="submit" size="lg" disabled={loading || !BACKEND_CONFIGURADO}>
+              {loading ? 'Ingresando…' : 'Ingresar'}
             </Button>
+            <p className="text-sm">
+              <Link to="/recuperar" className="text-primary underline-offset-2 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="mt-6 space-y-4">

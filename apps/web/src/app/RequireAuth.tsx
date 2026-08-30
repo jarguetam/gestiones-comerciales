@@ -7,14 +7,14 @@ interface Props {
 }
 
 export function RequireAuth({ children }: Props) {
-  const { session, loading, demo } = useAuth()
+  const { session, loading } = useAuth()
   const location = useLocation()
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center text-ink">Cargando…</div>
   }
 
-  if (!session && !demo) {
+  if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
