@@ -23,4 +23,9 @@ test.describe('F1 MVP web (login, sin demo)', () => {
     await page.goto('/#/login')
     await expect(page.getByText(/GC-CORE-001/)).toBeVisible()
   })
+
+  test('sin sesión no hay nav Configuración', async ({ page }) => {
+    await page.goto('/#/login')
+    await expect(page.getByRole('link', { name: /configuración/i })).toHaveCount(0)
+  })
 })

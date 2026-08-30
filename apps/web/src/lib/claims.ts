@@ -76,3 +76,11 @@ export function mostrarAuditoria(rol: string | undefined): boolean {
 export function mostrarMapa(rol: string | undefined): boolean {
   return rol === 'admin' || rol === 'gerente' || rol === 'supervisor'
 }
+
+export function canAccess(path: string, rol: string | undefined): boolean {
+  if (path.startsWith('/configuracion')) return mostrarConfiguracion(rol)
+  if (path.startsWith('/usuarios')) return mostrarUsuarios(rol)
+  if (path.startsWith('/auditoria')) return mostrarAuditoria(rol)
+  if (path.startsWith('/mapa')) return mostrarMapa(rol)
+  return true
+}

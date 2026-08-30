@@ -20,6 +20,7 @@ import { NotificacionesPage } from '../features/notificaciones/NotificacionesPag
 import { useDominio } from './DominioContext'
 import { useAuth } from '../features/auth/useAuth'
 import { mostrarAuditoria } from '../lib/claims'
+import { RequireRol } from '../components/RequireRol'
 
 function RequiereAdmin({ children }: { children: ReactNode }) {
   const { rol } = useAuth()
@@ -63,7 +64,14 @@ export default function App() {
         <Route path="/personas" element={<PersonasPage />} />
         <Route path="/crm" element={<CrmPage />} />
         <Route path="/formularios" element={<FormulariosPage />} />
-        <Route path="/mapa" element={<MapaPage />} />
+        <Route
+          path="/mapa"
+          element={
+            <RequireRol>
+              <MapaPage />
+            </RequireRol>
+          }
+        />
         <Route
           path="/solicitudes"
           element={
@@ -100,13 +108,29 @@ export default function App() {
         <Route
           path="/auditoria"
           element={
-            <RequiereAdmin>
-              <AuditoriaPage />
-            </RequiereAdmin>
+            <RequireRol>
+              <RequiereAdmin>
+                <AuditoriaPage />
+              </RequiereAdmin>
+            </RequireRol>
           }
         />
-        <Route path="/configuracion" element={<CatalogosPage />} />
-        <Route path="/usuarios" element={<UsuariosPage />} />
+        <Route
+          path="/configuracion"
+          element={
+            <RequireRol>
+              <CatalogosPage />
+            </RequireRol>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <RequireRol>
+              <UsuariosPage />
+            </RequireRol>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
