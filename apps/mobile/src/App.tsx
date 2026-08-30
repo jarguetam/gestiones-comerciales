@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
 import AgendaScreen from './screens/AgendaScreen'
@@ -63,10 +62,6 @@ const TITULOS: Record<Tab, string> = {
   ajustes: 'Ajustes',
   notificaciones: 'Notificaciones',
   sync: 'Sincronización',
-}
-
-function claveRastreo(userId: string) {
-  return `gc.rastreo:${userId}`
 }
 
 export default function App() {
@@ -129,16 +124,9 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const t = useTheme()
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
-  const [rastreoOn, setRastreoOn] = useState(true)
   const [noLeidas, setNoLeidas] = useState(0)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
-
-  useEffect(() => {
-    void AsyncStorage.getItem(claveRastreo(perfil.id)).then((v) => {
-      setRastreoOn(v !== '0')
-    })
-  }, [perfil.id])
 
   useEffect(() => {
     let cancel = false
@@ -154,15 +142,11 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [perfil.id])
 
   useEffect(() => {
-    if (!rastreoOn) {
-      void detenerRastreo(supabase)
-      return
-    }
     void iniciarRastreo(supabase)
     return () => {
       void detenerRastreo(supabase)
     }
-  }, [perfil.id, rastreoOn])
+  }, [perfil.id])
 
   useEffect(() => {
     function aplicarUrl(url: string | null) {
@@ -189,11 +173,6 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
     await detenerRastreo(supabase)
     await supabase.auth.signOut()
     onLogout()
-  }
-
-  async function handleRastreo(next: boolean) {
-    setRastreoOn(next)
-    await AsyncStorage.setItem(claveRastreo(perfil.id), next ? '1' : '0')
   }
 
   const extras: { id: Extract<IconoName, 'solicitudes' | 'depositos' | 'ajustes'>; etiqueta: string }[] = [
@@ -276,8 +255,6 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         {tab === 'ajustes' && (
           <AjustesScreen
             perfil={perfil}
-            rastreoOn={rastreoOn}
-            onRastreo={(v) => void handleRastreo(v)}
             onLogout={() => void handleLogout()}
             onAbrirCola={() => setTab('sync')}
           />

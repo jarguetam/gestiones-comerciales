@@ -18,7 +18,7 @@ declare const process: { env: Record<string, string | undefined> }
 const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v1`
 
 export const TEXTO_PERMISO_UBICACION =
-  'Durante tu jornada la app registra la ubicación para el check-in de visitas y el rastreo que configuró tu empresa. Podés apagarlo en Ajustes.'
+  'Durante tu jornada la app registra la ubicación para el check-in de visitas y el rastreo que configuró tu empresa.'
 
 let timer: ReturnType<typeof setInterval> | null = null
 let cola: PuntoGps[] = []

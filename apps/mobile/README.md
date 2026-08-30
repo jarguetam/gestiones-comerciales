@@ -42,7 +42,7 @@ eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xcoeipsnykceo
 - Cola offline persistente (sobrevive kill de la app) por usuario
 - Sesión en SecureStore
 - Permisos de ubicación / cámara / notificaciones para revisión de tiendas
-- Rastreo a nivel de app con toggle y justificación en Ajustes
+- Rastreo a nivel de app (el asesor no puede apagarlo; intervalo en `config_rastreo`)
 - Registro de token FCM en `dispositivo`
 - Deep links `gestiones://visita|{solicitud}/id`
 - Foto de boleta (cámara/galería)
