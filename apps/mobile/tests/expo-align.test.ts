@@ -15,3 +15,10 @@ test('React/RN alineados al peer de Expo SDK 51', () => {
 test('typescript queda excluido de expo install (monorepo 5.5)', () => {
   assert.ok(pkg.expo?.install?.exclude?.includes('typescript'))
 })
+
+test('tsconfig declara module ESNext (import dinámico para Sentry/Location)', () => {
+  const ts = JSON.parse(readFileSync(new URL('../tsconfig.json', import.meta.url), 'utf8')) as {
+    compilerOptions?: { module?: string }
+  }
+  assert.equal(ts.compilerOptions?.module, 'ESNext')
+})
