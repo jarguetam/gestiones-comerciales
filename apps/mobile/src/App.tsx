@@ -29,6 +29,7 @@ import CampoBloqueadoScreen from './screens/CampoBloqueadoScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
 import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { suscribirSesion } from './lib/sesion'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { contarNoLeidas } from './lib/notificaciones'
@@ -84,14 +85,18 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) {
-        const claims = await resolverClaims(data.session)
-        if (claims) {
-          setPerfil(await cargarPerfil(data.session, claims))
-        }
+    return suscribirSesion(supabase, async (estado, event) => {
+      if (event === 'SIGNED_OUT' || !estado.session) {
+        if (event === 'SIGNED_OUT') setPerfil(null)
+        setListo(true)
+        return
       }
-      setListo(true)
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        const claims = await resolverClaims(estado.session)
+        if (claims) setPerfil(await cargarPerfil(estado.session, claims))
+        else setPerfil(null)
+        setListo(true)
+      }
     })
   }, [])
 
