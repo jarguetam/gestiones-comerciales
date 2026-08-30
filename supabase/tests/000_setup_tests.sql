@@ -88,6 +88,10 @@ returns void language sql as $$
   select set_config('role', 'postgres', true);
 $$;
 
+-- set_claims deja role=authenticated; sin USAGE el siguiente tests.* explota.
+grant usage on schema tests to postgres, authenticated, anon;
+grant execute on all functions in schema tests to postgres, authenticated, anon;
+
 select ok(
   exists (select 1 from public.usuario where id = 'aaaaaaaa-0000-0000-0000-000000000004')
   and exists (select 1 from information_schema.schemata where schema_name = 'tests'),

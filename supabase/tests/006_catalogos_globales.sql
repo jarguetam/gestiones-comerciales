@@ -37,6 +37,7 @@ select throws_ok(
 select throws_ok(
   $$insert into public.departamento (nombre) values ('Intruso Geo')$$,
   '42501',
+  null,
   'RLS bloquea INSERT directo a departamento (ADR-005)'
 );
 

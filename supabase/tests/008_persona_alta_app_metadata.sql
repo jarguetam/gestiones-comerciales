@@ -81,6 +81,7 @@ select throws_ok(
       'aaaaaaaa-0000-0000-0000-000000000005'
     )$$,
   '42501',
+  null,
   'asesor no puede crear persona asignada a otro asesor'
 );
 

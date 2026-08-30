@@ -52,6 +52,7 @@ test('fixture pgTAP crea schema tests, jerarquía válida y hace COMMIT', () => 
     /'Asesor T2',\s*'asesor',\s*'bbbbbbbb-0000-0000-0000-000000000004'/,
   )
   assert.doesNotMatch(sql, /insert into public\.actividad \(tenant_id, codigo/)
+  assert.match(sql, /grant usage on schema tests/)
 })
 
 test('CI instala pnpm antes de cache: pnpm en setup-node', () => {

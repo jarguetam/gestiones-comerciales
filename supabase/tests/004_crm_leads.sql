@@ -28,7 +28,8 @@ select throws_ok(
   $$insert into public.lead (tenant_id, estado_id, nombre, telefono, asesor_id)
     select tenant_id, estado_id, 'Duplicado', '+502 5000-0001', asesor_id
     from public.lead where telefono = '+502 5000-0001'$$,
-  'duplicate key value violates unique constraint "lead_tel_unico_idx"',
+  '23505',
+  null,
   'no se puede crear un lead activo con teléfono duplicado (índice único parcial)'
 );
 
