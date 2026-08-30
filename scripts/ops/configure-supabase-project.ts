@@ -29,6 +29,10 @@ export function assertSmtpOrThrow(env: NodeJS.ProcessEnv) {
   }
 }
 
+export function assertSmtpEnabled(auth: { smtp?: { enabled?: boolean } | null }) {
+  if (!auth.smtp?.enabled) throw new Error('GC-OPS-008: SMTP Auth no está habilitado')
+}
+
 export async function configureProject(env: NodeJS.ProcessEnv) {
   const token = requireToken(env)
   const ref = env.SUPABASE_PROJECT_REF?.trim()

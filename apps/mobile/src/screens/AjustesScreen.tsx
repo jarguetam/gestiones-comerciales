@@ -2,7 +2,7 @@
  * M-10 Ajustes: perfil, rastreo de jornada, cambio de contraseña y cierre de sesión.
  */
 import React, { useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import Constants from 'expo-constants'
 import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase, type Perfil } from '../lib/supabase'
 import { TEXTO_PERMISO_UBICACION } from '../services/rastreoServicio'
@@ -111,6 +111,11 @@ export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, 
         {onAbrirCola ? (
           <Boton etiqueta="Cola de sincronización" variante="secondary" onPress={onAbrirCola} />
         ) : null}
+        <Boton
+          etiqueta="Privacidad"
+          variante="secondary"
+          onPress={() => void Linking.openURL('https://jarguetam.github.io/gestiones-comerciales/privacidad.html')}
+        />
         <Boton etiqueta="Salir" variante="ghost" onPress={() => void handleLogout()} />
       </View>
     </ScrollView>

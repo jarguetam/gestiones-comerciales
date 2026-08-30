@@ -5,6 +5,7 @@
 import React, { useState } from 'react'
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -165,6 +166,11 @@ export default function LoginScreen({ onLogin }: Props) {
               variante={BACKEND_CONFIGURADO ? 'secondary' : 'primary'}
               onPress={() => void entrarDemo()}
               cargando={cargando}
+            />
+            <Boton
+              etiqueta="Privacidad"
+              variante="ghost"
+              onPress={() => void Linking.openURL('https://jarguetam.github.io/gestiones-comerciales/privacidad.html')}
             />
           </>
         ) : (

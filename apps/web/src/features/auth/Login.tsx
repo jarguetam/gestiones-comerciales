@@ -165,6 +165,9 @@ export function Login() {
             <Button type="button" size="lg" variant={BACKEND_CONFIGURADO ? 'secondary' : 'primary'} disabled={loading} onClick={entrarDemo}>
               Entrar al tablero
             </Button>
+            <p className="text-center text-sm text-muted">
+              <a href="privacidad.html" className="underline text-ink">Privacidad</a>
+            </p>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="mt-6 space-y-4">
