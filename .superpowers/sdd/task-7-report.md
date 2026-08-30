@@ -1,7 +1,7 @@
 # Task 7 — quitar UPDATE PostgREST de máquinas de estado
 
-Fecha: 2026-08-30  
-Rama compartida: `cursor/gate-1-security-9de6`  
+Fecha: 2026-08-30
+Rama compartida: `cursor/gate-1-security-9de6`
 PR existente: <https://github.com/jarguetam/gestiones-comerciales/pull/40>
 
 ## Estado
