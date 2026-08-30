@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { BACKEND_CONFIGURADO, supabase } from '../../lib/supabase'
 import { requierePasoTotp } from './mfa'
 import { Alert, BrandMark, Button, Input } from '../../components/ui'
@@ -88,6 +88,11 @@ export function Login() {
             <Button type="submit" size="lg" disabled={loading || !BACKEND_CONFIGURADO}>
               {loading ? 'Ingresando…' : 'Ingresar'}
             </Button>
+            <p className="text-sm">
+              <Link to="/recuperar" className="text-primary underline-offset-2 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="space-y-4">

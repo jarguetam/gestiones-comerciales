@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { Login } from '../features/auth/Login'
+import { RecuperarPasswordPage } from '../features/auth/RecuperarPasswordPage'
 import { RequireAuth } from './RequireAuth'
 import { EmpresaApp } from './EmpresaApp'
 import { DashboardHome } from '../features/dashboard/DashboardHome'
@@ -52,6 +53,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/recuperar" element={<RecuperarPasswordPage />} />
       <Route
         element={
           <RequireAuth>

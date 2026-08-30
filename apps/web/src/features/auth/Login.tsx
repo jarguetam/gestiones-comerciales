@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { BACKEND_CONFIGURADO, SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase'
 import { varsFaltantesSupabase } from '../../lib/supabaseEnv'
 import { nombreComercial, varsDeBranding } from '../../lib/branding'
@@ -139,6 +139,11 @@ export function Login() {
             <Button type="submit" size="lg" disabled={loading || !BACKEND_CONFIGURADO}>
               {loading ? 'Ingresando…' : 'Ingresar'}
             </Button>
+            <p className="text-sm">
+              <Link to="/recuperar" className="text-primary underline-offset-2 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="mt-6 space-y-4">

@@ -269,11 +269,11 @@ export async function solicitarReset(email: string): Promise<void> {
 }
 ```
 
-- [ ] **Step 1: Test** — `solicitarReset` llama `resetPasswordForEmail` y no entra demo.
+- [x] **Step 1: Test** — `solicitarReset` llama `resetPasswordForEmail` y no entra demo.
 
-- [ ] **Step 2: Rutas `/recuperar` + form `htmlFor`. Rate limit lo cubre auth-guard.
+- [x] **Step 2: Rutas `/recuperar` + form `htmlFor`. Rate limit lo cubre auth-guard.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: password recovery pages for web and backoffice"
