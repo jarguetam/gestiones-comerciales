@@ -1,9 +1,8 @@
-import { assertEquals, assertMatch } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  logEdge,
-  readRequestContext,
-  toEdgeLog,
-} from "./request_context.ts";
+  assertEquals,
+  assertMatch,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { logEdge, readRequestContext, toEdgeLog } from "./request_context.ts";
 
 Deno.test("readRequestContext respeta x-request-id de hasta 64 chars", () => {
   const req = new Request("https://example.test/fn", {
@@ -37,7 +36,12 @@ Deno.test("logEdge es JSON parseable y no incluye Authorization ni email", () =>
   };
   try {
     logEdge(
-      toEdgeLog({ requestId: "rid-1" }, { tenant_id: "t1", sub: "u1" }, "auth-guard", "ok"),
+      toEdgeLog(
+        { requestId: "rid-1" },
+        { tenant_id: "t1", sub: "u1" },
+        "auth-guard",
+        "ok",
+      ),
       { duration_ms: 12 },
     );
   } finally {
@@ -51,7 +55,9 @@ Deno.test("logEdge es JSON parseable y no incluye Authorization ni email", () =>
   assertEquals(parsed.fn, "auth-guard");
   assertEquals(parsed.outcome, "ok");
   const raw = lines[0].toLowerCase();
-  if (raw.includes("authorization") || raw.includes("bearer") || raw.includes("@")) {
+  if (
+    raw.includes("authorization") || raw.includes("bearer") || raw.includes("@")
+  ) {
     throw new Error("el log no debe incluir Authorization ni email");
   }
 });
@@ -59,7 +65,10 @@ Deno.test("logEdge es JSON parseable y no incluye Authorization ni email", () =>
 Deno.test("toEdgeLog no copia claims extra (email)", () => {
   const fields = toEdgeLog(
     { requestId: "r" },
-    { tenant_id: "t", sub: "u", email: "a@b.c" } as { tenant_id?: string; sub?: string },
+    { tenant_id: "t", sub: "u", email: "a@b.c" } as {
+      tenant_id?: string;
+      sub?: string;
+    },
     "importer",
     "error",
   );
