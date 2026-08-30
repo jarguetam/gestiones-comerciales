@@ -41,6 +41,10 @@ export function hidratarCola(inicial: ItemCola[]) {
   publicar(inicial)
 }
 
+export async function clearCola(_clave?: string) {
+  publicar([])
+}
+
 export function encolarMutacion(alta: AltaCola) {
   publicar(encolar(items, alta))
 }
