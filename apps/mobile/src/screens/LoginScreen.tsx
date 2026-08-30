@@ -23,9 +23,10 @@ import { useTheme } from '../theme'
 
 interface Props {
   onLogin: (perfil: Perfil) => void
+  onRecuperar?: () => void
 }
 
-export default function LoginScreen({ onLogin }: Props) {
+export default function LoginScreen({ onLogin, onRecuperar }: Props) {
   const t = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -135,6 +136,9 @@ export default function LoginScreen({ onLogin }: Props) {
               disabled={!email || !password}
               cargando={cargando}
             />
+            {onRecuperar ? (
+              <Boton etiqueta="Olvidé mi contraseña" variante="ghost" onPress={onRecuperar} />
+            ) : null}
           </>
         ) : (
           <>

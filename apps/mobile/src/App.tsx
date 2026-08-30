@@ -18,6 +18,7 @@ import {
 } from 'react-native'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
+import RecuperarPasswordScreen from './screens/RecuperarPasswordScreen'
 import AgendaScreen from './screens/AgendaScreen'
 import PersonaScreen from './screens/PersonaScreen'
 import LeadsScreen from './screens/LeadsScreen'
@@ -30,13 +31,15 @@ import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
 import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { suscribirSesion } from './lib/sesion'
+import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
+import { clearCola } from './lib/colaStore'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { contarNoLeidas } from './lib/notificaciones'
 import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
 import { abrirPersistenciaCola } from './lib/abrirCola'
 import { ejecutarMutacion } from './lib/sync'
-import { parseDeepLink } from './lib/deepLink'
+import { esRecuperarPassword, parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
 import { tokenPushNativo } from './lib/push'
 import { resolveCampoAccess, type CampoAccess } from './services/permisosCampo'
@@ -75,6 +78,7 @@ const TITULOS: Record<Tab, string> = {
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [listo, setListo] = useState(false)
+  const [recuperar, setRecuperar] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -82,6 +86,15 @@ export default function App() {
       configurarPersistencia(persist)
       await hidratarDesdePersistencia()
     })()
+  }, [])
+
+  useEffect(() => {
+    function aplicar(url: string | null) {
+      if (esRecuperarPassword(url)) setRecuperar(true)
+    }
+    const sub = Linking.addEventListener('url', ({ url }) => aplicar(url))
+    void Linking.getInitialURL().then(aplicar)
+    return () => sub.remove()
   }, [])
 
   useEffect(() => {
@@ -122,7 +135,11 @@ export default function App() {
         <Cargando etiqueta="Cargando sesión…" />
       ) : !perfil ? (
         <View style={{ flex: 1 }}>
-          <LoginScreen onLogin={setPerfil} />
+          {recuperar ? (
+            <RecuperarPasswordScreen onVolver={() => setRecuperar(false)} />
+          ) : (
+            <LoginScreen onLogin={setPerfil} onRecuperar={() => setRecuperar(true)} />
+          )}
           <ExpoStatusBar style="dark" />
         </View>
       ) : (
@@ -206,7 +223,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
 
   async function handleLogout() {
     await detenerRastreo(supabase)
-    await supabase.auth.signOut()
+    await logoutCleanupNativo(supabase, perfil, clearCola)
     onLogout()
   }
 
