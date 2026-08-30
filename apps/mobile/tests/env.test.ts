@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { requireMobileEnv } from '../src/lib/env.ts'
 
 const URL = 'https://xcoeipsnykceorcvjwve.supabase.co'
-const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.okxx'
+const KEY = 'anon-public-test-key-mas-de-20'
 
 function withEnv(vars: Record<string, string | undefined>, fn: () => void) {
   const prev = {
