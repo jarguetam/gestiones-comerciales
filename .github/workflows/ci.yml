@@ -67,10 +67,11 @@ jobs:
 
       - name: Audit de dependencias runtime (web + backoffice)
         run: |
-          pnpm --filter @gc/web --filter @gc/backoffice audit --prod --audit-level=high || {
-            echo "::error::Vulnerabilidades high/critical en dependencias de runtime (OWASP A06)"
-            exit 1
-          }
+          # pnpm audit no acepta --filter (Unknown option: recursive) y --dir
+          # sigue leyendo el lockfile del workspace (incluye mobile/Expo).
+          # El script falla solo si hay high/critical en @gc/web o @gc/backoffice.
+          pnpm audit --prod --json > /tmp/pnpm-audit.json || true
+          node --experimental-strip-types scripts/ci/audit-runtime.ts < /tmp/pnpm-audit.json
 
   lint:
     name: Lint

@@ -27,6 +27,12 @@ test('CI contiene gitleaks, deno fmt --check y security_definer', () => {
   assert.match(y, /security_definer/)
 })
 
+test('CI no usa pnpm --filter con audit', () => {
+  const y = ci()
+  assert.equal(/\bpnpm\s+--filter[^\n]*\baudit\b/.test(y), false)
+  assert.match(y, /audit-runtime\.ts/)
+})
+
 test('yaml prod no tiene on.push a main para db push', () => {
   const y = prod()
   assert.doesNotMatch(y, /on:\s*\n\s*push:/)
