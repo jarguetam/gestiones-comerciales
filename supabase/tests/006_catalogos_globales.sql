@@ -80,6 +80,7 @@ select lives_ok(
   'plataforma puede crear un municipio'
 );
 
+select tests.reset_claims();
 select ok(
   exists (
     select 1 from public.auditoria
@@ -87,6 +88,10 @@ select ok(
   ),
   'alta de departamento queda en auditoría'
 );
+select set_config('request.jwt.claims',
+  json_build_object('plataforma', true, 'superadmin', true,
+                    'sub', 'cccccccc-0000-0000-0000-000000000005')::text, true);
+select set_config('role', 'authenticated', true);
 
 select is(
   (public.admin_geografia_importar(
@@ -126,6 +131,8 @@ select lives_ok(
   'plataforma puede crear tenant que recibe plantillas del rubro'
 );
 
+-- actividad/formulario_plantilla son por tenant; plataforma no tiene tenant_id.
+select tests.reset_claims();
 select ok(
   exists (
     select 1

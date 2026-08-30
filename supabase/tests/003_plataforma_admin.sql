@@ -47,6 +47,8 @@ select lives_ok(
   'plataforma (superadmin) puede crear tenant'
 );
 
+-- RLS de auditoria es por tenant_id + rol admin; plataforma no la lee.
+select tests.reset_claims();
 select ok(
   exists (
     select 1 from public.auditoria
@@ -57,6 +59,11 @@ select ok(
 );
 
 -- ---------- 3. admin_modulo_activar con plataforma: funciona + audita ----------
+select set_config('request.jwt.claims',
+  json_build_object('plataforma', true, 'superadmin', true,
+                    'sub', 'cccccccc-0000-0000-0000-000000000001')::text, true);
+select set_config('role', 'authenticated', true);
+
 select lives_ok(
   $$select public.admin_modulo_activar(
       (select id from public.tenant where nombre = 'Tenant Nuevo Test'),
@@ -64,6 +71,7 @@ select lives_ok(
   'plataforma puede activar módulo creditos para el tenant nuevo'
 );
 
+select tests.reset_claims();
 select ok(
   exists (
     select 1 from public.auditoria

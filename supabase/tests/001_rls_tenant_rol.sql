@@ -54,13 +54,11 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'admin', 'aaaaaaaa-0000-0000-0000-000000000001');
 
-select is(
-  (select count(*)::int from (
-     insert into public.persona (tenant_id, nombre)
-     values ('22222222-2222-2222-2222-222222222222', 'Intruso')
-     returning 1
-   ) x),
-  0,
+select throws_ok(
+  $$insert into public.persona (tenant_id, nombre)
+    values ('22222222-2222-2222-2222-222222222222', 'Intruso')$$,
+  '42501',
+  null,
   'admin de T1 no puede insertar persona con tenant_id de T2 (with check)'
 );
 
@@ -69,14 +67,15 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'asesor', 'aaaaaaaa-0000-0000-0000-000000000004');
 
-select is(
-  (select count(*)::int from (
-     insert into public.persona (tenant_id, nombre, asesor_id)
-     values ('11111111-1111-1111-1111-111111111111', 'Robada',
-             'aaaaaaaa-0000-0000-0000-000000000005')
-     returning 1
-   ) x),
-  0,
+select throws_ok(
+  $$insert into public.persona (tenant_id, nombre, asesor_id)
+    values (
+      '11111111-1111-1111-1111-111111111111',
+      'Robada',
+      'aaaaaaaa-0000-0000-0000-000000000005'
+    )$$,
+  '42501',
+  null,
   'asesor no puede crear persona asignada a otro asesor (with check escritura)'
 );
 

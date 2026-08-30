@@ -102,8 +102,11 @@ begin
            (select count(*) from public.persona
              where tenant_id='11111111-1111-1111-1111-111111111111' and documento='NIT-L-A') as despues;
 end $$;
-select is((select despues from _conv_check), (select antes from _conv_check),
-  're-convertir el mismo lead no crea una segunda persona (idempotente)');
+select is(
+  (select despues::int from _conv_check),
+  (select antes::int from _conv_check),
+  're-convertir el mismo lead no crea una segunda persona (idempotente)'
+);
 
 -- ---------- 9. lead convertido no retrocede (CRM-4) ----------
 select throws_ok(
