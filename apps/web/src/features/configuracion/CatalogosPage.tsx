@@ -36,9 +36,9 @@ type Tab = 'branding' | 'actividades' | 'zonas' | 'horarios' | 'estados' | 'rast
 
 export function CatalogosPage() {
   const { fuente } = useDominio()
-  const { claims } = useAuth()
+  const { rol } = useAuth()
   const live = !DEMO_MODE && fuente === 'supabase'
-  const puedeEditarRastreo = mostrarConfiguracion(claims?.rol, DEMO_MODE)
+  const puedeEditarRastreo = mostrarConfiguracion(rol, DEMO_MODE)
   const [tab, setTab] = useState<Tab>('branding')
   const [actividades, setActividades] = useState<CatalogoActividad[]>(CATALOGO_ACTIVIDADES)
   const [zonas, setZonas] = useState<ZonaCatalogo[]>(ZONAS_DEMO)
