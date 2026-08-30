@@ -41,7 +41,8 @@ test('EXPAND instala capture, RPC compatible y fallback sin lock de backfill', a
   assert.match(source, /create or replace function public\.admin_tenant_actualizar/)
   assert.match(source, /admin_tenant_actualizar\(\s*p_tenant_id uuid,\s*p_cambios jsonb\s*\)\s*returns void/)
   assert.match(source, /v_cambios_auditoria := p_cambios - 'webhook_secret'/)
-  assert.match(source, /p_cambios -> 'configuracion' - 'webhook_secret'/)
+  assert.match(source, /\(p_cambios -> 'configuracion'\)\s*- 'webhook_secret'/)
+  assert.match(source, /registrar_auditoria\([\s\S]*v_cambios_auditoria/)
   assert.match(
     source,
     /revoke all on function private\.capture_tenant_webhook_secret\(\) from service_role/,
