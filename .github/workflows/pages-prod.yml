@@ -42,11 +42,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_RELEASE: ${{ github.sha }}
           VITE_ENVIRONMENT: production
         run: |
           missing=""
           [ -z "$VITE_SUPABASE_URL" ] && missing="$missing VITE_SUPABASE_URL"
           [ -z "$VITE_SUPABASE_ANON_KEY" ] && missing="$missing VITE_SUPABASE_ANON_KEY"
+          [ -z "$VITE_SENTRY_DSN" ] && missing="$missing VITE_SENTRY_DSN"
+          [ -z "$VITE_RELEASE" ] && missing="$missing VITE_RELEASE"
           if [ -n "$missing" ]; then
             echo "::error::GC-OPS-008: faltan secretos de production:$missing"
             exit 1
@@ -61,6 +64,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_RELEASE: ${{ github.sha }}
           VITE_ENVIRONMENT: production
         run: |
           pnpm --filter @gc/web build
