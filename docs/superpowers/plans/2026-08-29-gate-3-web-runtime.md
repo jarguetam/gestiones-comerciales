@@ -242,9 +242,9 @@ Flujos mínimos (spec §12.1):
 5. Asesor no accede `/configuracion`
 6. Axe: mismas páginas, sin botón demo
 
-- [ ] **Step 1: Correr Playwright local contra staging; fallan hasta Task 2–4**
+- [x] **Step 1: Correr Playwright local contra staging; fallan hasta Task 2–4**
 
-- [ ] **Step 2: Commit specs verdes**
+- [x] **Step 2: Commit specs verdes**
 
 ```bash
 git commit -m "test: replace demo Playwright flows with staging sessions"

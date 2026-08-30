@@ -16,6 +16,6 @@
 - [x] Leaflet en chunk `mapa` + presupuesto bundle
 - [x] Firma `pointercancel` + tokens de mapa
 - [x] CSP `script-src` sin `unsafe-inline`
-- [ ] E2E staging (Task 7): asesor, check-in, invite, MFA BO — Environment `staging`
+- [x] E2E staging specs (Task 7): asesor/jornada, nueva visita, config bloqueada, invite admin, BO 403. Corren en `e2e-staging.yml` post-merge, no en el PR.
 
 PR: `cursor/gate-3-web-runtime-c26b` (no `fix/gate-3-web-runtime`; Cloud Agent).
