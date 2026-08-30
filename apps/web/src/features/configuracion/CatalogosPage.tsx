@@ -4,6 +4,8 @@ import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { CatalogoActividad, CatalogoHora, ZonaCatalogo } from '../../lib/catalogos'
 import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS } from '../calendar/eventsData'
 import { useDominio } from '../../app/DominioContext'
+import { useAuth } from '../auth/useAuth'
+import { mostrarConfiguracion } from '../../lib/claims'
 import {
   Alert,
   Badge,
@@ -34,7 +36,9 @@ type Tab = 'branding' | 'actividades' | 'zonas' | 'horarios' | 'estados' | 'rast
 
 export function CatalogosPage() {
   const { fuente } = useDominio()
+  const { claims } = useAuth()
   const live = !DEMO_MODE && fuente === 'supabase'
+  const puedeEditarRastreo = mostrarConfiguracion(claims?.rol, DEMO_MODE)
   const [tab, setTab] = useState<Tab>('branding')
   const [actividades, setActividades] = useState<CatalogoActividad[]>(CATALOGO_ACTIVIDADES)
   const [zonas, setZonas] = useState<ZonaCatalogo[]>(ZONAS_DEMO)
@@ -107,7 +111,7 @@ export function CatalogosPage() {
         <EstadosVisitaPanel />
       </TabPanel>
       <TabPanel id="rastreo" valor={tab}>
-        <RastreoPanel live={live} onAviso={setAviso} onError={setError} />
+        <RastreoPanel live={live} editable={puedeEditarRastreo} onAviso={setAviso} onError={setError} />
       </TabPanel>
       <TabPanel id="plantillas" valor={tab}>
         <PlantillasPanel live={live} onAviso={setAviso} onError={setError} />
@@ -592,10 +596,12 @@ interface VentanaRastreo {
 
 function RastreoPanel({
   live,
+  editable,
   onAviso,
   onError,
 }: {
   live: boolean
+  editable: boolean
   onAviso: (v: string | null) => void
   onError: (v: string | null) => void
 }) {
@@ -626,6 +632,10 @@ function RastreoPanel({
   }, [live, onError])
 
   async function guardarFila(f: VentanaRastreo) {
+    if (!editable) {
+      onError('GC-AUTH-001: solo el administrador del tenant puede editar rastreo')
+      return
+    }
     onError(null)
     setFilas((prev) => prev.map((x) => (x.dia_semana === f.dia_semana ? f : x)))
     if (!live) {
