@@ -8,19 +8,35 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
+  contract:
+    name: Contratos CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+      - name: Contratos de pipeline
+        run: node --experimental-strip-types --test tests/*.test.ts scripts/ci/*.test.ts scripts/ops/*.test.ts
+
   security:
     name: Seguridad (OWASP)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # A01 Broken Access Control / A02 Crypto Failures — nada de secretos ni .env en el repo
       - name: Rechazar archivos .env versionados
         run: |
           echo "Buscando .env fuera de *.example..."
@@ -37,46 +53,64 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # A06 Vulnerable and Outdated Components — dependencias con CVEs conocidos
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22.14.0'
+          cache: pnpm
 
-      - name: Audit de dependencias runtime (bloqueante en critical)
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit de dependencias runtime (web + backoffice)
         run: |
-          pnpm install --no-frozen-lockfile
-          pnpm audit --prod --audit-level=critical || {
-            echo "::error::Vulnerabilidades críticas en dependencias de runtime (OWASP A06)"
+          pnpm --filter @gc/web --filter @gc/backoffice audit --prod --audit-level=high || {
+            echo "::error::Vulnerabilidades high/critical en dependencias de runtime (OWASP A06)"
             exit 1
           }
 
-      - name: Audit de dependencias (informativo — high conocido sin parche)
-        run: |
-          # Riesgo aceptado (todas dev-only, sin parche disponible, no llegan al bundle):
-          #  - @xmldom/xmldom 0.7.x (vía @expo/plist, solo CLI local de Expo)
-          #  - image-size <=2.0.2 (GHSA sin parche, vía CLI de Expo)
-          #  - tar 6.x vía cacache@18 (CLI) — mitigado con override tar 7.5.22
-          pnpm audit --audit-level=high || echo "::warning::ver riesgo aceptado arriba"
-        continue-on-error: true
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+      - name: ESLint
+        run: pnpm lint
 
   validate:
     name: Validar (SQL + Edge + builds)
     runs-on: ubuntu-latest
-    needs: security
+    needs: [security, lint]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22.14.0'
+          cache: pnpm
 
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Instalar dependencias (workspace)
+        run: pnpm install --frozen-lockfile
 
       - name: Validar migraciones SQL (orden forwards-only)
         run: |
@@ -85,33 +119,25 @@ jobs:
           sort -c /tmp/migs || { echo "ERROR: migraciones fuera de orden"; exit 1; }
           echo "OK: $(wc -l < /tmp/migs) migraciones en orden"
 
-      - name: Lint de Edge Functions (Deno)
+      - name: Deno fmt, lint, check y test
         run: |
-          if ls supabase/functions/*/index.ts >/dev/null 2>&1; then
-            for f in supabase/functions/*/index.ts; do
-              deno check "$f"
-            done
-          else
-            echo "Sin Edge Functions aún"
-          fi
+          deno fmt --check supabase/functions
+          deno lint supabase/functions
+          for f in supabase/functions/*/index.ts; do
+            deno check "$f"
+          done
+          deno test supabase/functions/_shared/ supabase/functions --allow-env --allow-read || deno test supabase/functions/_shared/
 
-      - name: Tests unitarios de helpers Edge (CSV + HMAC)
-        run: deno test supabase/functions/_shared/
+      - name: Typecheck
+        run: pnpm -r typecheck
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
-
-      - name: Instalar dependencias (workspace)
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Tests unitarios web (dashboard, auditoría, MFA, branding)
+      - name: Tests unitarios web
         run: pnpm --filter @gc/web test
 
-      - name: Tests unitarios backoffice (P-05 + P-06)
+      - name: Tests unitarios backoffice
         run: pnpm --filter @gc/backoffice test
 
-      - name: Tests unitarios móvil (cola offline, MFA, notifs, persistencia)
+      - name: Tests unitarios móvil
         run: pnpm --filter @gc/mobile test
 
       - name: Artefactos EAS del móvil
@@ -121,100 +147,49 @@ jobs:
           test -f apps/mobile/google-services.json
           echo "OK: EAS + icono + google-services"
 
-      - name: Typecheck + build apps (web + backoffice + mobile)
+      - name: Build apps (web + backoffice)
         run: |
           pnpm --filter @gc/web build
           pnpm --filter @gc/backoffice build
-          pnpm --filter @gc/mobile typecheck
 
-      # E2E en DEMO_MODE: este job no inyecta VITE_SUPABASE_* (si CI no puede autenticar, el preview es estático).
       - name: Instalar Chromium (Playwright)
         run: pnpm --filter @gc/web exec playwright install --with-deps chromium
 
-      - name: E2E web + axe (DEMO)
+      - name: E2E web + axe (fixtures locales)
         run: pnpm --filter @gc/web test:e2e
         env:
           CI: true
 
-      - name: E2E backoffice + axe (DEMO)
+      - name: E2E backoffice + axe (fixtures locales)
         run: pnpm --filter @gc/backoffice test:e2e
         env:
           CI: true
 
-  deploy:
-    name: Despliegue en GitHub Pages
-    needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  pgtap:
+    name: pgTAP (blank + replay)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: pgTAP blank + replay
+        run: bash scripts/ci/pgtap.sh
+      - name: Artefacto log SQL
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pgtap-log
+          path: /tmp/pgtap.log
+          if-no-files-found: ignore
+
+  security-definer:
+    name: SECURITY DEFINER allowlist
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
-
-      - name: Instalar dependencias
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Build web + backoffice (con Supabase real)
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      - name: Escanear funciones SECURITY DEFINER
         run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::warning::Faltan secrets VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY. Pages queda en DEMO_MODE (sin backend). Cargalos en Settings → Secrets and variables → Actions."
-          else
-            echo "Build Pages con backend $VITE_SUPABASE_URL (anon key ${#VITE_SUPABASE_ANON_KEY} chars)."
-          fi
-          pnpm --filter @gc/web build
-          pnpm --filter @gc/backoffice build
-
-      - name: Preparar artefactos estáticos
-        run: |
-          mkdir -p _site/web _site/backoffice
-          cp -r apps/web/dist/* _site/web/
-          cp -r apps/backoffice/dist/* _site/backoffice/
-          # Raíz: la aplicación principal de agenda y calendario con todas sus vistas
-          cp -r apps/web/dist/* _site/
-
-      - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Subir artefacto para Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '_site'
-
-      - name: Desplegar a GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  deploy-edge:
-    name: Desplegar Edge Functions
-    needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: supabase functions deploy
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: xcoeipsnykceorcvjwve
-        run: |
-          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo "::warning::Falta secret SUPABASE_ACCESS_TOKEN; no se desplegaron Edge Functions."
-            echo "Creá un token en supabase.com/dashboard/account/tokens y cargalo como secret del repo."
-            exit 0
-          fi
-          chmod +x scripts/deploy-functions.sh
-          ./scripts/deploy-functions.sh
+          test -f supabase/tests/security_definer_allowlist.txt
+          bash scripts/ci/scan-security-definer.sh

@@ -13,7 +13,8 @@ const MAX_ATTEMPTS = 5;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -25,11 +26,15 @@ function json(body: unknown, status = 200) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "GC-AUTH-010: método no permitido" }, 405);
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return json({ error: "GC-AUTH-010: método no permitido" }, 405);
+  }
 
   try {
-    const { email, ip } = await req.json();
+    const { email, ip: _ip } = await req.json();
     if (!email) return json({ error: "GC-AUTH-011: email requerido" }, 400);
 
     const supabase = createClient(

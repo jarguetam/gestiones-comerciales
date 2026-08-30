@@ -12,7 +12,7 @@
  * Auth: JWT del asesor (verify_jwt). Todo corre con el contexto del usuario (RLS).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleOptions } from "../_shared/cors.ts";
+import { handleOptions, json } from "../_shared/cors.ts";
 
 // Guatemala no tiene DST: offset fijo UTC-6 para interpretar "hoy/hora" del tenant
 const GT_OFFSET_MS = -6 * 60 * 60_000;
@@ -29,7 +29,9 @@ function normalizar(p: Record<string, unknown>): Punto | null {
   const lat = p.latitud ?? p.lat;
   const lng = p.longitud ?? p.lng;
   const cuando = p.registrado_en ?? p.capturado_en;
-  if (typeof lat !== "number" || typeof lng !== "number" || !cuando) return null;
+  if (typeof lat !== "number" || typeof lng !== "number" || !cuando) {
+    return null;
+  }
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   return {
     latitud: lat,
@@ -43,12 +45,16 @@ function normalizar(p: Record<string, unknown>): Punto | null {
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
   if (pre) return pre;
-  if (req.method !== "POST") return json({ error: "GC-RAS-010: método no permitido" }, 405);
+  if (req.method !== "POST") {
+    return json({ error: "GC-RAS-010: método no permitido" }, 405);
+  }
 
   const inicio = Date.now();
   try {
     const body = await req.json();
-    const crudos: Record<string, unknown>[] = Array.isArray(body) ? body : body?.puntos;
+    const crudos: Record<string, unknown>[] = Array.isArray(body)
+      ? body
+      : body?.puntos;
     if (!Array.isArray(crudos) || crudos.length === 0) {
       return json({ error: "GC-RAS-011: se requiere un array de puntos" }, 400);
     }
@@ -65,7 +71,11 @@ Deno.serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("authorization")! } } },
+      {
+        global: {
+          headers: { Authorization: req.headers.get("authorization")! },
+        },
+      },
     );
 
     // Ventana del tenant para "hoy" en Guatemala
@@ -79,7 +89,9 @@ Deno.serve(async (req) => {
       .eq("dia_semana", diaSemana)
       .maybeSingle();
 
-    if (errCfg) return json({ error: "GC-RAS-014: no se pudo leer config_rastreo" }, 500);
+    if (errCfg) {
+      return json({ error: "GC-RAS-014: no se pudo leer config_rastreo" }, 500);
+    }
 
     const precisionMax = config?.precision_max_m ?? 100;
     const ventanaActiva = config
@@ -100,8 +112,12 @@ Deno.serve(async (req) => {
     let insertados = 0;
     let descartadosVentana = 0;
     if (ventanaActiva && aceptables.length > 0) {
-      const { data, error } = await supabase.rpc("rastreo_ingesta", { p_puntos: aceptables });
-      if (error) return json({ error: "GC-RAS-015: no se pudo insertar el lote" }, 500);
+      const { data, error } = await supabase.rpc("rastreo_ingesta", {
+        p_puntos: aceptables,
+      });
+      if (error) {
+        return json({ error: "GC-RAS-015: no se pudo insertar el lote" }, 500);
+      }
       insertados = data ?? 0;
     } else {
       descartadosVentana = aceptables.length;

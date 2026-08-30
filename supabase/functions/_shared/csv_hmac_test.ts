@@ -1,16 +1,19 @@
-import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertThrows,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { esXlsx, parseCsv } from "./csv.ts";
 import { hmacSha256Hex, normalizeFirma, timingSafeEqual } from "./hmac.ts";
 
 Deno.test("parseCsv: encabezados, comillas y BOM", () => {
-  const rows = parseCsv("\uFEFFnombre,documento\n\"Finca, SA\",NIT-1\n");
+  const rows = parseCsv('\uFEFFnombre,documento\n"Finca, SA",NIT-1\n');
   assertEquals(rows.length, 1);
   assertEquals(rows[0].nombre, "Finca, SA");
   assertEquals(rows[0].documento, "NIT-1");
 });
 
 Deno.test("parseCsv: comillas sin cerrar", () => {
-  assertThrows(() => parseCsv("nombre\n\"sin cerrar"), Error, "GC-IMP-006");
+  assertThrows(() => parseCsv('nombre\n"sin cerrar'), Error, "GC-IMP-006");
 });
 
 Deno.test("esXlsx detecta ZIP/xlsx", () => {
@@ -19,8 +22,14 @@ Deno.test("esXlsx detecta ZIP/xlsx", () => {
 });
 
 Deno.test("HMAC-SHA256 vector conocido (RFC 4231 truncado / fox)", async () => {
-  const hex = await hmacSha256Hex("key", "The quick brown fox jumps over the lazy dog");
-  assertEquals(hex, "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8");
+  const hex = await hmacSha256Hex(
+    "key",
+    "The quick brown fox jumps over the lazy dog",
+  );
+  assertEquals(
+    hex,
+    "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+  );
 });
 
 Deno.test("normalizeFirma y comparación constante", () => {

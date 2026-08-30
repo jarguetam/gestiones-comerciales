@@ -7,18 +7,22 @@
  * Auth: JWT (verify_jwt). Superadmin de plataforma o admin del tenant.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleOptions } from "../_shared/cors.ts";
+import { handleOptions, json } from "../_shared/cors.ts";
 
 function generarPassword(): string {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
-  return `${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}Aa1!`;
+  return `${
+    Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  }Aa1!`;
 }
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);
   if (preflight) return preflight;
-  if (req.method !== "POST") return json({ error: "GC-AUTH-010: método no permitido" }, 405);
+  if (req.method !== "POST") {
+    return json({ error: "GC-AUTH-010: método no permitido" }, 405);
+  }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return json({ error: "GC-AUTH-001: sin autorización" }, 401);
@@ -53,25 +57,29 @@ Deno.serve(async (req) => {
     const generado = !body.password || body.password.length < 8;
     const password = generado ? generarPassword() : body.password!;
 
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { nombre: body.nombre ?? email },
-    });
+    const { data: created, error: createErr } = await admin.auth.admin
+      .createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { nombre: body.nombre ?? email },
+      });
 
     if (createErr && !/already|exists|registered/i.test(createErr.message)) {
       return json({ error: `GC-AUTH-003: ${createErr.message}` }, 400);
     }
 
-    const { data: invited, error: invErr } = await userClient.rpc("admin_usuario_invitar", {
-      p_tenant_id: tenantId,
-      p_email: email,
-      p_rol: rol,
-      p_nombre: body.nombre ?? email,
-      p_jefe_id: body.jefe_id ?? null,
-      p_zona_id: body.zona_id ?? null,
-    });
+    const { data: invited, error: invErr } = await userClient.rpc(
+      "admin_usuario_invitar",
+      {
+        p_tenant_id: tenantId,
+        p_email: email,
+        p_rol: rol,
+        p_nombre: body.nombre ?? email,
+        p_jefe_id: body.jefe_id ?? null,
+        p_zona_id: body.zona_id ?? null,
+      },
+    );
 
     if (invErr) {
       return json({ error: invErr.message }, 400);

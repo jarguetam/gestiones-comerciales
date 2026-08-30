@@ -10,8 +10,12 @@
  * Auth: JWT de usuario del mismo tenant, o service_role (notify-jobs).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleOptions } from "../_shared/cors.ts";
-import { enviarFcm, getAccessToken, getServiceAccount } from "../_shared/firebase.ts";
+import { handleOptions, json } from "../_shared/cors.ts";
+import {
+  enviarFcm,
+  getAccessToken,
+  getServiceAccount,
+} from "../_shared/firebase.ts";
 
 interface JwtClaims {
   role?: string;
@@ -26,7 +30,10 @@ function claimsDe(req: Request): JwtClaims | null {
   if (partes.length !== 3) return null;
   try {
     return JSON.parse(new TextDecoder().decode(
-      Uint8Array.from(atob(partes[1].replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)),
+      Uint8Array.from(
+        atob(partes[1].replace(/-/g, "+").replace(/_/g, "/")),
+        (c) => c.charCodeAt(0),
+      ),
     ));
   } catch {
     return null;
@@ -36,20 +43,30 @@ function claimsDe(req: Request): JwtClaims | null {
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
   if (pre) return pre;
-  if (req.method !== "POST") return json({ error: "GC-PUSH-010: método no permitido" }, 405);
+  if (req.method !== "POST") {
+    return json({ error: "GC-PUSH-010: método no permitido" }, 405);
+  }
 
   const inicio = Date.now();
   try {
     const { tenant_id, usuario_ids, titulo, cuerpo, datos } = await req.json();
-    if (!tenant_id || !Array.isArray(usuario_ids) || usuario_ids.length === 0 || !titulo || !cuerpo) {
-      return json({ error: "GC-PUSH-011: tenant_id, usuario_ids[], titulo y cuerpo son requeridos" }, 400);
+    if (
+      !tenant_id || !Array.isArray(usuario_ids) || usuario_ids.length === 0 ||
+      !titulo || !cuerpo
+    ) {
+      return json({
+        error:
+          "GC-PUSH-011: tenant_id, usuario_ids[], titulo y cuerpo son requeridos",
+      }, 400);
     }
 
     // Autorización: service_role (notify-jobs) o usuario autenticado del mismo tenant
     const claims = claimsDe(req);
     const esServiceRole = claims?.role === "service_role";
     if (!esServiceRole && claims?.tenant_id !== tenant_id) {
-      return json({ error: "GC-PUSH-012: tenant_id no coincide con el del usuario" }, 403);
+      return json({
+        error: "GC-PUSH-012: tenant_id no coincide con el del usuario",
+      }, 403);
     }
 
     const supabase = createClient(
@@ -65,10 +82,19 @@ Deno.serve(async (req) => {
       .in("usuario_id", usuario_ids)
       .eq("activo", true);
 
-    if (errDisp) return json({ error: "GC-PUSH-013: no se pudieron leer dispositivos" }, 500);
+    if (errDisp) {
+      return json(
+        { error: "GC-PUSH-013: no se pudieron leer dispositivos" },
+        500,
+      );
+    }
 
-    const conDispositivo = new Set((dispositivos ?? []).map((d) => d.usuario_id));
-    const sinDispositivo: string[] = usuario_ids.filter((u: string) => !conDispositivo.has(u));
+    const conDispositivo = new Set(
+      (dispositivos ?? []).map((d) => d.usuario_id),
+    );
+    const sinDispositivo: string[] = usuario_ids.filter((u: string) =>
+      !conDispositivo.has(u)
+    );
 
     let enviados = 0;
     let fallidos = 0;
@@ -81,14 +107,24 @@ Deno.serve(async (req) => {
       for (const [k, v] of Object.entries(datos ?? {})) datosStr[k] = String(v);
 
       for (const disp of dispositivos ?? []) {
-        const r = await enviarFcm(sa, accessToken, disp.token_fcm, titulo, cuerpo, datosStr);
+        const r = await enviarFcm(
+          sa,
+          accessToken,
+          disp.token_fcm,
+          titulo,
+          cuerpo,
+          datosStr,
+        );
         if (r.ok) {
           enviados++;
           usuariosNotificados.add(disp.usuario_id);
         } else {
           fallidos++;
           if (r.invalido) {
-            await supabase.from("dispositivo").update({ activo: false }).eq("id", disp.id);
+            await supabase.from("dispositivo").update({ activo: false }).eq(
+              "id",
+              disp.id,
+            );
           }
         }
       }
@@ -97,7 +133,9 @@ Deno.serve(async (req) => {
     // Degradación a in-app: usuarios sin dispositivo o cuyo push falló (o sin FCM configurado)
     const paraInApp = [
       ...sinDispositivo,
-      ...usuario_ids.filter((u: string) => conDispositivo.has(u) && !usuariosNotificados.has(u)),
+      ...usuario_ids.filter((u: string) =>
+        conDispositivo.has(u) && !usuariosNotificados.has(u)
+      ),
     ];
     let inApp = 0;
     if (paraInApp.length > 0) {
@@ -112,7 +150,9 @@ Deno.serve(async (req) => {
       const { error: errNotif, count } = await supabase
         .from("notificacion")
         .insert(filas, { count: "exact" });
-      if (errNotif) return json({ error: "GC-PUSH-014: no se pudo encolar in-app" }, 500);
+      if (errNotif) {
+        return json({ error: "GC-PUSH-014: no se pudo encolar in-app" }, 500);
+      }
       inApp = count ?? filas.length;
     }
 
