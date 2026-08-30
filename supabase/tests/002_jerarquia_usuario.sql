@@ -62,6 +62,10 @@ select throws_ok(
 );
 
 -- 7. cadena válida → aceptado (asesor→supervisor existente y activo)
+insert into auth.users (id, email) values
+  ('dddddddd-0000-0000-0000-000000000006', 'asesor-valido@gt1.test')
+on conflict (id) do nothing;
+
 select lives_ok(
   $$insert into public.usuario (id, tenant_id, nombre, rol, jefe_id)
     values ('dddddddd-0000-0000-0000-000000000006',

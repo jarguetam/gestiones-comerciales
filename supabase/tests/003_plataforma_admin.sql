@@ -30,10 +30,11 @@ select throws_ok(
 select tests.reset_claims();
 
 -- ---------- 2. Con membresía owner: admin_tenant_crear funciona + audita ----------
-insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
-  ('cccccccc-0000-0000-0000-000000000001', 'owner@plataforma.test', 'Owner Plataforma', true);
 insert into auth.users (id, email) values
   ('cccccccc-0000-0000-0000-000000000001', 'owner@plataforma.test')
+on conflict (id) do nothing;
+insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
+  ('cccccccc-0000-0000-0000-000000000001', 'owner@plataforma.test', 'Owner Plataforma', true)
 on conflict (id) do nothing;
 
 select set_config('request.jwt.claims',

@@ -81,13 +81,32 @@ select is(
 );
 
 -- ---------- 7. Visitas: solo las propias (o del subárbol) ----------
-insert into public.visita (tenant_id, usuario_id, persona_nombre, departamento_id, municipio_id, actividad_id, fecha_visita)
-select '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000004', 'Finca T1',
-       d.id, m.id, a.id, current_date
+insert into public.visita (
+  tenant_id, usuario_id, persona_nombre,
+  departamento_id, municipio_id, zona_id,
+  actividad_id, sub_actividad_id, actividad_hora_id,
+  fecha_visita, creado_por
+)
+select
+  '11111111-1111-1111-1111-111111111111',
+  'aaaaaaaa-0000-0000-0000-000000000004',
+  'Finca T1',
+  d.id, m.id, z.id,
+  a.id, sa.id, ah.id,
+  current_date,
+  'aaaaaaaa-0000-0000-0000-000000000004'
 from public.departamento d
 join public.municipio m on m.departamento_id = d.id
-cross join public.actividad a
-where a.tenant_id = '11111111-1111-1111-1111-111111111111'
+join public.zona z
+  on z.tenant_id = '11111111-1111-1111-1111-111111111111' and z.codigo = 'Z1'
+join public.actividad a
+  on a.tenant_id = '11111111-1111-1111-1111-111111111111'
+ and a.nombre = 'Visita comercial'
+join public.sub_actividad sa
+  on sa.actividad_id = a.id and sa.nombre = 'Seguimiento'
+join public.actividad_hora ah
+  on ah.tenant_id = a.tenant_id and ah.nombre = '1 hora'
+where d.nombre = 'Guatemala Fixture'
 limit 1;
 
 select tests.reset_claims();

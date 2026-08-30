@@ -36,6 +36,11 @@ test('CI no usa pnpm --filter con audit', () => {
 test('fixture pgTAP crea schema tests, jerarquía válida y hace COMMIT', () => {
   const sql = readFileSync('supabase/tests/000_setup_tests.sql', 'utf8')
   assert.match(sql, /create schema if not exists tests/)
+  assert.match(sql, /insert into auth\.users/)
+  assert.ok(
+    sql.indexOf('insert into auth.users') < sql.indexOf('insert into public.usuario'),
+    'auth.users debe existir antes de public.usuario (usuario_id_fkey)',
+  )
   assert.match(sql, /\bcommit\s*;/i)
   assert.match(sql, /'Gerente T1',\s*'gerente',\s*null/)
   assert.doesNotMatch(
@@ -46,6 +51,7 @@ test('fixture pgTAP crea schema tests, jerarquía válida y hace COMMIT', () => 
     sql,
     /'Asesor T2',\s*'asesor',\s*'bbbbbbbb-0000-0000-0000-000000000004'/,
   )
+  assert.doesNotMatch(sql, /insert into public\.actividad \(tenant_id, codigo/)
 })
 
 test('CI instala pnpm antes de cache: pnpm en setup-node', () => {
