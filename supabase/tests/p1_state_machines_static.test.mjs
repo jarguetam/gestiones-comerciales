@@ -109,7 +109,7 @@ test('el pgTAP es autónomo y cubre RED directo, RPC y edición no-estado', asyn
 
   assert.equal(planned, 27)
   assert.equal(assertions.length, planned, 'el plan pgTAP debe coincidir con sus aserciones')
-  assert.match(source, /^\s*begin;/i)
+  assert.match(source, /\bbegin;\s*select\s+plan\(/i)
   assert.match(source, /select\s+\*\s+from\s+finish\(\);\s*rollback;\s*$/i)
   assert.match(source, /insert\s+into\s+auth\.users/i)
   assert.match(source, /insert\s+into\s+public\.tenant/i)
