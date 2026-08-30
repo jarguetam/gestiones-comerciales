@@ -81,7 +81,8 @@
           "photosPermission": "La galería se usa para adjuntar la foto de una boleta."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-task-manager"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

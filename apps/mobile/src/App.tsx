@@ -25,6 +25,7 @@ import FormulariosScreen from './screens/FormulariosScreen'
 import SolicitudesScreen from './screens/SolicitudesScreen'
 import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
+import CampoBloqueadoScreen from './screens/CampoBloqueadoScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
 import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
@@ -37,7 +38,13 @@ import { ejecutarMutacion } from './lib/sync'
 import { parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
 import { tokenPushNativo } from './lib/push'
-import { detenerRastreo, iniciarRastreo } from './services/rastreoServicio'
+import { resolveCampoAccess, type CampoAccess } from './services/permisosCampo'
+import {
+  detenerRastreo,
+  iniciarRastreo,
+  leerConfigRastreo,
+  suscribirRastreoAuth,
+} from './services/rastreoServicio'
 import { ThemeProvider, useTheme } from './theme'
 import { Cargando, Icono, Marca, type IconoName } from './components/ui'
 
@@ -125,8 +132,11 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
   const [noLeidas, setNoLeidas] = useState(0)
+  const [campo, setCampo] = useState<CampoAccess | null>(null)
+  const [intervaloRastreoMin, setIntervaloRastreoMin] = useState<number | null>(null)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
+  const campoBloqueado = campo === 'blocked_location'
 
   useEffect(() => {
     let cancel = false
@@ -142,8 +152,28 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [perfil.id])
 
   useEffect(() => {
-    void iniciarRastreo(supabase)
+    let vivo = true
+    async function refrescarCampo() {
+      const acceso = await resolveCampoAccess()
+      if (!vivo) return
+      setCampo(acceso)
+      if (acceso === 'ok') {
+        await iniciarRastreo(supabase)
+        const cfg = await leerConfigRastreo(supabase)
+        if (vivo) setIntervaloRastreoMin(cfg?.intervalo_min ?? null)
+      } else {
+        await detenerRastreo(supabase)
+      }
+    }
+    void refrescarCampo()
+    const unsubAuth = suscribirRastreoAuth(supabase)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void refrescarCampo()
+    })
     return () => {
+      vivo = false
+      unsubAuth()
+      sub.remove()
       void detenerRastreo(supabase)
     }
   }, [perfil.id])
@@ -202,9 +232,12 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         </View>
         <TouchableOpacity
           style={[styles.headerBtn, { borderColor: t.line }]}
-          onPress={() => setTab('notificaciones')}
+          onPress={() => {
+            if (!campoBloqueado) setTab('notificaciones')
+          }}
+          disabled={campoBloqueado}
           accessibilityLabel="Notificaciones"
-          accessibilityState={{ selected: tab === 'notificaciones' }}
+          accessibilityState={{ selected: tab === 'notificaciones', disabled: campoBloqueado }}
         >
           <Icono name="inbox" color={t.ink} size={18} />
           {noLeidas > 0 ? (
@@ -215,9 +248,12 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.headerBtn, { borderColor: t.line }]}
-          onPress={() => setTab('sync')}
+          onPress={() => {
+            if (!campoBloqueado) setTab('sync')
+          }}
+          disabled={campoBloqueado}
           accessibilityLabel="Sincronización"
-          accessibilityState={{ selected: tab === 'sync' }}
+          accessibilityState={{ selected: tab === 'sync', disabled: campoBloqueado }}
         >
           <Icono name="cola" color={t.ink} size={18} />
           {pendientes > 0 ? (
@@ -246,29 +282,39 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       ) : null}
 
       <View style={[styles.body, { backgroundColor: t.canvas }]}>
-        {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
-        {tab === 'personas' && <PersonaScreen perfil={perfil} />}
-        {tab === 'leads' && <LeadsScreen perfil={perfil} />}
-        {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}
-        {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
-        {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
-        {tab === 'ajustes' && (
-          <AjustesScreen
-            perfil={perfil}
-            onLogout={() => void handleLogout()}
-            onAbrirCola={() => setTab('sync')}
-          />
+        {campo == null ? (
+          <Cargando etiqueta="Comprobando ubicación…" />
+        ) : campoBloqueado ? (
+          <CampoBloqueadoScreen onLogout={() => void handleLogout()} />
+        ) : (
+          <>
+            {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
+            {tab === 'personas' && <PersonaScreen perfil={perfil} />}
+            {tab === 'leads' && <LeadsScreen perfil={perfil} />}
+            {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}
+            {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
+            {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
+            {tab === 'ajustes' && (
+              <AjustesScreen
+                perfil={perfil}
+                rastreoBloqueado={false}
+                intervaloRastreoMin={intervaloRastreoMin}
+                onLogout={() => void handleLogout()}
+                onAbrirCola={() => setTab('sync')}
+              />
+            )}
+            {tab === 'notificaciones' && (
+              <NotificacionesScreen
+                colorPrimario={t.primary}
+                onDeepLink={(url) => {
+                  const dest = parseDeepLink(url)
+                  if (dest) setTab(dest.tab)
+                }}
+              />
+            )}
+            {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
+          </>
         )}
-        {tab === 'notificaciones' && (
-          <NotificacionesScreen
-            colorPrimario={t.primary}
-            onDeepLink={(url) => {
-              const dest = parseDeepLink(url)
-              if (dest) setTab(dest.tab)
-            }}
-          />
-        )}
-        {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
       </View>
 
       <View style={[styles.tabs, { backgroundColor: t.surface, borderTopColor: t.line }]}>
@@ -278,10 +324,13 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
             <TouchableOpacity
               key={item.id}
               style={styles.tab}
-              onPress={() => setTab(item.id)}
+              onPress={() => {
+                if (!campoBloqueado) setTab(item.id)
+              }}
+              disabled={campoBloqueado}
               accessibilityRole="tab"
               accessibilityLabel={item.etiqueta}
-              accessibilityState={{ selected: activo }}
+              accessibilityState={{ selected: activo, disabled: campoBloqueado }}
             >
               <View style={[styles.tabIndicador, { backgroundColor: activo ? t.primary : 'transparent' }]} />
               <Icono name={item.id} color={activo ? t.primary : t.muted} size={22} />
@@ -293,10 +342,13 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         })}
         <TouchableOpacity
           style={styles.tab}
-          onPress={() => setMas(true)}
+          onPress={() => {
+            if (!campoBloqueado) setMas(true)
+          }}
+          disabled={campoBloqueado}
           accessibilityRole="button"
           accessibilityLabel="Más opciones"
-          accessibilityState={{ selected: masActivo }}
+          accessibilityState={{ selected: masActivo, disabled: campoBloqueado }}
         >
           <View style={[styles.tabIndicador, { backgroundColor: masActivo ? t.primary : 'transparent' }]} />
           <Icono name="mas" color={masActivo ? t.primary : t.muted} size={22} />
