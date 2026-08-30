@@ -1,5 +1,12 @@
 import { claimsDeUsuario } from './claims'
-import { DEMO_MODE, supabase } from './supabase'
+import { canMutate } from './online.ts'
+import { supabase } from './supabase'
+
+function exigirOnline() {
+  if (typeof navigator !== 'undefined' && !canMutate(navigator.onLine)) {
+    throw new Error('GC-CORE-001')
+  }
+}
 import type { CalendarEvent } from '../features/calendar/types'
 import type { PersonaItem } from '../features/calendar/personasData'
 import type { GeoDefaults } from './catalogos'
@@ -28,7 +35,7 @@ export async function contextoOperacion(): Promise<{ usuarioId: string; tenantId
 }
 
 export async function persistirPersona(persona: PersonaItem): Promise<PersonaItem> {
-  if (DEMO_MODE) return persona
+  exigirOnline()
   const ctx = await contextoOperacion()
   const { data, error } = await supabase
     .from('persona')
@@ -40,7 +47,7 @@ export async function persistirPersona(persona: PersonaItem): Promise<PersonaIte
 }
 
 export async function persistirVisita(evento: CalendarEvent, geo: GeoDefaults): Promise<CalendarEvent> {
-  if (DEMO_MODE) return evento
+  exigirOnline()
   if (!evento.actividadId || !evento.subActividadId) {
     throw new Error('GC-VIS-001: actividad y subactividad requeridas')
   }
@@ -89,13 +96,6 @@ export async function persistirFormulario(args: {
   visitaId?: number
   clienteKey?: string
 }): Promise<FormularioEnviado> {
-  if (DEMO_MODE) {
-    return {
-      id: `demo-${Date.now()}`,
-      resultado: null,
-      enviadoEn: new Date().toISOString(),
-    }
-  }
   const { data, error } = await supabase.rpc('formulario_enviar', {
     p_plantilla_id: Number(args.plantillaId),
     p_respuestas: args.respuestas,

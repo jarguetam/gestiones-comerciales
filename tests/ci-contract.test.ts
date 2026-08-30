@@ -72,6 +72,12 @@ test('CI instala pnpm antes de cache: pnpm en setup-node', () => {
   assert.ok(seen >= 1, 'se espera al menos un cache: pnpm en ci.yml')
 })
 
+test('CI inyecta VITE_RELEASE y VITE_SENTRY_DSN en el build', () => {
+  const y = ci()
+  assert.match(y, /VITE_RELEASE:\s*ci/)
+  assert.match(y, /VITE_SENTRY_DSN:\s*https:\/\/public@o0\.ingest\.sentry\.io\/0/)
+})
+
 test('yaml prod no tiene on.push a main para db push', () => {
   const y = prod()
   assert.doesNotMatch(y, /on:\s*\n\s*push:/)

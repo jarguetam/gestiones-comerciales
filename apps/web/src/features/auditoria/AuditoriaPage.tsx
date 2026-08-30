@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
-import { demoAuditoria, filtrarAuditoria, textoDiff, type ItemAuditoria } from './auditoria'
+import { filtrarAuditoria, textoDiff, type ItemAuditoria } from './auditoria'
 import { Alert, Input, PageHeader, PAGE, Table, TBody, Td, Th, THead, Tr, TableSkeleton } from '../../components/ui'
 
 export function AuditoriaPage() {
   const { fuente } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const [rows, setRows] = useState<ItemAuditoria[] | null>(null)
   const [q, setQ] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     if (!live) {
-      setRows(demoAuditoria())
+      setRows([])
       return
     }
     const { data, error } = await supabase

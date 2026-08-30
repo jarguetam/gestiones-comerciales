@@ -1,8 +1,7 @@
-import { DEMO_MODE, supabase } from '../../lib/supabase'
-import { estadoDemoNotificaciones, persistirLeidaDemo, type ItemNotificacion } from './notificaciones'
+import { supabase } from '../../lib/supabase'
+import { type ItemNotificacion } from './notificaciones'
 
 export async function fetchNotificaciones(): Promise<ItemNotificacion[]> {
-  if (DEMO_MODE) return estadoDemoNotificaciones()
   const { data, error } = await supabase
     .from('notificacion')
     .select('id, titulo, cuerpo, leida, creado_en')
@@ -19,10 +18,6 @@ export async function fetchNotificaciones(): Promise<ItemNotificacion[]> {
 }
 
 export async function persistirLeida(id: string): Promise<void> {
-  if (DEMO_MODE) {
-    persistirLeidaDemo(id)
-    return
-  }
   const { error } = await supabase.from('notificacion').update({ leida: true }).eq('id', id)
   if (error) throw error
 }

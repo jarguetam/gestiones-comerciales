@@ -1,4 +1,3 @@
-import { DEMO_MODE } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { useNotificaciones } from './useNotificaciones'
 import { Alert, Button, EmptyState, PageHeader } from '../../components/ui'
@@ -6,7 +5,7 @@ import { cn } from '../../lib/cn'
 
 export function NotificacionesPage() {
   const { fuente } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const { items, pendientes, error, leer } = useNotificaciones(live)
 
   return (

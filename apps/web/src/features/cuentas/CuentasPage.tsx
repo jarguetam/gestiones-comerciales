@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { quetzales } from '../../lib/formato'
 import {
@@ -28,26 +28,23 @@ interface CuentaDemo {
   capitalRiesgo: number
 }
 
-const DEMO: CuentaDemo[] = [
-  { id: 'c1', persona: 'Finca El Roble', codigo: 'C0021290', producto: 'Avío', monto: 45000, estado: 'mora', diasAtraso: 42, rangoMora: '31-60', capitalRiesgo: 18000 },
-  { id: 'c2', persona: 'Cooperativa La Esperanza', codigo: 'C0021301', producto: 'Inversión', monto: 80000, estado: 'activa', diasAtraso: 0, rangoMora: '—', capitalRiesgo: 0 },
-  { id: 'c3', persona: 'Agropecuaria Sur', codigo: 'C0021188', producto: 'Avío', monto: 12500, estado: 'activa', diasAtraso: 12, rangoMora: '1-30', capitalRiesgo: 3200 },
-]
-
 export function CuentasPage() {
   const { fuente, personas } = useDominio()
-  const [items, setItems] = useState<CuentaDemo[]>(DEMO)
+  const [items, setItems] = useState<CuentaDemo[]>([])
   const [q, setQ] = useState('')
 
   useEffect(() => {
-    if (DEMO_MODE || fuente === 'demo') return
+    if (fuente !== 'supabase') return
     void supabase
       .from('cuenta')
       .select('id, codigo_externo, monto, estado, persona(nombre), producto(nombre), cuenta_saldo(dias_atraso, rango_mora, capital_riesgo, corte_en)')
       .eq('activo', true)
       .limit(200)
       .then(({ data }) => {
-        if (!data?.length) return
+        if (!data?.length) {
+          setItems([])
+          return
+        }
         setItems(
           data.map((c) => {
             const persona = c.persona as { nombre?: string } | { nombre?: string }[] | null

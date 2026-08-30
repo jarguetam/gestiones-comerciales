@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { quetzales } from '../../lib/formato'
 import { contextoOperacion, mensajeGc } from '../../lib/persistir'
@@ -37,19 +37,12 @@ interface SolicitudDemo {
   adjuntos: string[]
 }
 
-const DEMO: SolicitudDemo[] = [
-  { id: 's1', persona: 'Finca El Roble', estado: 'enviada', monto: 25000, descripcion: 'Crédito avío ciclo 2026', fecha: '2026-08-20', adjuntos: [] },
-  { id: 's2', persona: 'Cooperativa La Esperanza', estado: 'firmada', monto: 48000, descripcion: 'Renovación de línea', fecha: '2026-08-18', pdf: 'documentos/demo/s2.pdf', adjuntos: ['acta.pdf'] },
-  { id: 's3', persona: 'Agropecuaria Sur', estado: 'borrador', monto: 12000, descripcion: 'Capital de trabajo', fecha: '2026-08-25', adjuntos: [] },
-  { id: 's4', persona: 'Distribuidora Norte', estado: 'aprobada', monto: 80000, descripcion: 'Ampliación de cupo', fecha: '2026-08-10', pdf: 'documentos/demo/s4.pdf', adjuntos: ['boleta.png'] },
-]
-
 export function SolicitudesPage() {
   const { fuente, personas, branding } = useDominio()
   const { push } = useToast()
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const [filtro, setFiltro] = useState<(typeof ESTADOS)[number]>('todas')
-  const [items, setItems] = useState<SolicitudDemo[]>(DEMO)
+  const [items, setItems] = useState<SolicitudDemo[]>([])
   const [detalle, setDetalle] = useState<SolicitudDemo | null>(null)
   const [firma, setFirma] = useState<string | null>(null)
   const [avisoPdf, setAvisoPdf] = useState<string | null>(null)
@@ -100,11 +93,6 @@ export function SolicitudesPage() {
     try {
       setItems((prev) => prev.map((s) => (s.id === detalle.id ? { ...s, firmaPng: firma } : s)))
       setDetalle((d) => (d ? { ...d, firmaPng: firma } : d))
-      if (!live) {
-        setAvisoPdf('Firma guardada en demo. El PDF se genera con la Edge pdf-solicitud en vivo.')
-        push({ tone: 'success', titulo: 'Firma guardada (demo)' })
-        return
-      }
       const { data, error } = await supabase.functions.invoke('pdf-solicitud', {
         body: { solicitud_id: Number(detalle.id), firma_base64: firma },
       })
@@ -132,14 +120,6 @@ export function SolicitudesPage() {
 
   async function adjuntar(file: File) {
     if (!detalle) return
-    if (!live) {
-      setItems((prev) =>
-        prev.map((s) => (s.id === detalle.id ? { ...s, adjuntos: [...s.adjuntos, file.name] } : s)),
-      )
-      setDetalle((d) => (d ? { ...d, adjuntos: [...d.adjuntos, file.name] } : d))
-      push({ tone: 'success', titulo: `Adjunto ${file.name} (demo)` })
-      return
-    }
     try {
       const { tenantId } = await contextoOperacion()
       const path = `${tenantId}/solicitudes/${detalle.id}/${file.name}`

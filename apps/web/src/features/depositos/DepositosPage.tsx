@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { quetzales } from '../../lib/formato'
 import { mensajeToast } from '../../lib/erroresUi'
@@ -31,30 +31,26 @@ interface DepositoDemo {
   fecha: string
 }
 
-const DEMO: DepositoDemo[] = [
-  { id: 'd1', asesor: 'Asesor A', monto: 2500, referencia: 'BOLETA-1044', estado: 'pendiente', fecha: '2026-08-26' },
-  { id: 'd2', asesor: 'Asesor B', monto: 1800, referencia: 'TRX-8891', estado: 'pendiente', fecha: '2026-08-25' },
-  { id: 'd3', asesor: 'Asesor A', monto: 4200, referencia: 'BOLETA-1030', estado: 'confirmado', fecha: '2026-08-22' },
-  { id: 'd4', asesor: 'Asesor C', monto: 900, referencia: 'BOLETA-1021', estado: 'rechazado', fecha: '2026-08-19' },
-]
-
 const FILTROS = ['pendiente', 'confirmado', 'rechazado', 'todos'] as const
 
 export function DepositosPage() {
   const { fuente } = useDominio()
   const { push } = useToast()
   const [filtro, setFiltro] = useState<(typeof FILTROS)[number]>('pendiente')
-  const [items, setItems] = useState<DepositoDemo[]>(DEMO)
+  const [items, setItems] = useState<DepositoDemo[]>([])
 
   useEffect(() => {
-    if (DEMO_MODE || fuente === 'demo') return
+    if (fuente !== 'supabase') return
     void supabase
       .from('deposito')
       .select('id, monto, referencia, estado, creado_en, usuario:asesor_id(nombre)')
       .order('creado_en', { ascending: false })
       .limit(200)
       .then(({ data }) => {
-        if (!data?.length) return
+        if (!data?.length) {
+          setItems([])
+          return
+        }
         setItems(
           data.map((d) => {
             const u = d.usuario as { nombre?: string } | { nombre?: string }[] | null
@@ -78,11 +74,6 @@ export function DepositosPage() {
   )
 
   async function confirmar(id: string, estado: 'confirmado' | 'rechazado') {
-    if (DEMO_MODE || fuente === 'demo') {
-      setItems((prev) => prev.map((d) => (d.id === id ? { ...d, estado } : d)))
-      push({ tone: estado === 'confirmado' ? 'success' : 'info', titulo: `Depósito ${estado} (demo)` })
-      return
-    }
     const { error } = await supabase.rpc('deposito_confirmar', { p_id: Number(id), p_estado: estado })
     if (error) {
       const t = mensajeToast(error)

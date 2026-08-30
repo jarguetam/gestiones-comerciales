@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { Alert, Button, Input, PageHeader, PAGE, Table, TBody, Td, Th, THead, Tr } from '../../components/ui'
 import { useToast } from '../../components/ui/Toast'
@@ -13,13 +13,11 @@ interface KmDemo {
   kmFinal: number
 }
 
-const PERIODO_DEMO = '2026-08-01'
+function periodoMes(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
 
-const DEMO: KmDemo[] = [
-  { id: 'k1', asesor: 'Asesor A', periodo: PERIODO_DEMO, kmInicial: 12450, kmFinal: 13120 },
-  { id: 'k2', asesor: 'Asesor B', periodo: PERIODO_DEMO, kmInicial: 8800, kmFinal: 9105 },
-  { id: 'k3', asesor: 'Asesor C', periodo: PERIODO_DEMO, kmInicial: 15200, kmFinal: 15200 },
-]
+const PERIODO_MES = periodoMes()
 
 function mesLabel(iso: string) {
   const [y, m] = iso.split('-').map(Number)
@@ -29,20 +27,23 @@ function mesLabel(iso: string) {
 export function KilometrajePage() {
   const { fuente } = useDominio()
   const { push } = useToast()
-  const [items, setItems] = useState<KmDemo[]>(DEMO)
+  const [items, setItems] = useState<KmDemo[]>([])
   const [inicial, setInicial] = useState('0')
   const [finalKm, setFinalKm] = useState('0')
   const [aviso, setAviso] = useState<string | null>(null)
 
   useEffect(() => {
-    if (DEMO_MODE || fuente === 'demo') return
+    if (fuente !== 'supabase') return
     void supabase
       .from('kilometraje')
       .select('id, periodo, km_inicial, km_final, usuario:usuario_id(nombre)')
       .order('periodo', { ascending: false })
       .limit(200)
       .then(({ data }) => {
-        if (!data?.length) return
+        if (!data?.length) {
+          setItems([])
+          return
+        }
         setItems(
           data.map((k) => {
             const u = k.usuario as { nombre?: string } | { nombre?: string }[] | null
@@ -68,23 +69,8 @@ export function KilometrajePage() {
       push({ tone: 'error', titulo: 'Kilómetros inválidos' })
       return
     }
-    if (DEMO_MODE || fuente === 'demo') {
-      if (kf < ki) {
-        setAviso('GC-KM-001: km_final no puede ser menor que km_inicial')
-        push({ tone: 'error', titulo: 'km_final no puede ser menor que km_inicial', descripcion: 'GC-KM-001' })
-        return
-      }
-      setItems((prev) => {
-        const yo = prev.find((x) => x.asesor === 'Tú (demo)')
-        if (yo) return prev.map((x) => (x.id === yo.id ? { ...x, kmInicial: ki, kmFinal: kf } : x))
-        return [{ id: 'k-demo', asesor: 'Tú (demo)', periodo: PERIODO_DEMO, kmInicial: ki, kmFinal: kf }, ...prev]
-      })
-      setAviso('Kilometraje del mes registrado (demo)')
-      push({ tone: 'success', titulo: 'Kilometraje del mes registrado (demo)' })
-      return
-    }
     const { error } = await supabase.rpc('km_registrar', {
-      p_periodo: PERIODO_DEMO,
+      p_periodo: PERIODO_MES,
       p_km_inicial: ki,
       p_km_final: kf,
     })
@@ -100,7 +86,7 @@ export function KilometrajePage() {
 
   return (
     <div className={PAGE}>
-      <PageHeader spec="W-09" title="Kilometraje" description={<span className="capitalize">Carga del mes · {mesLabel(PERIODO_DEMO)}</span>} />
+      <PageHeader spec="W-09" title="Kilometraje" description={<span className="capitalize">Carga del mes · {mesLabel(PERIODO_MES)}</span>} />
 
       <form onSubmit={(e) => void registrar(e)} className="rounded-2xl border border-line bg-surface p-5 flex flex-wrap gap-3 items-end">
         <Input id="km-inicial" label="Km inicial" value={inicial} onChange={(e) => setInicial(e.target.value)} type="number" step="0.1" className="w-32" />

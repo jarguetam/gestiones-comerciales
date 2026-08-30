@@ -29,8 +29,8 @@ export const MENSAJE_BACKEND = mensajePreviewSinBackend(FALTANTES_BACKEND)
 /** Sin keys reales, o el asesor eligió demostración. Mutar solo desde Login/logout. */
 export let DEMO_MODE = !BACKEND_CONFIGURADO
 
-export function activarSesionDemo() {
-  DEMO_MODE = true
+export function activarSesionDemo(): never {
+  throw new Error('GC-CORE-001')
 }
 
 export function desactivarSesionDemo() {

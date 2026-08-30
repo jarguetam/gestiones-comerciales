@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
+import { SUPABASE_URL, supabase } from '../../lib/supabase'
 import { ejemploCurlWebhook, urlWebhookTenant } from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
 import {
@@ -52,36 +52,8 @@ interface UsuarioTenant {
   email: string | null
 }
 
-const DEMO_DETALLE: Record<string, TenantDetalle> = {
-  demo: {
-    id: 'demo',
-    codigo: 'demo-agromoney',
-    nombre: 'AgroMoney (demo)',
-    rubro: 'agromoney',
-    plan: 'estandar',
-    activo: true,
-    branding: { color_primario: '#0f766e' },
-    configuracion: { dominios_cors: ['app.agromoney.gt'] },
-  },
-  demo2: {
-    id: 'demo2',
-    codigo: 'demo-distri',
-    nombre: 'Distribuidora GT (demo)',
-    rubro: 'distribuidora',
-    plan: 'basico',
-    activo: true,
-    branding: { color_primario: '#1d4ed8' },
-    configuracion: null,
-  },
-}
-
-const DEMO_USERS: UsuarioTenant[] = [
-  { id: 'u1', nombre: 'Ana Admin', rol: 'admin', activo: true, jefe_id: null, zona_id: null, email: 'ana@demo.gt' },
-]
-
 export function EmpresaDetalle() {
   const { id } = useParams<{ id: string }>()
-  const live = !DEMO_MODE
   const [tenant, setTenant] = useState<TenantDetalle | null>(null)
   const [modulos, setModulos] = useState<ModuloTenant[]>([])
   const [catalogoModulos, setCatalogoModulos] = useState(MODULOS)
@@ -110,13 +82,6 @@ export function EmpresaDetalle() {
   const cargar = useCallback(async () => {
     if (!id) return
     setError(null)
-    if (!live) {
-      setTenant(DEMO_DETALLE[id] ?? DEMO_DETALLE.demo)
-      setModulos(MODULOS.map((m) => ({ codigo: m.codigo, activo: m.codigo === 'crm' })))
-      setCatalogoModulos(MODULOS)
-      setUsuarios(DEMO_USERS)
-      return
-    }
     const [tRes, mRes, uRes, catRes] = await Promise.all([
       supabase.from('tenant').select('id, codigo, nombre, rubro, plan, activo, branding, configuracion').eq('id', id).maybeSingle(),
       supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('tenant_id', id),
@@ -125,6 +90,10 @@ export function EmpresaDetalle() {
     ])
     if (tRes.error) {
       setError(tRes.error.message)
+      return
+    }
+    if (!tRes.data) {
+      setError('Empresa no encontrada')
       return
     }
     setTenant(tRes.data as TenantDetalle)
@@ -141,7 +110,7 @@ export function EmpresaDetalle() {
         (catRes.data as Array<{ codigo: string; nombre: string; nucleo: boolean }>).filter((m) => !m.nucleo),
       )
     }
-  }, [id, live])
+  }, [id])
 
   useEffect(() => {
     void cargar()
@@ -153,10 +122,6 @@ export function EmpresaDetalle() {
     setAviso(null)
     setGuardando(true)
     try {
-      if (!live) {
-        setAviso('Preview: no se persiste')
-        return
-      }
       const { error } = await supabase.rpc('admin_tenant_actualizar', {
         p_tenant_id: tenant.id,
         p_cambios: {
@@ -180,13 +145,7 @@ export function EmpresaDetalle() {
   async function toggleModulo(codigo: string, activo: boolean) {
     setError(null)
     try {
-      if (!live || !tenant) {
-        setModulos((prev) => {
-          const existe = prev.some((m) => m.codigo === codigo)
-          return existe ? prev.map((m) => (m.codigo === codigo ? { ...m, activo } : m)) : [...prev, { codigo, activo }]
-        })
-        return
-      }
+      if (!tenant) return
       const { error } = await supabase.rpc('admin_modulo_activar', {
         p_tenant_id: tenant.id,
         p_modulo: codigo,
@@ -202,18 +161,6 @@ export function EmpresaDetalle() {
   async function gestionarUsuario(usuarioId: string, accion: string, datos: Record<string, unknown> = {}) {
     setError(null)
     try {
-      if (!live) {
-        setUsuarios((prev) =>
-          prev.map((u) => {
-            if (u.id !== usuarioId) return u
-            if (accion === 'activar') return { ...u, activo: true }
-            if (accion === 'desactivar') return { ...u, activo: false }
-            if (accion === 'cambiar_rol') return { ...u, rol: String(datos.rol) }
-            return u
-          }),
-        )
-        return
-      }
       const { error } = await supabase.rpc('admin_usuario_gestionar', {
         p_usuario_id: usuarioId,
         p_accion: accion,
@@ -232,11 +179,6 @@ export function EmpresaDetalle() {
     setAviso(null)
     setRotando(true)
     try {
-      if (!live) {
-        setWebhookSecret('demo-webhook-secret-no-persistido')
-        setAviso('Preview: secreto de demostración (no se persiste)')
-        return
-      }
       const { data, error } = await supabase.rpc('admin_webhook_rotar_secret', {
         p_tenant_id: tenant.id,
       })
@@ -260,17 +202,6 @@ export function EmpresaDetalle() {
       return
     }
     try {
-      if (!live) {
-        setUsuarios((prev) => [
-          ...prev,
-          { id: `u${Date.now()}`, nombre: nombre || email, rol, activo: true, jefe_id: null, zona_id: null, email },
-        ])
-        setEmail('')
-        setNombre('')
-        setPassword('')
-        setAviso('Usuario agregado (demo)')
-        return
-      }
       const { data, error } = await supabase.functions.invoke('invitar-usuario', {
         body: { tenant_id: tenant.id, email: email.trim(), nombre: nombre.trim() || email.trim(), rol, password },
       })
@@ -290,8 +221,17 @@ export function EmpresaDetalle() {
   if (!tenant) {
     return (
       <main className={PAGE}>
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-48 rounded-2xl" />
+        {error ? (
+          <>
+            <Alert tone="danger" role="alert">{error}</Alert>
+            <EmptyState titulo="No se pudo cargar la empresa" descripcion="Revisá el identificador o reintentá más tarde." />
+          </>
+        ) : (
+          <>
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-48 rounded-2xl" />
+          </>
+        )}
       </main>
     )
   }

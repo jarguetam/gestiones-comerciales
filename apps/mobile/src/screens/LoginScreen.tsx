@@ -1,6 +1,6 @@
 /**
  * M-01 Login (spec F1.10/F1.11).
- * Email + contraseña + TOTP si aal1→aal2. En DEMO_MODE entra un perfil de campo.
+ * Email + contraseña + TOTP si aal1→aal2. Sin backend: GC-CORE-001, sin demo.
  */
 import React, { useState } from 'react'
 import {
@@ -12,18 +12,15 @@ import {
 } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import {
-  activarSesionDemo,
   BACKEND_CONFIGURADO,
   desactivarSesionDemo,
   MENSAJE_BACKEND,
-  PERFIL_DEMO,
   supabase,
   type Perfil,
   cargarPerfil,
   resolverClaims,
 } from '../lib/supabase'
 import { requierePasoTotp } from '../lib/mfa'
-import { resetColaDemo } from '../lib/colaStore'
 import { Boton, Campo, Marca } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -42,18 +39,12 @@ export default function LoginScreen({ onLogin }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
 
-  async function entrarDemo() {
-    activarSesionDemo()
-    resetColaDemo()
-    onLogin(PERFIL_DEMO)
-  }
-
   async function handlePassword() {
     setError(null)
     setCargando(true)
     try {
       if (!BACKEND_CONFIGURADO) {
-        await entrarDemo()
+        setError('GC-CORE-001')
         return
       }
       desactivarSesionDemo()
@@ -152,18 +143,10 @@ export default function LoginScreen({ onLogin }: Props) {
               onSubmitEditing={() => void handlePassword()}
             />
             {error && <Text style={[styles.error, { color: t.danger }]}>{error}</Text>}
-            {BACKEND_CONFIGURADO && (
-              <Boton
-                etiqueta="Ingresar"
-                onPress={() => void handlePassword()}
-                disabled={!email || !password}
-                cargando={cargando}
-              />
-            )}
             <Boton
-              etiqueta="Entrar al tablero"
-              variante={BACKEND_CONFIGURADO ? 'secondary' : 'primary'}
-              onPress={() => void entrarDemo()}
+              etiqueta="Ingresar"
+              onPress={() => void handlePassword()}
+              disabled={!BACKEND_CONFIGURADO || !email || !password}
               cargando={cargando}
             />
           </>
