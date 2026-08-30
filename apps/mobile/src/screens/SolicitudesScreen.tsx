@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { Boton, Campo, Card, FirmaPad, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -41,12 +41,6 @@ export default function SolicitudesScreen({ perfil }: Props) {
   const [firmado, setFirmado] = useState(false)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setItems([
-        { id: 1, descripcion: 'Crédito avío (demo)', monto: 25000, estado: { codigo: 'enviada', nombre: 'Enviada' } },
-      ])
-      return
-    }
     const { data } = await supabase
       .from('solicitud')
       .select('id, descripcion, monto, estado:solicitud_estado(codigo, nombre)')
@@ -63,19 +57,6 @@ export default function SolicitudesScreen({ perfil }: Props) {
   async function crear() {
     if (!desc.trim()) {
       Alert.alert('Falta descripción')
-      return
-    }
-    if (DEMO_MODE) {
-      setItems((prev) => [
-        {
-          id: Date.now(),
-          descripcion: desc,
-          monto: Number(monto) || null,
-          estado: { codigo: firmado ? 'firmada' : 'borrador', nombre: firmado ? 'Firmada' : 'Borrador' },
-        },
-        ...prev,
-      ])
-      setMostrarNueva(false)
       return
     }
     const { data: estados } = await supabase.from('solicitud_estado').select('id, codigo').eq('codigo', 'borrador').maybeSingle()

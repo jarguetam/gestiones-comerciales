@@ -1,5 +1,4 @@
 import {
-  demoCola,
   encolar,
   procesarCola,
   type AltaCola,
@@ -40,10 +39,6 @@ export function suscribirCola(fn: () => void): () => void {
 
 export function hidratarCola(inicial: ItemCola[]) {
   publicar(inicial)
-}
-
-export function resetColaDemo() {
-  publicar(demoCola())
 }
 
 export function encolarMutacion(alta: AltaCola) {

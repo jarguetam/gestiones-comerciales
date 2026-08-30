@@ -4,7 +4,7 @@
 import React, { useState } from 'react'
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import Constants from 'expo-constants'
-import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { TEXTO_PERMISO_UBICACION } from '../services/rastreoServicio'
 import { Boton, Campo, Card } from '../components/ui'
 import { useTheme } from '../theme'
@@ -24,8 +24,7 @@ export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, 
   const version = Constants.expoConfig?.version ?? '1.0.0'
 
   async function handleLogout() {
-    desactivarSesionDemo()
-    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
+    await supabase.auth.signOut()
     onLogout()
   }
 
@@ -41,10 +40,6 @@ export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, 
   }
 
   async function cambiarPassword() {
-    if (DEMO_MODE) {
-      Alert.alert('Modo demo', 'El cambio de contraseña requiere backend.')
-      return
-    }
     if (nueva.trim().length < 8) {
       Alert.alert('Contraseña débil', 'Usá al menos 8 caracteres.')
       return

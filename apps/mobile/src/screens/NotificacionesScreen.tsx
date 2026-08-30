@@ -4,10 +4,9 @@
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { DEMO_MODE, supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import {
   contarNoLeidas,
-  demoNotificaciones,
   deepLinkDe,
   marcarLeida,
   type ItemNotificacion,
@@ -23,14 +22,10 @@ interface Props {
 export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Props) {
   const t = useTheme()
   const primario = colorPrimario || t.primary
-  const [items, setItems] = useState<ItemNotificacion[]>(demoNotificaciones())
+  const [items, setItems] = useState<ItemNotificacion[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setItems(demoNotificaciones())
-      return
-    }
     const { data, error } = await supabase
       .from('notificacion')
       .select('id, titulo, cuerpo, leida, creado_en, datos')
@@ -63,7 +58,6 @@ export default function NotificacionesScreen({ colorPrimario, onDeepLink }: Prop
       if (onDeepLink) onDeepLink(link)
       else void Linking.openURL(link).catch(() => undefined)
     }
-    if (DEMO_MODE) return
     const { error } = await supabase.from('notificacion').update({ leida: true }).eq('id', item.id)
     if (error) setError(error.message)
   }

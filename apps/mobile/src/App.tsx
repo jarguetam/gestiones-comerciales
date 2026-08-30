@@ -28,13 +28,13 @@ import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
-import { demoNotificaciones, contarNoLeidas } from './lib/notificaciones'
+import { contarNoLeidas } from './lib/notificaciones'
 import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
 import { abrirPersistenciaCola } from './lib/abrirCola'
-import { ejecutarDemo, ejecutarMutacion } from './lib/sync'
+import { ejecutarMutacion } from './lib/sync'
 import { parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
 import { tokenPushNativo } from './lib/push'
@@ -82,10 +82,6 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      setListo(true)
-      return
-    }
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
         const claims = await resolverClaims(data.session)
@@ -100,11 +96,11 @@ export default function App() {
   useEffect(() => {
     if (!perfil) return
     const t = setInterval(() => {
-      void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
+      void sincronizarAhora(ejecutarMutacion(supabase))
     }, 30_000)
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
+        void sincronizarAhora(ejecutarMutacion(supabase))
       }
     })
     return () => {
@@ -145,7 +141,6 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [perfil.id])
 
   useEffect(() => {
-    if (DEMO_MODE) return
     let cancel = false
     tokenPushNativo()
       .then((token) => {
@@ -159,7 +154,6 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [perfil.id])
 
   useEffect(() => {
-    if (DEMO_MODE) return
     if (!rastreoOn) {
       void detenerRastreo(supabase)
       return
@@ -182,10 +176,6 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [])
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      setNoLeidas(contarNoLeidas(demoNotificaciones()))
-      return
-    }
     supabase
       .from('notificacion')
       .select('id', { count: 'exact', head: true })
@@ -196,9 +186,8 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [tab])
 
   async function handleLogout() {
-    await detenerRastreo(DEMO_MODE ? undefined : supabase)
-    desactivarSesionDemo()
-    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
+    await detenerRastreo(supabase)
+    await supabase.auth.signOut()
     onLogout()
   }
 
@@ -208,10 +197,10 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }
 
   const extras: { id: Extract<IconoName, 'solicitudes' | 'depositos' | 'ajustes'>; etiqueta: string }[] = [
-    ...(DEMO_MODE || perfil.modulos.includes('solicitudes')
+    ...(perfil.modulos.includes('solicitudes')
       ? [{ id: 'solicitudes' as const, etiqueta: 'Solicitudes' }]
       : []),
-    ...(DEMO_MODE || perfil.modulos.includes('depositos')
+    ...(perfil.modulos.includes('depositos')
       ? [{ id: 'depositos' as const, etiqueta: 'Depósitos' }]
       : []),
     { id: 'ajustes', etiqueta: 'Ajustes' },

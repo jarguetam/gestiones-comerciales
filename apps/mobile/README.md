@@ -20,7 +20,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 pnpm --filter @gc/mobile start
 ```
 
-Sin URL/anon key y con `NODE_ENV !== production` la app entra en **modo demo**.
+Sin URL/anon key reales la app no arranca (`GC-CORE-001`). No hay modo demo.
 
 ## Build de producción (EAS)
 
