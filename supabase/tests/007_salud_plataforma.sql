@@ -5,7 +5,7 @@
 --   - membresía (no superadmin) solo ve tenants asignados
 -- ============================================================
 begin;
-select plan(8);
+select plan(9);
 
 insert into public.tenant (id, codigo, nombre, rubro, plan) values
   ('11111111-1111-1111-1111-111111111111', 'GT1', 'Agro Test', 'agro', 'pro'),

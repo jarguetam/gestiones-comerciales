@@ -1,11 +1,14 @@
 -- ============================================================
 -- F0.6 / F1.5 / F1.12 — Suite pgTAP
--- Setup: universo de prueba con 2 tenants (GT-1, GT-2), jerarquía
--- admin → gerente → supervisor → asesores, y datos mínimos.
--- Corre con `supabase test db` (rol postgres, bypasea RLS).
+-- Setup: 2 tenants (GT-1, GT-2), jerarquía GC-CORE-010
+-- (admin y gerente sin jefe; supervisor→gerente; asesor→supervisor)
+-- y datos mínimos. Este archivo COMMITEA el fixture para que el
+-- resto de supabase/tests/*.sql lo vea (`supabase test db`).
 -- ============================================================
 begin;
-select plan(24);
+select plan(1);
+
+create schema if not exists tests;
 
 -- ---------- datos base ----------
 insert into public.tenant (id, codigo, nombre, rubro, plan) values
@@ -16,12 +19,14 @@ insert into public.tenant (id, codigo, nombre, rubro, plan) values
 -- (los tests setean request.jwt.claims para simular el JWT)
 insert into public.usuario (id, tenant_id, nombre, rol, jefe_id) values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Admin T1', 'admin', null),
-  ('aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Gerente T1', 'gerente', 'aaaaaaaa-0000-0000-0000-000000000001'),
+  ('aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Gerente T1', 'gerente', null),
   ('aaaaaaaa-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'Supervisor T1', 'supervisor', 'aaaaaaaa-0000-0000-0000-000000000002'),
   ('aaaaaaaa-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'Asesor A T1', 'asesor', 'aaaaaaaa-0000-0000-0000-000000000003'),
   ('aaaaaaaa-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'Asesor B T1', 'asesor', 'aaaaaaaa-0000-0000-0000-000000000003'),
   ('bbbbbbbb-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'Admin T2', 'admin', null),
-  ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Asesor T2', 'asesor', 'bbbbbbbb-0000-0000-0000-000000000001');
+  ('bbbbbbbb-0000-0000-0000-000000000003', '22222222-2222-2222-2222-222222222222', 'Gerente T2', 'gerente', null),
+  ('bbbbbbbb-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', 'Supervisor T2', 'supervisor', 'bbbbbbbb-0000-0000-0000-000000000003'),
+  ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Asesor T2', 'asesor', 'bbbbbbbb-0000-0000-0000-000000000004');
 
 insert into public.persona (tenant_id, nombre, documento, asesor_id) values
   ('11111111-1111-1111-1111-111111111111', 'Finca T1', 'NIT-T1-1', 'aaaaaaaa-0000-0000-0000-000000000004'),
@@ -44,3 +49,12 @@ returns void language sql as $$
   select set_config('request.jwt.claims', '', true);
   select set_config('role', 'postgres', true);
 $$;
+
+select ok(
+  exists (select 1 from public.usuario where id = 'aaaaaaaa-0000-0000-0000-000000000004')
+  and exists (select 1 from information_schema.schemata where schema_name = 'tests'),
+  'fixture de tenants, jerarquía válida y schema tests'
+);
+
+select * from finish();
+commit;

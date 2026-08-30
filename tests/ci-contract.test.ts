@@ -33,6 +33,38 @@ test('CI no usa pnpm --filter con audit', () => {
   assert.match(y, /audit-runtime\.ts/)
 })
 
+test('fixture pgTAP crea schema tests, jerarquía válida y hace COMMIT', () => {
+  const sql = readFileSync('supabase/tests/000_setup_tests.sql', 'utf8')
+  assert.match(sql, /create schema if not exists tests/)
+  assert.match(sql, /\bcommit\s*;/i)
+  assert.match(sql, /'Gerente T1',\s*'gerente',\s*null/)
+  assert.doesNotMatch(
+    sql,
+    /'Gerente T1',\s*'gerente',\s*'aaaaaaaa-0000-0000-0000-000000000001'/,
+  )
+  assert.match(
+    sql,
+    /'Asesor T2',\s*'asesor',\s*'bbbbbbbb-0000-0000-0000-000000000004'/,
+  )
+})
+
+test('CI instala pnpm antes de cache: pnpm en setup-node', () => {
+  const jobs = ci().split(/^  [a-z][\w-]*:/m).slice(1)
+  let seen = 0
+  for (const job of jobs) {
+    if (!job.includes('cache: pnpm')) continue
+    seen += 1
+    const pnpmAt = job.indexOf('pnpm/action-setup')
+    const nodeAt = job.indexOf('actions/setup-node')
+    assert.ok(pnpmAt !== -1, 'el job con cache: pnpm debe instalar pnpm')
+    assert.ok(
+      pnpmAt < nodeAt,
+      'pnpm/action-setup debe ir antes de setup-node cuando se usa cache: pnpm',
+    )
+  }
+  assert.ok(seen >= 1, 'se espera al menos un cache: pnpm en ci.yml')
+})
+
 test('yaml prod no tiene on.push a main para db push', () => {
   const y = prod()
   assert.doesNotMatch(y, /on:\s*\n\s*push:/)

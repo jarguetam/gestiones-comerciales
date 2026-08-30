@@ -4,7 +4,7 @@
 -- las operaciones autorizadas quedan auditadas (GC-AUD-*).
 -- ============================================================
 begin;
-select plan(5);
+select plan(6);
 
 -- ---------- 1. Sin membresía de plataforma: admin_tenant_crear rechazado ----------
 -- usuario de negocio común (asesor T1): sin claim plataforma, sin membresía
@@ -50,7 +50,7 @@ select ok(
   exists (
     select 1 from public.auditoria
     where accion = 'insert' and tabla = 'tenant'
-      and detalles ->> 'nombre' = 'Tenant Nuevo Test'
+      and cambios ->> 'nombre' = 'Tenant Nuevo Test'
   ),
   'la creación del tenant quedó en auditoría (GC-AUD-*)'
 );
@@ -67,7 +67,7 @@ select ok(
   exists (
     select 1 from public.auditoria
     where tabla = 'tenant_modulo' and accion = 'update'
-      and detalles ->> 'activo' = 'true'
+      and cambios ->> 'activo' = 'true'
   ),
   'la activación del módulo quedó en auditoría'
 );

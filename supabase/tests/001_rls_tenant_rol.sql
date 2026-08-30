@@ -3,7 +3,7 @@
 -- Cubre las reglas GC-RLS-* del spec sobre persona/visita/usuario.
 -- ============================================================
 begin;
-select plan(12);
+select plan(13);
 
 -- ---------- 1. Aislamiento por tenant (GC-RLS-001) ----------
 select tests.set_claims(
@@ -17,8 +17,8 @@ select is(
 
 select is(
   (select count(*)::int from public.usuario),
-  6,
-  'asesor de T1 ve los usuarios de su tenant (6) y ninguno de T2'
+  1,
+  'asesor de T1 solo se ve a sí mismo (RLS por cadena, no el tenant entero)'
 );
 
 -- ---------- 2. Alcance por rol: asesor solo lo suyo (GC-RLS-002) ----------

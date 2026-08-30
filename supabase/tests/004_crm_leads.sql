@@ -4,7 +4,7 @@
 -- perdido exige motivo, conversión idempotente, duplicados por teléfono.
 -- ============================================================
 begin;
-select plan(11);
+select plan(12);
 
 -- ---------- setup: embudo + leads de prueba ----------
 insert into public.lead_estado (tenant_id, codigo, nombre, orden, es_ganado, es_perdido) values
