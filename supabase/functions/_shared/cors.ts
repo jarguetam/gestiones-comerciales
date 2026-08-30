@@ -18,6 +18,8 @@ export function json(body: unknown, status = 200) {
 }
 
 export function handleOptions(req: Request) {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
   return null;
 }

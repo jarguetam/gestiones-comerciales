@@ -9,6 +9,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "lint": "eslint src --max-warnings 9999",
     "build:apk": "bash scripts/build-apk.sh"
   },
   "dependencies": {

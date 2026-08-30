@@ -69,7 +69,9 @@ async function importPrivateKey(sa: ServiceAccount): Promise<CryptoKey> {
 
 /** OAuth2 access token (JWT bearer) con scope firebase.messaging, cacheado ~50 min. */
 export async function getAccessToken(sa: ServiceAccount): Promise<string> {
-  if (cachedToken && cachedToken.expira > Date.now() + 60_000) return cachedToken.token;
+  if (cachedToken && cachedToken.expira > Date.now() + 60_000) {
+    return cachedToken.token;
+  }
 
   const ahora = Math.floor(Date.now() / 1000);
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
@@ -91,7 +93,10 @@ export async function getAccessToken(sa: ServiceAccount): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${header}.${claims}.${base64url(firma)}`,
+    body:
+      `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${header}.${claims}.${
+        base64url(firma)
+      }`,
   });
   if (!res.ok) throw new Error(`GC-PUSH-020: OAuth2 falló (${res.status})`);
 
@@ -140,5 +145,9 @@ export async function enviarFcm(
   // UNREGISTERED / INVALID_ARGUMENT sobre el token → ya no sirve
   const invalido = res.status === 404 ||
     (res.status === 400 && texto.includes("INVALID_ARGUMENT"));
-  return { ok: false, invalido, detalle: `${res.status}: ${texto.slice(0, 200)}` };
+  return {
+    ok: false,
+    invalido,
+    detalle: `${res.status}: ${texto.slice(0, 200)}`,
+  };
 }

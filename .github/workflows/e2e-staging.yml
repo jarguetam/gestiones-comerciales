@@ -1,0 +1,81 @@
+name: E2E staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright contra Vite + Supabase staging
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Exigir secretos de staging
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_ASESOR_PASSWORD: ${{ secrets.E2E_ASESOR_PASSWORD }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$VITE_SUPABASE_URL" ] && missing="$missing VITE_SUPABASE_URL"
+          [ -z "$VITE_SUPABASE_ANON_KEY" ] && missing="$missing VITE_SUPABASE_ANON_KEY"
+          [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && missing="$missing SUPABASE_SERVICE_ROLE_KEY"
+          [ -z "$E2E_ASESOR_PASSWORD" ] && missing="$missing E2E_ASESOR_PASSWORD"
+          [ -z "$E2E_ADMIN_PASSWORD" ] && missing="$missing E2E_ADMIN_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::GC-OPS-008: faltan secretos e2e staging:$missing"
+            exit 1
+          fi
+
+      - name: Sembrar usuarios sintéticos
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_ASESOR_PASSWORD: ${{ secrets.E2E_ASESOR_PASSWORD }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: node --experimental-strip-types scripts/ci/seed-e2e-user.ts
+
+      - name: Build preview
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_ENVIRONMENT: staging
+        run: pnpm --filter @gc/web build
+
+      - name: Instalar Chromium
+        run: pnpm --filter @gc/web exec playwright install --with-deps chromium
+
+      - name: E2E staging (autorización negativa)
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          E2E_ASESOR_EMAIL: asesor@staging.test
+          E2E_ASESOR_PASSWORD: ${{ secrets.E2E_ASESOR_PASSWORD }}
+          E2E_ADMIN_EMAIL: admin@staging.test
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_SUITE: staging
+        run: pnpm --filter @gc/web exec playwright test tests/e2e-staging

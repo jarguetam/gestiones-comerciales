@@ -10,9 +10,18 @@ insert into public.tenant (id, codigo, nombre, rubro, plan) values
   ('11111111-1111-1111-1111-111111111111', 'GT1', 'Agro Test', 'agro', 'pro')
 on conflict (id) do nothing;
 
-insert into public.usuario (id, tenant_id, nombre, rol) values
-  ('aaaaaaaa-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'Asesor A T1', 'asesor'),
-  ('aaaaaaaa-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'Asesor B T1', 'asesor')
+insert into auth.users (id, email) values
+  ('aaaaaaaa-0000-0000-0000-000000000002', 'gerente-t1@appmeta.test'),
+  ('aaaaaaaa-0000-0000-0000-000000000003', 'supervisor-t1@appmeta.test'),
+  ('aaaaaaaa-0000-0000-0000-000000000004', 'asesor-a-t1@appmeta.test'),
+  ('aaaaaaaa-0000-0000-0000-000000000005', 'asesor-b-t1@appmeta.test')
+on conflict (id) do nothing;
+
+insert into public.usuario (id, tenant_id, nombre, rol, jefe_id) values
+  ('aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Gerente T1', 'gerente', null),
+  ('aaaaaaaa-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'Supervisor T1', 'supervisor', 'aaaaaaaa-0000-0000-0000-000000000002'),
+  ('aaaaaaaa-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'Asesor A T1', 'asesor', 'aaaaaaaa-0000-0000-0000-000000000003'),
+  ('aaaaaaaa-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'Asesor B T1', 'asesor', 'aaaaaaaa-0000-0000-0000-000000000003')
 on conflict (id) do nothing;
 
 -- 1. JWT estilo GoTrue: tenant_id/rol solo en app_metadata
@@ -72,6 +81,7 @@ select throws_ok(
       'aaaaaaaa-0000-0000-0000-000000000005'
     )$$,
   '42501',
+  null,
   'asesor no puede crear persona asignada a otro asesor'
 );
 

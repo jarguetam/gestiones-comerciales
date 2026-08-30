@@ -9,7 +9,8 @@
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "lint": "eslint src --max-warnings 9999"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

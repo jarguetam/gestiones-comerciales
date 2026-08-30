@@ -7,7 +7,7 @@
  * Auth: JWT del usuario (verify_jwt).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleOptions } from "../_shared/cors.ts";
+import { handleOptions, json } from "../_shared/cors.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -34,7 +34,9 @@ function simplePdf(lineas: string[]): Uint8Array {
     "BT",
     "/F1 16 Tf",
     "50 740 Td",
-    ...lineas.flatMap((l, i) => i === 0 ? [`(${pdfEscape(l)}) Tj`] : ["0 -22 Td", `(${pdfEscape(l)}) Tj`]),
+    ...lineas.flatMap((l, i) =>
+      i === 0 ? [`(${pdfEscape(l)}) Tj`] : ["0 -22 Td", `(${pdfEscape(l)}) Tj`]
+    ),
     "ET",
   ].join("\n");
   const objs = [
@@ -53,8 +55,7 @@ function simplePdf(lineas: string[]): Uint8Array {
     offset += o.length;
   }
   const xrefStart = offset;
-  const tail =
-    xref.join("\n") +
+  const tail = xref.join("\n") +
     "\ntrailer << /Size 6 /Root 1 0 R >>\nstartxref\n" +
     xrefStart +
     "\n%%EOF\n";
@@ -65,34 +66,46 @@ function simplePdf(lineas: string[]): Uint8Array {
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
   if (pre) return pre;
-  if (req.method !== "POST") return json({ error: "GC-SOLI-010: método no permitido" }, 405);
+  if (req.method !== "POST") {
+    return json({ error: "GC-SOLI-010: método no permitido" }, 405);
+  }
 
   const inicio = Date.now();
   const auth = req.headers.get("authorization");
-  if (!auth) return json({ error: "GC-SOLI-011: autenticación requerida" }, 401);
+  if (!auth) {
+    return json({ error: "GC-SOLI-011: autenticación requerida" }, 401);
+  }
 
   try {
     const body = await req.json();
     const solicitudId = Number(body?.solicitud_id);
     const firmaRaw = String(body?.firma_base64 ?? body?.firma ?? "");
     if (!solicitudId || !firmaRaw) {
-      return json({ error: "GC-SOLI-012: se requiere solicitud_id y firma_base64" }, 400);
+      return json({
+        error: "GC-SOLI-012: se requiere solicitud_id y firma_base64",
+      }, 400);
     }
 
     let bytes: Uint8Array;
     try {
       bytes = decodeFirma(firmaRaw);
     } catch {
-      return json({ error: "GC-SOLI-001: la firma no es una imagen PNG válida" }, 400);
+      return json({
+        error: "GC-SOLI-001: la firma no es una imagen PNG válida",
+      }, 400);
     }
     if (!esPng(bytes)) {
-      return json({ error: "GC-SOLI-001: la firma no es una imagen PNG válida" }, 400);
+      return json({
+        error: "GC-SOLI-001: la firma no es una imagen PNG válida",
+      }, 400);
     }
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
+    const userClient = createClient(url, anon, {
+      global: { headers: { Authorization: auth } },
+    });
     const admin = createClient(url, service);
 
     const { data: sol, error: errSol } = await userClient
@@ -100,7 +113,9 @@ Deno.serve(async (req) => {
       .select("id, tenant_id, descripcion, monto, persona_id")
       .eq("id", solicitudId)
       .maybeSingle();
-    if (errSol || !sol) return json({ error: "GC-SOLI-004: solicitud no encontrada" }, 404);
+    if (errSol || !sol) {
+      return json({ error: "GC-SOLI-004: solicitud no encontrada" }, 404);
+    }
 
     const { data: tenant } = await admin
       .from("tenant")
@@ -112,13 +127,20 @@ Deno.serve(async (req) => {
     const firmaPath = `${sol.tenant_id}/${solicitudId}/${uid}.png`;
     const pdfPath = `${sol.tenant_id}/${solicitudId}/${uid}.pdf`;
 
-    const { error: errUpFirma } = await admin.storage.from("firmas").upload(firmaPath, bytes, {
-      contentType: "image/png",
-      upsert: true,
-    });
-    if (errUpFirma) return json({ error: "GC-SOLI-013: no se pudo guardar la firma" }, 500);
+    const { error: errUpFirma } = await admin.storage.from("firmas").upload(
+      firmaPath,
+      bytes,
+      {
+        contentType: "image/png",
+        upsert: true,
+      },
+    );
+    if (errUpFirma) {
+      return json({ error: "GC-SOLI-013: no se pudo guardar la firma" }, 500);
+    }
 
-    const marca = (tenant?.branding as { nombre?: string } | null)?.nombre ?? tenant?.nombre ?? "Gestiones Comerciales";
+    const marca = (tenant?.branding as { nombre?: string } | null)?.nombre ??
+      tenant?.nombre ?? "Gestiones Comerciales";
     const pdf = simplePdf([
       marca,
       `Solicitud #${solicitudId}`,
@@ -127,23 +149,33 @@ Deno.serve(async (req) => {
       `Firmado: ${new Date().toISOString().slice(0, 10)}`,
     ].filter(Boolean));
 
-    const { error: errUpPdf } = await admin.storage.from("documentos").upload(pdfPath, pdf, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-    if (errUpPdf) return json({ error: "GC-SOLI-014: no se pudo guardar el PDF" }, 500);
+    const { error: errUpPdf } = await admin.storage.from("documentos").upload(
+      pdfPath,
+      pdf,
+      {
+        contentType: "application/pdf",
+        upsert: true,
+      },
+    );
+    if (errUpPdf) {
+      return json({ error: "GC-SOLI-014: no se pudo guardar el PDF" }, 500);
+    }
 
     const { data: userData } = await userClient.auth.getUser();
     const firmadoPor = userData.user?.id;
-    if (!firmadoPor) return json({ error: "GC-SOLI-011: autenticación requerida" }, 401);
+    if (!firmadoPor) {
+      return json({ error: "GC-SOLI-011: autenticación requerida" }, 401);
+    }
 
-    const { error: errFirma } = await userClient.from("solicitud_firma").upsert({
-      solicitud_id: solicitudId,
-      firma_ruta: `firmas/${firmaPath}`,
-      pdf_ruta: `documentos/${pdfPath}`,
-      firmado_por: firmadoPor,
-      firmado_en: new Date().toISOString(),
-    });
+    const { error: errFirma } = await userClient.from("solicitud_firma").upsert(
+      {
+        solicitud_id: solicitudId,
+        firma_ruta: `firmas/${firmaPath}`,
+        pdf_ruta: `documentos/${pdfPath}`,
+        firmado_por: firmadoPor,
+        firmado_en: new Date().toISOString(),
+      },
+    );
     if (errFirma) {
       // service_role fallback (p.ej. upsert sin política)
       await admin.from("solicitud_firma").upsert({

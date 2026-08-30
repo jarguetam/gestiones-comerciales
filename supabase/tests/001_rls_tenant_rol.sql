@@ -3,7 +3,7 @@
 -- Cubre las reglas GC-RLS-* del spec sobre persona/visita/usuario.
 -- ============================================================
 begin;
-select plan(12);
+select plan(13);
 
 -- ---------- 1. Aislamiento por tenant (GC-RLS-001) ----------
 select tests.set_claims(
@@ -17,8 +17,8 @@ select is(
 
 select is(
   (select count(*)::int from public.usuario),
-  6,
-  'asesor de T1 ve los usuarios de su tenant (6) y ninguno de T2'
+  1,
+  'asesor de T1 solo se ve a sí mismo (RLS por cadena, no el tenant entero)'
 );
 
 -- ---------- 2. Alcance por rol: asesor solo lo suyo (GC-RLS-002) ----------
@@ -54,13 +54,11 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'admin', 'aaaaaaaa-0000-0000-0000-000000000001');
 
-select is(
-  (select count(*)::int from (
-     insert into public.persona (tenant_id, nombre)
-     values ('22222222-2222-2222-2222-222222222222', 'Intruso')
-     returning 1
-   ) x),
-  0,
+select throws_ok(
+  $$insert into public.persona (tenant_id, nombre)
+    values ('22222222-2222-2222-2222-222222222222', 'Intruso')$$,
+  '42501',
+  null,
   'admin de T1 no puede insertar persona con tenant_id de T2 (with check)'
 );
 
@@ -69,25 +67,45 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111', 'asesor', 'aaaaaaaa-0000-0000-0000-000000000004');
 
-select is(
-  (select count(*)::int from (
-     insert into public.persona (tenant_id, nombre, asesor_id)
-     values ('11111111-1111-1111-1111-111111111111', 'Robada',
-             'aaaaaaaa-0000-0000-0000-000000000005')
-     returning 1
-   ) x),
-  0,
+select throws_ok(
+  $$insert into public.persona (tenant_id, nombre, asesor_id)
+    values (
+      '11111111-1111-1111-1111-111111111111',
+      'Robada',
+      'aaaaaaaa-0000-0000-0000-000000000005'
+    )$$,
+  '42501',
+  null,
   'asesor no puede crear persona asignada a otro asesor (with check escritura)'
 );
 
 -- ---------- 7. Visitas: solo las propias (o del subárbol) ----------
-insert into public.visita (tenant_id, usuario_id, persona_nombre, departamento_id, municipio_id, actividad_id, fecha_visita)
-select '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000004', 'Finca T1',
-       d.id, m.id, a.id, current_date
+insert into public.visita (
+  tenant_id, usuario_id, persona_nombre,
+  departamento_id, municipio_id, zona_id,
+  actividad_id, sub_actividad_id, actividad_hora_id,
+  fecha_visita, creado_por
+)
+select
+  '11111111-1111-1111-1111-111111111111',
+  'aaaaaaaa-0000-0000-0000-000000000004',
+  'Finca T1',
+  d.id, m.id, z.id,
+  a.id, sa.id, ah.id,
+  current_date,
+  'aaaaaaaa-0000-0000-0000-000000000004'
 from public.departamento d
 join public.municipio m on m.departamento_id = d.id
-cross join public.actividad a
-where a.tenant_id = '11111111-1111-1111-1111-111111111111'
+join public.zona z
+  on z.tenant_id = '11111111-1111-1111-1111-111111111111' and z.codigo = 'Z1'
+join public.actividad a
+  on a.tenant_id = '11111111-1111-1111-1111-111111111111'
+ and a.nombre = 'Visita comercial'
+join public.sub_actividad sa
+  on sa.actividad_id = a.id and sa.nombre = 'Seguimiento'
+join public.actividad_hora ah
+  on ah.tenant_id = a.tenant_id and ah.nombre = '1 hora'
+where d.nombre = 'Guatemala Fixture'
 limit 1;
 
 select tests.reset_claims();
