@@ -201,11 +201,11 @@ git commit -m "feat: backoffice role claim and mandatory TOTP MFA"
 
 Header de fetch: `x-request-id` = `RequestContext.requestId` (UUID). Respuesta error muestra el mismo id.
 
-- [ ] **Step 1: Test `formatError(err)` incluye código GC-**
+- [x] **Step 1: Test `formatError(err)` incluye código GC-**
 
-- [ ] **Step 2: `initSentry` requiere DSN en build (Task 1). Local test puede mockear.
+- [x] **Step 2: `initSentry` requiere DSN en build (Task 1). Local test puede mockear.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: ErrorBoundary, Sentry, and request_id on web clients"

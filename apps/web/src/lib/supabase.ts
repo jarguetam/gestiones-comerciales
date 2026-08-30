@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { credencialesPublicasValidas } from './supabaseEnv'
+import { apiFetch } from './api.ts'
+import { credencialesPublicasValidas } from './supabaseEnv.ts'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -13,5 +14,5 @@ export const SUPABASE_ANON_KEY = supabaseAnonKey
  * Nunca incluir service_role ni keys que no sean la anon (pública por diseño).
  */
 export const supabase: SupabaseClient = BACKEND_CONFIGURADO
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  ? createClient(supabaseUrl!, supabaseAnonKey!, { global: { fetch: apiFetch } })
   : ({} as SupabaseClient)
