@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Login } from '../features/auth/Login'
 import { RecuperarPasswordPage } from '../features/auth/RecuperarPasswordPage'
 import { RequireAuth } from './RequireAuth'
@@ -15,7 +15,7 @@ import { KilometrajePage } from '../features/kilometraje/KilometrajePage'
 import { CatalogosPage } from '../features/configuracion/CatalogosPage'
 import { UsuariosPage } from '../features/usuarios/UsuariosPage'
 import { FormulariosPage } from '../features/formularios/FormulariosPage'
-import { MapaPage } from '../features/mapa/MapaPage'
+const MapaPage = lazy(() => import('../features/mapa/MapaPage'))
 import { AuditoriaPage } from '../features/auditoria/AuditoriaPage'
 import { NotificacionesPage } from '../features/notificaciones/NotificacionesPage'
 import { useDominio } from './DominioContext'
@@ -70,7 +70,9 @@ export default function App() {
           path="/mapa"
           element={
             <RequireRol>
-              <MapaPage />
+              <Suspense fallback={<p className="text-sm text-muted">Cargando mapa…</p>}>
+                <MapaPage />
+              </Suspense>
             </RequireRol>
           }
         />

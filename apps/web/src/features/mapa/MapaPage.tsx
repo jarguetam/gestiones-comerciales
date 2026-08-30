@@ -221,3 +221,5 @@ export function MapaPage() {
     </div>
   )
 }
+
+export default MapaPage
