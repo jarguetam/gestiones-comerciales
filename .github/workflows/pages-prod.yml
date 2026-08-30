@@ -84,3 +84,19 @@ jobs:
       - name: Desplegar a GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Sentry release web + backoffice
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT_WEB: ${{ secrets.SENTRY_PROJECT_WEB }}
+          SENTRY_PROJECT_BACKOFFICE: ${{ secrets.SENTRY_PROJECT_BACKOFFICE }}
+        run: |
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            export SENTRY_DRY_RUN=1
+          else
+            npm i -g @sentry/cli@2
+          fi
+          SHORT="${GITHUB_SHA:0:7}"
+          SENTRY_PROJECT="${SENTRY_PROJECT_WEB:-web}" bash scripts/ops/sentry-release.sh "web@${SHORT}"
+          SENTRY_PROJECT="${SENTRY_PROJECT_BACKOFFICE:-backoffice}" bash scripts/ops/sentry-release.sh "backoffice@${SHORT}"
