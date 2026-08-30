@@ -12,12 +12,12 @@ import {
 import { varsFaltantesSupabase } from '../../lib/supabaseEnv'
 import { BRANDING_DEMO, nombreComercial, varsDeBranding } from '../../lib/branding'
 import { brandingPreLogin } from '../../lib/brandingPreLogin'
-import { requierePasoTotp } from './mfa'
 import { BrandMark } from '../../components/ui/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Field'
 import { Alert } from '../../components/ui/Alert'
 import { mensajeToast } from '../../lib/erroresUi'
+import { loginConAuthGuard } from '../../lib/authGuardLogin'
 import type { CSSProperties } from 'react'
 
 /**
@@ -70,10 +70,8 @@ export function Login() {
     setLoading(true)
     try {
       desactivarSesionDemo()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (requierePasoTotp(aal)) {
+      const { requiresMfa } = await loginConAuthGuard(supabase, email, password)
+      if (requiresMfa) {
         const { data: factors, error: errF } = await supabase.auth.mfa.listFactors()
         if (errF) throw errF
         const totp = factors?.totp?.[0]
