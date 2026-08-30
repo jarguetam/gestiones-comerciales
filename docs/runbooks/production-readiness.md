@@ -26,4 +26,19 @@ Ver PR `cursor/gate-1-security-9de6`. Este checklist no bloquea Gate 2.
 
 ## Gate 3+ — pendiente
 
-Demo runtime, APK/AAB, Sentry/PITR y go-live se cierran en Gates 3–6.
+Demo runtime y Android interno están en PRs #42 y #43. Gate 5 (este) cubre observabilidad y operación.
+
+## Gate 5 — Observabilidad y operación
+
+- [x] `request_id` en las 8 Edge Functions.
+- [x] Releases Sentry en Pages (`web@` / `backoffice@`); workflow `ops-sentry-release.yml`.
+- [x] Probes cada 15 min (`ops-health.yml`) + runbook de incidentes.
+- [x] Rotación HMAC script + runbook (staging primero).
+- [x] PITR assert 7d + dump semanal staging.
+- [x] `auth_evento_stats` sobre `auth_attempts` (Gate 1 traerá `auth_evento`).
+- [x] Purga GPS 180d + compactación anual de auditoría.
+- [x] Política de privacidad + SMTP Auth (sin `emailer`).
+- [x] `SECURITY.md`, `CODEOWNERS`, Dependabot.
+- [ ] PITR verificado en el proyecto real (`enable-pitr.ts` con token).
+- [ ] Probe cron verde en production.
+- [ ] Merge de Gate 3 y Gate 4 (builds reales) antes de cerrar el gate.
