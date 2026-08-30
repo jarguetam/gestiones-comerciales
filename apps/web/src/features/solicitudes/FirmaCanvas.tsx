@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { cancelStroke, endStroke, startStroke, type FirmaStroke } from '../../lib/firmaStroke'
 
 /** Lienzo mínimo de firma (PNG). W-06. */
 export function FirmaCanvas({
@@ -9,7 +10,7 @@ export function FirmaCanvas({
   disabled?: boolean
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
-  const dibujando = useRef(false)
+  const stroke = useRef<FirmaStroke>({ activo: false })
 
   useEffect(() => {
     const canvas = ref.current
@@ -43,7 +44,7 @@ export function FirmaCanvas({
     if (disabled) return
     const ctx = ref.current?.getContext('2d')
     if (!ctx) return
-    dibujando.current = true
+    startStroke(stroke.current)
     const p = pos(e)
     ctx.beginPath()
     ctx.moveTo(p.x, p.y)
@@ -51,7 +52,7 @@ export function FirmaCanvas({
   }
 
   function move(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!dibujando.current || disabled) return
+    if (!stroke.current.activo || disabled) return
     const ctx = ref.current?.getContext('2d')
     if (!ctx) return
     const p = pos(e)
@@ -60,9 +61,14 @@ export function FirmaCanvas({
   }
 
   function up() {
-    if (!dibujando.current) return
-    dibujando.current = false
+    if (!stroke.current.activo) return
+    endStroke(stroke.current)
     emit()
+  }
+
+  function cancel() {
+    if (!stroke.current.activo) return
+    cancelStroke(stroke.current)
   }
 
   function limpiar() {
@@ -86,6 +92,7 @@ export function FirmaCanvas({
         onPointerMove={move}
         onPointerUp={up}
         onPointerLeave={up}
+        onPointerCancel={cancel}
       />
       <button type="button" className="mt-2 text-xs text-muted underline" onClick={limpiar} disabled={disabled}>
         Limpiar firma

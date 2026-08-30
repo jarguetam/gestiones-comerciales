@@ -1,6 +1,8 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
 import { mostrarMapa } from '../src/lib/claims.ts'
+import { colorDeToken } from '../src/lib/mapaTokens.ts'
 import {
   boundsDe,
   coordenadasDe,
@@ -94,4 +96,16 @@ test('boundsDe cubre todos los puntos', () => {
   assert.equal(b.norte, 15)
   assert.equal(b.oeste, -91)
   assert.equal(b.este, -90)
+})
+
+test('colorDeToken cae a ink si no hay DOM', () => {
+  assert.equal(colorDeToken('--gc-primary'), '#111111')
+  assert.equal(colorDeToken('--gc-warn'), '#B45309')
+})
+
+test('MapaLeaflet no pinta hex de marca; usa tokens', () => {
+  const src = readFileSync(new URL('../src/features/mapa/MapaLeaflet.tsx', import.meta.url), 'utf8')
+  assert.match(src, /colorDeToken\('--gc-primary'\)/)
+  assert.equal(src.includes('#6D28D9'), false)
+  assert.equal(src.includes('#7C3AED'), false)
 })
