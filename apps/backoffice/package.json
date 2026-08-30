@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test src/features/**/*.test.ts src/lib/env.test.ts",
+    "test": "node --experimental-strip-types --test src/features/**/*.test.ts src/lib/*.test.ts",
     "test:e2e": "playwright test",
     "lint": "eslint src --max-warnings 9999"
   },
