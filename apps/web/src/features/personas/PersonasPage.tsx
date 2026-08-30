@@ -20,6 +20,7 @@ import {
 } from '../../components/ui'
 import { useToast } from '../../components/ui/Toast'
 import { cn } from '../../lib/cn'
+import { canMutate, useOnline } from '../../lib/online'
 
 interface ReporteImport {
   insertados: number
@@ -29,6 +30,7 @@ interface ReporteImport {
 
 export function PersonasPage() {
   const { personas: personasDominio, setPersonas, abrirNuevaVisita, fuente, branding } = useDominio()
+  const mutar = canMutate(useOnline())
   const live = fuente === 'supabase'
   const q = useQuery({
     queryKey: QK.personas,
@@ -64,6 +66,7 @@ export function PersonasPage() {
   }
 
   async function onArchivo(file: File) {
+    if (!mutar) return
     setError(null)
     setAviso(null)
     setReporte(null)
@@ -138,7 +141,7 @@ export function PersonasPage() {
             <Button variant="secondary" onClick={descargarPlantilla}>
               Plantilla CSV
             </Button>
-            <Button onClick={() => inputRef.current?.click()} disabled={cargando}>
+            <Button onClick={() => inputRef.current?.click()} disabled={cargando || !mutar}>
               {cargando ? 'Importando…' : 'Importar CSV'}
             </Button>
             <input
@@ -205,7 +208,7 @@ export function PersonasPage() {
             <EmptyState
               titulo="Sin coincidencias"
               descripcion="Probá otro término o importá un CSV."
-              cta={{ etiqueta: 'Importar CSV', onClick: () => inputRef.current?.click() }}
+              cta={mutar ? { etiqueta: 'Importar CSV', onClick: () => inputRef.current?.click() } : undefined}
             />
           )}
         </div>

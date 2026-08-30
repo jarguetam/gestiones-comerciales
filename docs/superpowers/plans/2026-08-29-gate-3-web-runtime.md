@@ -293,11 +293,11 @@ export function canMutate(online: boolean): boolean {
 }
 ```
 
-- [ ] **Step 1: Test** `canMutate(false) === false`
+- [x] **Step 1: Test** `canMutate(false) === false`
 
-- [ ] **Step 2: Banner “Sin conexión” + disable check-in/import/invitar. Lectura de caché de sesión OK. **No** service worker (PWA fuera).
+- [x] **Step 2: Banner “Sin conexión” + disable check-in/import/invitar. Lectura de caché de sesión OK. **No** service worker (PWA fuera).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: disable unsafe web mutations while offline"

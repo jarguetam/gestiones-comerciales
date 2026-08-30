@@ -12,6 +12,7 @@ import { cn } from '../lib/cn'
 import type { BrandingTenant } from '../lib/branding'
 import { nombreComercial } from '../lib/branding'
 import { etiquetaVocab } from '../lib/vocabulario'
+import { canMutate, useOnline } from '../lib/online'
 
 type NavItem = { to: string; label: string; end?: boolean; codigo?: string; icon?: IconName }
 
@@ -39,6 +40,8 @@ export function AppShell({
   const location = useLocation()
   const [masAbierto, setMasAbierto] = useState(false)
   const [campanaAbierta, setCampanaAbierta] = useState(false)
+  const online = useOnline()
+  const mutar = canMutate(online)
   const live = fuente === 'supabase'
   const inbox = useNotificaciones(live)
   const email = session?.user?.email ?? '—'
@@ -175,7 +178,7 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita}>
+            <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita} disabled={!mutar}>
               <Icon name="plus" size={14} />
               Nueva visita
             </Button>
@@ -186,6 +189,13 @@ export function AppShell({
           </div>
         </header>
 
+        {!online && (
+          <div className="mx-4 mt-4">
+            <Alert tone="warning" role="status">
+              Sin conexión. Podés leer la jornada en caché; check-in, importar e invitar quedan deshabilitados.
+            </Alert>
+          </div>
+        )}
         {aviso && (
           <div className="mx-4 mt-4">
             <Alert tone="warning">{aviso}</Alert>
@@ -267,7 +277,8 @@ export function AppShell({
       <button
         type="button"
         onClick={onNuevaVisita}
-        className="fixed bottom-[4.75rem] right-3 z-40 inline-flex min-h-14 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-sm md:hidden"
+        disabled={!mutar}
+        className="fixed bottom-[4.75rem] right-3 z-40 inline-flex min-h-14 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-sm disabled:opacity-50 md:hidden"
         aria-label="Nueva visita"
       >
         <Icon name="plus" size={18} />

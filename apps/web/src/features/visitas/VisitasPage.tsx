@@ -37,9 +37,11 @@ import { etiquetaVocab } from '../../lib/vocabulario'
 import type { CalendarEvent } from '../calendar/types'
 import { cn } from '../../lib/cn'
 import { etiquetaLugar, fechaJornada, progresoJornada, visitasDelDia } from '../../lib/jornada'
+import { canMutate, useOnline } from '../../lib/online'
 
 export function VisitasPage() {
   const { eventos, abrirNuevaVisita, fuente, asesores, zonas, branding } = useDominio()
+  const mutar = canMutate(useOnline())
   const live = fuente === 'supabase'
   const [params, setParams] = useSearchParams()
   const filtros = useMemo(() => parseFiltrosVisita(params), [params])
@@ -79,7 +81,7 @@ export function VisitasPage() {
         spec="W-03"
         title={titulo}
         description={`${total} registros`}
-        actions={<Button className="hidden md:inline-flex" onClick={() => abrirNuevaVisita()}>Nueva visita</Button>}
+        actions={<Button className="hidden md:inline-flex" onClick={() => abrirNuevaVisita()} disabled={!mutar}>Nueva visita</Button>}
       />
 
       <JornadaHeader fecha={fecha} pct={jornada.pct} hechas={jornada.hechas} total={jornada.total} />
@@ -153,7 +155,7 @@ export function VisitasPage() {
         <EmptyState
           titulo="No hay visitas con este filtro"
           descripcion="Programá la jornada o importá tu cartera para agendar."
-          cta={{ etiqueta: 'Nueva visita', onClick: () => abrirNuevaVisita() }}
+          cta={mutar ? { etiqueta: 'Nueva visita', onClick: () => abrirNuevaVisita() } : undefined}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">

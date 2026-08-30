@@ -1,5 +1,12 @@
 import { claimsDeUsuario } from './claims'
+import { canMutate } from './online.ts'
 import { supabase } from './supabase'
+
+function exigirOnline() {
+  if (typeof navigator !== 'undefined' && !canMutate(navigator.onLine)) {
+    throw new Error('GC-CORE-001')
+  }
+}
 import type { CalendarEvent } from '../features/calendar/types'
 import type { PersonaItem } from '../features/calendar/personasData'
 import type { GeoDefaults } from './catalogos'
@@ -28,6 +35,7 @@ export async function contextoOperacion(): Promise<{ usuarioId: string; tenantId
 }
 
 export async function persistirPersona(persona: PersonaItem): Promise<PersonaItem> {
+  exigirOnline()
   const ctx = await contextoOperacion()
   const { data, error } = await supabase
     .from('persona')
@@ -39,6 +47,7 @@ export async function persistirPersona(persona: PersonaItem): Promise<PersonaIte
 }
 
 export async function persistirVisita(evento: CalendarEvent, geo: GeoDefaults): Promise<CalendarEvent> {
+  exigirOnline()
   if (!evento.actividadId || !evento.subActividadId) {
     throw new Error('GC-VIS-001: actividad y subactividad requeridas')
   }

@@ -13,6 +13,7 @@ import { varsDeBranding, type BrandingTenant } from '../lib/branding'
 import { guardarBrandingCache } from '../lib/brandingPreLogin'
 import { Alert, Button, KpiSkeleton, TableSkeleton } from '../components/ui'
 import { mensajeToast } from '../lib/erroresUi'
+import { canMutate } from '../lib/online'
 import type { CSSProperties } from 'react'
 import type { AsesorOpcion } from './DominioContext'
 
@@ -80,6 +81,7 @@ export function EmpresaApp() {
   }, [intento])
 
   function abrirNuevaVisita(personaNombre?: string) {
+    if (!canMutate(typeof navigator === 'undefined' || navigator.onLine)) return
     setPersonaInicial(personaNombre ?? '')
     setModalAbierto(true)
   }

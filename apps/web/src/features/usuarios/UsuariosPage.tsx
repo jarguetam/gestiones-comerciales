@@ -6,6 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import { Alert, Button, PageHeader, PAGE, Table, THead, Th, TBody, Tr, Td, Badge } from '../../components/ui'
 import { useToast } from '../../components/ui/Toast'
 import { fieldClass } from '../../components/ui'
+import { canMutate, useOnline } from '../../lib/online'
 
 const ROLES = ['admin', 'gerente', 'supervisor', 'asesor'] as const
 type Rol = (typeof ROLES)[number]
@@ -24,6 +25,7 @@ export function UsuariosPage() {
   const { fuente } = useDominio()
   const { rol: rolAuth, tenantId: tenantAuth } = useAuth()
   const { push } = useToast()
+  const mutar = canMutate(useOnline())
   const live = fuente === 'supabase'
   const rolSesion = rolAuth
   const puedeEditar = rolSesion === 'admin'
@@ -52,7 +54,7 @@ export function UsuariosPage() {
     e.preventDefault()
     setError(null)
     setAviso(null)
-    if (!puedeEditar) return
+    if (!puedeEditar || !mutar) return
     if (password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres')
       return
@@ -129,7 +131,7 @@ export function UsuariosPage() {
             ))}
           </select>
           <input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mín. 8)" className={fieldClass} />
-          <Button type="submit" disabled={enviando}>
+          <Button type="submit" disabled={enviando || !mutar}>
             {enviando ? 'Invitando…' : 'Invitar'}
           </Button>
         </form>
