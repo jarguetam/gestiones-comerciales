@@ -18,13 +18,12 @@ import { MapaPage } from '../features/mapa/MapaPage'
 import { AuditoriaPage } from '../features/auditoria/AuditoriaPage'
 import { NotificacionesPage } from '../features/notificaciones/NotificacionesPage'
 import { useDominio } from './DominioContext'
-import { DEMO_MODE } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { mostrarAuditoria } from '../lib/claims'
 
 function RequiereAdmin({ children }: { children: ReactNode }) {
   const { rol } = useAuth()
-  if (!mostrarAuditoria(rol, DEMO_MODE)) {
+  if (!mostrarAuditoria(rol)) {
     return (
       <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-12">
         <h2 className="text-lg font-semibold mt-1">Solo administradores</h2>
@@ -36,8 +35,8 @@ function RequiereAdmin({ children }: { children: ReactNode }) {
 }
 
 function RequiereModulo({ codigo, children }: { codigo: string; children: ReactNode }) {
-  const { modulos, fuente } = useDominio()
-  if (DEMO_MODE || fuente === 'demo' || modulos.includes(codigo)) return <>{children}</>
+  const { modulos } = useDominio()
+  if (modulos.includes(codigo)) return <>{children}</>
   return (
     <div className="max-w-lg rounded-2xl border border-line bg-surface p-6">
       <h2 className="text-lg font-semibold mt-1">Este módulo no está activo</h2>

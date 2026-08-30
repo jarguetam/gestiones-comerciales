@@ -33,7 +33,6 @@ import {
 } from '../../lib/visitasFiltro'
 import { fetchVisitasPaginadas } from '../../lib/visitasApi'
 import { QK } from '../../lib/queryClient'
-import { DEMO_MODE } from '../../lib/supabase'
 import { etiquetaVocab } from '../../lib/vocabulario'
 import type { CalendarEvent } from '../calendar/types'
 import { cn } from '../../lib/cn'
@@ -41,7 +40,7 @@ import { etiquetaLugar, fechaJornada, progresoJornada, visitasDelDia } from '../
 
 export function VisitasPage() {
   const { eventos, abrirNuevaVisita, fuente, asesores, zonas, branding } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const [params, setParams] = useSearchParams()
   const filtros = useMemo(() => parseFiltrosVisita(params), [params])
   const titulo = etiquetaVocab(branding, 'visita', 'Visitas')

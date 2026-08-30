@@ -58,21 +58,21 @@ export function claimsDeUsuario(
 }
 
 /** W-10: catálogos y branding del tenant. */
-export function mostrarConfiguracion(rol: string | undefined, demo: boolean): boolean {
-  return demo || rol === 'admin'
+export function mostrarConfiguracion(rol: string | undefined): boolean {
+  return rol === 'admin'
 }
 
 /** W-11: estructura comercial. */
-export function mostrarUsuarios(rol: string | undefined, demo: boolean): boolean {
-  return demo || rol === 'admin' || rol === 'gerente'
+export function mostrarUsuarios(rol: string | undefined): boolean {
+  return rol === 'admin' || rol === 'gerente'
 }
 
 /** W-12: log de auditoría. */
-export function mostrarAuditoria(rol: string | undefined, demo: boolean): boolean {
-  return demo || rol === 'admin'
+export function mostrarAuditoria(rol: string | undefined): boolean {
+  return rol === 'admin'
 }
 
 /** W-14: mapa de asesores (última posición + recorrido). */
-export function mostrarMapa(rol: string | undefined, demo: boolean): boolean {
-  return demo || rol === 'admin' || rol === 'gerente' || rol === 'supervisor'
+export function mostrarMapa(rol: string | undefined): boolean {
+  return rol === 'admin' || rol === 'gerente' || rol === 'supervisor'
 }

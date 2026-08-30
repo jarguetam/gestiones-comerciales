@@ -1,4 +1,4 @@
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { mensajeGc } from '../../lib/persistirHelpers'
 
 export interface FilaFunnel {
@@ -18,7 +18,6 @@ export interface ItemActividadLead {
 }
 
 export async function transicionarLead(leadId: string, estadoCodigo: string, motivo?: string): Promise<void> {
-  if (DEMO_MODE) return
   const id = Number(leadId)
   if (!Number.isFinite(id)) throw new Error('GC-CRM-000: lead no encontrado')
   const { error } = await supabase.rpc('lead_transicion', {
@@ -30,7 +29,6 @@ export async function transicionarLead(leadId: string, estadoCodigo: string, mot
 }
 
 export async function fetchCrmFunnel(): Promise<FilaFunnel[] | null> {
-  if (DEMO_MODE) return null
   const { data, error } = await supabase.rpc('crm_funnel')
   if (error) return null
   if (!Array.isArray(data)) return null
@@ -45,7 +43,6 @@ export async function fetchCrmFunnel(): Promise<FilaFunnel[] | null> {
 }
 
 export async function fetchLeadActividad(leadId: string): Promise<ItemActividadLead[]> {
-  if (DEMO_MODE) return []
   const id = Number(leadId)
   if (!Number.isFinite(id)) return []
   const { data, error } = await supabase

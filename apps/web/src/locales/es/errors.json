@@ -1,4 +1,5 @@
 {
+  "GC-CORE-001": "Falta la configuración pública o no se pudo hablar con el backend.",
   "GC-AUTH-001": "No hay sesión activa o falta el tenant.",
   "GC-AUTH-002": "Se requiere el código MFA de tu autenticador.",
   "GC-AUTH-021": "El usuario no tiene tenant asignado.",

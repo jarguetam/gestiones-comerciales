@@ -8,11 +8,11 @@ import {
   type PuntoMapa,
 } from '../../lib/mapa'
 import { mensajeGc } from '../../lib/persistir'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { useAuth } from '../auth/useAuth'
 import { MapaLeaflet } from './MapaLeaflet'
-import { CLIENTES_DEMO, SUPERVISORES_DEMO, puntosDemo, type ClienteMapa, type SupervisorOpcion } from './puntosDemo'
+import { type SupervisorOpcion } from './puntosDemo'
 import { Alert, PageHeader, PAGE, Table, THead, Th, TBody, Tr, Td, EmptyState } from '../../components/ui'
 
 function hoyLocal(): string {
@@ -32,22 +32,20 @@ function horaCorta(iso: string) {
 export function MapaPage() {
   const { fuente } = useDominio()
   const { rol } = useAuth()
-  const puede = mostrarMapa(rol, DEMO_MODE)
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const puede = mostrarMapa(rol)
+  const live = fuente === 'supabase'
   const [fecha, setFecha] = useState(hoyLocal)
-  const [puntos, setPuntos] = useState<PuntoMapa[]>(() => puntosDemo())
-  const [clientes] = useState<ClienteMapa[]>(CLIENTES_DEMO)
-  const [supervisores, setSupervisores] = useState<SupervisorOpcion[]>(SUPERVISORES_DEMO)
+  const [puntos, setPuntos] = useState<PuntoMapa[]>([])
+  const [supervisores, setSupervisores] = useState<SupervisorOpcion[]>([])
   const [equipo, setEquipo] = useState('')
-  const [seleccionado, setSeleccionado] = useState<string | null>('u-luisa')
+  const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     if (!live) {
-      const hoy = hoyLocal()
-      setPuntos(fecha === hoy ? puntosDemo() : [])
-      setSupervisores(SUPERVISORES_DEMO)
-      if (fecha !== hoy) setSeleccionado(null)
+      setPuntos([])
+      setSupervisores([])
+      setSeleccionado(null)
       return
     }
     setError(null)
@@ -134,7 +132,7 @@ export function MapaPage() {
     () => (seleccionado ? recorridoDe(visibles, seleccionado) : []),
     [visibles, seleccionado],
   )
-  const mostrarFiltro = DEMO_MODE || rol === 'gerente' || rol === 'admin'
+  const mostrarFiltro = rol === 'gerente' || rol === 'admin'
 
   if (!puede) {
     return (
@@ -149,12 +147,6 @@ export function MapaPage() {
     <div className={PAGE}>
       <PageHeader spec="W-14" title="Mapa de asesores" description="Última posición y recorrido del día. Teselas OpenStreetMap." />
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
-      {!live && (
-        <Alert tone="warning">
-          Modo demo: recorridos de campo en Escuintla, Guatemala y Quetzaltenango. Sin GPS real.
-        </Alert>
-      )}
-
       <div className="flex flex-wrap gap-3 items-end">
         <div className="text-sm">
           <label htmlFor="mapa-fecha" className="block text-xs text-muted mb-1">
@@ -193,7 +185,7 @@ export function MapaPage() {
       <MapaLeaflet
         ultimas={ultimas}
         recorrido={recorrido}
-        clientes={live ? [] : clientes}
+        clientes={[]}
         seleccionado={seleccionado}
         onSelect={setSeleccionado}
       />

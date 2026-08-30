@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { claimsDeUsuario } from '../../lib/claims'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { BACKEND_CONFIGURADO, supabase } from '../../lib/supabase'
 
 async function perfilDesdeDb(rol?: string, tenantId?: string): Promise<{ rol?: string; tenantId?: string }> {
   const [rolRes, tenantRes] = await Promise.all([
@@ -21,7 +21,7 @@ export function useAuth() {
   const hidratarId = useRef(0)
 
   useEffect(() => {
-    if (DEMO_MODE) {
+    if (!BACKEND_CONFIGURADO) {
       setLoading(false)
       return
     }
@@ -81,7 +81,6 @@ export function useAuth() {
   return {
     session,
     loading,
-    demo: DEMO_MODE,
     rol: claims.rol ?? perfilDb.rol,
     tenantId: claims.tenantId ?? perfilDb.tenantId,
   }

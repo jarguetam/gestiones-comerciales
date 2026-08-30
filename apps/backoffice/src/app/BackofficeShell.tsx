@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BACKEND_CONFIGURADO, desactivarSesionDemo, supabase } from '../lib/supabase'
+import { BACKEND_CONFIGURADO, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { BrandMark } from '../components/ui/BrandMark'
 import { cn } from '../lib/cn'
@@ -13,18 +13,17 @@ const NAV = [
 ]
 
 export function BackofficeShell() {
-  const { session, demo } = useAuth()
+  const { session } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [menu, setMenu] = useState(false)
-  const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
+  const email = session?.user?.email ?? '—'
 
   useEffect(() => {
     setMenu(false)
   }, [location.pathname])
 
   async function cerrarSesion() {
-    desactivarSesionDemo()
     if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     navigate('/login', { replace: true })
   }

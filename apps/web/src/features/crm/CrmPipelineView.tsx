@@ -5,7 +5,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  INITIAL_LEADS,
   LEAD_ESTADOS,
   LEAD_ORIGENES,
   nextLeadId,
@@ -16,7 +15,6 @@ import { quetzales } from '../../lib/formato'
 import { cn } from '../../lib/cn'
 import { useToast } from '../../components/ui/Toast'
 import { mensajeToast } from '../../lib/erroresUi'
-import { DEMO_MODE } from '../../lib/supabase'
 import { useDominio } from '../../app/DominioContext'
 import { QK } from '../../lib/queryClient'
 import { fetchCrmFunnel, fetchLeadActividad, transicionarLead } from './crmApi'
@@ -38,8 +36,8 @@ export function CrmPipelineView({
 }: CrmPipelineViewProps) {
   const { push } = useToast()
   const { fuente } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
-  const [leadsInternos, setLeadsInternos] = useState<LeadItem[]>(INITIAL_LEADS)
+  const live = fuente === 'supabase'
+  const [leadsInternos, setLeadsInternos] = useState<LeadItem[]>([])
   const leads = leadsProp ?? leadsInternos
   const setLeads = (next: LeadItem[]) => {
     if (onChangeLeads) onChangeLeads(next)

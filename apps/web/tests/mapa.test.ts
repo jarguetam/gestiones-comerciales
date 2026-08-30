@@ -21,12 +21,11 @@ function punto(parcial: Partial<PuntoMapa> & Pick<PuntoMapa, 'usuarioId' | 'lat'
 }
 
 test('mostrarMapa: supervisor, gerente y admin; no el asesor', () => {
-  assert.equal(mostrarMapa('admin', false), true)
-  assert.equal(mostrarMapa('gerente', false), true)
-  assert.equal(mostrarMapa('supervisor', false), true)
-  assert.equal(mostrarMapa('asesor', false), false)
-  assert.equal(mostrarMapa(undefined, false), false)
-  assert.equal(mostrarMapa('asesor', true), true)
+  assert.equal(mostrarMapa('admin'), true)
+  assert.equal(mostrarMapa('gerente'), true)
+  assert.equal(mostrarMapa('supervisor'), true)
+  assert.equal(mostrarMapa('asesor'), false)
+  assert.equal(mostrarMapa(undefined), false)
 })
 
 test('coordenadasDe lee GeoJSON Point [lng, lat]', () => {

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useDominio } from '../../app/DominioContext'
 import { parseCsv, PLANTILLA_PERSONAS_CSV } from '../../lib/csv'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { PersonaItem } from '../calendar/personasData'
 import { fetchPersonas } from './personasApi'
@@ -27,24 +27,9 @@ interface ReporteImport {
   errores: Array<{ fila?: number; codigo?: string; mensaje?: string }>
 }
 
-function personaDesdeFila(row: Record<string, string>, id: string): PersonaItem | null {
-  const nombre = row.nombre?.trim()
-  const documento = row.documento?.trim()
-  if (!nombre || !documento) return null
-  return {
-    id,
-    nombre,
-    documento,
-    categoria: row.categoria?.trim() || 'Cliente',
-    telefono: row.telefono?.trim() || '—',
-    direccion: row.direccion?.trim() || '—',
-    visitasPendientes: 0,
-  }
-}
-
 export function PersonasPage() {
   const { personas: personasDominio, setPersonas, abrirNuevaVisita, fuente, branding } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const q = useQuery({
     queryKey: QK.personas,
     queryFn: fetchPersonas,
@@ -88,35 +73,6 @@ export function PersonasPage() {
       const filas = parseCsv(text)
       if (filas.length === 0) {
         setError('GC-IMP-016: el archivo no tiene filas')
-        return
-      }
-
-      const live = !DEMO_MODE && fuente === 'supabase'
-      if (!live) {
-        let insertados = 0
-        let actualizados = 0
-        const errores: ReporteImport['errores'] = []
-        const next = [...personas]
-        filas.forEach((row, i) => {
-          const item = personaDesdeFila(row, `imp-${Date.now()}-${i}`)
-          if (!item) {
-            errores.push({ fila: i + 1, codigo: 'GC-IMP-001', mensaje: 'nombre y documento son obligatorios' })
-            return
-          }
-          const idx = next.findIndex((p) => p.documento === item.documento)
-          if (idx >= 0) {
-            next[idx] = { ...next[idx], ...item, id: next[idx].id }
-            actualizados++
-          } else {
-            next.push(item)
-            insertados++
-          }
-        })
-        setPersonas(next)
-        setReporte({ insertados, actualizados, errores })
-        const msg = `Importación demo: ${insertados} altas, ${actualizados} actualizados, ${errores.length} errores`
-        setAviso(msg)
-        push({ tone: 'success', titulo: msg })
         return
       }
 

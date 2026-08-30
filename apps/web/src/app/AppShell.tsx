@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { mostrarAuditoria, mostrarConfiguracion, mostrarMapa, mostrarUsuarios } from '../lib/claims'
-import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase } from '../lib/supabase'
+import { BACKEND_CONFIGURADO, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { useNotificaciones } from '../features/notificaciones/useNotificaciones'
 import { Button } from '../components/ui/Button'
@@ -34,14 +34,14 @@ export function AppShell({
   onNuevaVisita,
   children,
 }: AppShellProps) {
-  const { session, demo, rol } = useAuth()
+  const { session, rol } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [masAbierto, setMasAbierto] = useState(false)
   const [campanaAbierta, setCampanaAbierta] = useState(false)
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const inbox = useNotificaciones(live)
-  const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
+  const email = session?.user?.email ?? '—'
   const marca = nombreComercial(branding, tenantNombre)
   const noLeidas = inbox.pendientes
 
@@ -58,11 +58,11 @@ export function AppShell({
     { to: '/depositos', label: 'Depósitos', codigo: 'depositos' },
     { to: '/cuentas', label: 'Cuentas', codigo: 'creditos' },
     { to: '/kilometraje', label: 'Kilometraje', codigo: 'kilometraje' },
-    ...(mostrarMapa(rol, DEMO_MODE) ? [{ to: '/mapa', label: 'Mapa' }] : []),
-    ...(mostrarConfiguracion(rol, DEMO_MODE) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
-    ...(mostrarUsuarios(rol, DEMO_MODE) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
-    ...(mostrarAuditoria(rol, DEMO_MODE) ? [{ to: '/auditoria', label: 'Auditoría' }] : []),
-  ].filter((item) => !item.codigo || DEMO_MODE || modulos.includes(item.codigo))
+    ...(mostrarMapa(rol) ? [{ to: '/mapa', label: 'Mapa' }] : []),
+    ...(mostrarConfiguracion(rol) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
+    ...(mostrarUsuarios(rol) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
+    ...(mostrarAuditoria(rol) ? [{ to: '/auditoria', label: 'Auditoría' }] : []),
+  ].filter((item) => !item.codigo || modulos.includes(item.codigo))
 
   const desktopNav: NavItem[] = [
     { to: '/', label: 'Dashboard', end: true },
@@ -82,7 +82,6 @@ export function AppShell({
   }, [location.pathname])
 
   async function cerrarSesion() {
-    desactivarSesionDemo()
     if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     navigate('/login', { replace: true })
   }

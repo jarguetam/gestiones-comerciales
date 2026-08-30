@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { BACKEND_CONFIGURADO, supabase } from '../../lib/supabase'
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      // demo / preview: sin sesión; RequireAuth deja pasar
+    if (!BACKEND_CONFIGURADO) {
       setLoading(false)
       return
     }
 
-    supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
     })
@@ -27,5 +26,5 @@ export function useAuth() {
     return () => subscription.unsubscribe()
   }, [])
 
-  return { session, loading, demo: DEMO_MODE }
+  return { session, loading }
 }

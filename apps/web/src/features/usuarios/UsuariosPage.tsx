@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { mensajeGc } from '../../lib/persistir'
 import { useDominio } from '../../app/DominioContext'
 import { useAuth } from '../auth/useAuth'
@@ -20,20 +20,14 @@ export interface UsuarioEmpresa {
   email: string | null
 }
 
-const DEMO_USUARIOS: UsuarioEmpresa[] = [
-  { id: 'u1', nombre: 'Ana Admin', rol: 'admin', activo: true, jefe_id: null, zona_id: null, email: 'ana@demo.gt' },
-  { id: 'u2', nombre: 'Erick Supervisor', rol: 'supervisor', activo: true, jefe_id: 'u1', zona_id: 1, email: 'erick@demo.gt' },
-  { id: 'u3', nombre: 'Luisa Asesora', rol: 'asesor', activo: true, jefe_id: 'u2', zona_id: 1, email: 'luisa@demo.gt' },
-]
-
 export function UsuariosPage() {
   const { fuente } = useDominio()
   const { rol: rolAuth, tenantId: tenantAuth } = useAuth()
   const { push } = useToast()
-  const live = !DEMO_MODE && fuente === 'supabase'
-  const rolSesion = rolAuth ?? (DEMO_MODE ? 'admin' : undefined)
-  const puedeEditar = DEMO_MODE || rolSesion === 'admin'
-  const [usuarios, setUsuarios] = useState<UsuarioEmpresa[]>(DEMO_USUARIOS)
+  const live = fuente === 'supabase'
+  const rolSesion = rolAuth
+  const puedeEditar = rolSesion === 'admin'
+  const [usuarios, setUsuarios] = useState<UsuarioEmpresa[]>([])
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [email, setEmail] = useState('')
@@ -65,26 +59,6 @@ export function UsuariosPage() {
     }
     setEnviando(true)
     try {
-      if (!live) {
-        setUsuarios((prev) => [
-          ...prev,
-          {
-            id: `u${Date.now()}`,
-            nombre: nombre.trim() || email,
-            rol,
-            activo: true,
-            jefe_id: jefeId || null,
-            zona_id: null,
-            email,
-          },
-        ])
-        setEmail('')
-        setNombre('')
-        setPassword('')
-        setAviso('Usuario agregado (demo)')
-        push({ tone: 'success', titulo: 'Usuario agregado (demo)' })
-        return
-      }
       const tenantId = tenantAuth
       const { data, error } = await supabase.functions.invoke('invitar-usuario', {
         body: {
@@ -117,19 +91,6 @@ export function UsuariosPage() {
   async function gestionar(id: string, accion: string, datos: Record<string, unknown> = {}) {
     setError(null)
     try {
-      if (!live) {
-        setUsuarios((prev) =>
-          prev.map((u) => {
-            if (u.id !== id) return u
-            if (accion === 'activar') return { ...u, activo: true }
-            if (accion === 'desactivar') return { ...u, activo: false }
-            if (accion === 'cambiar_rol') return { ...u, rol: datos.rol as Rol }
-            if (accion === 'cambiar_jefe') return { ...u, jefe_id: (datos.jefe_id as string) || null }
-            return u
-          }),
-        )
-        return
-      }
       const { error } = await supabase.rpc('admin_usuario_gestionar', {
         p_usuario_id: id,
         p_accion: accion,

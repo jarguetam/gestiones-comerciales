@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { CatalogoActividad, CatalogoHora, ZonaCatalogo } from '../../lib/catalogos'
-import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS } from '../calendar/eventsData'
 import { useDominio } from '../../app/DominioContext'
 import {
   Alert,
@@ -25,20 +24,15 @@ import { useToast } from '../../components/ui/Toast'
 import { colorCssValido, logoUrlValido, type BrandingTenant } from '../../lib/branding'
 import { fieldClass } from '../../components/ui'
 
-const ZONAS_DEMO: ZonaCatalogo[] = [
-  { id: 1, codigo: 'Z1', nombre: 'Zona Centro', activo: true },
-  { id: 2, codigo: 'Z2', nombre: 'Zona Sur', activo: true },
-]
-
 type Tab = 'branding' | 'actividades' | 'zonas' | 'horarios' | 'estados' | 'rastreo' | 'plantillas' | 'cors'
 
 export function CatalogosPage() {
   const { fuente } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const live = fuente === 'supabase'
   const [tab, setTab] = useState<Tab>('branding')
-  const [actividades, setActividades] = useState<CatalogoActividad[]>(CATALOGO_ACTIVIDADES)
-  const [zonas, setZonas] = useState<ZonaCatalogo[]>(ZONAS_DEMO)
-  const [horas, setHoras] = useState<CatalogoHora[]>(CATALOGO_HORAS)
+  const [actividades, setActividades] = useState<CatalogoActividad[]>([])
+  const [zonas, setZonas] = useState<ZonaCatalogo[]>([])
+  const [horas, setHoras] = useState<CatalogoHora[]>([])
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
 
