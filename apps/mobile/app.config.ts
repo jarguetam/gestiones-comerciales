@@ -6,6 +6,16 @@ import type { ConfigContext, ExpoConfig } from 'expo/config'
  */
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
+  plugins: [
+    ...(config.plugins ?? []),
+    [
+      '@sentry/react-native/expo',
+      {
+        organization: process.env.SENTRY_ORG ?? 'gestiones-comerciales',
+        project: process.env.SENTRY_PROJECT ?? 'mobile',
+      },
+    ],
+  ],
   extra: {
     ...config.extra,
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,

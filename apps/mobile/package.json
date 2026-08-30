@@ -16,6 +16,7 @@
     "@babel/runtime": "^7.20.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native/assets-registry": "0.74.87",
+    "@sentry/react-native": "~5.31.0",
     "@supabase/supabase-js": "^2.45.0",
     "expo": "~51.0.28",
     "expo-asset": "~10.0.10",
@@ -27,11 +28,11 @@
     "expo-location": "~17.0.1",
     "expo-notifications": "~0.28.16",
     "expo-secure-store": "~13.0.2",
-    "expo-status-bar": "~1.12.1",
-    "react": "18.3.1",
-    "react-native": "0.74.5",
     "expo-sqlite": "~14.0.6",
-    "expo-task-manager": "~11.8.2"
+    "expo-status-bar": "~1.12.1",
+    "expo-task-manager": "~11.8.2",
+    "react": "18.3.1",
+    "react-native": "0.74.5"
   },
   "devDependencies": {
     "@types/react": "~18.3.12",
