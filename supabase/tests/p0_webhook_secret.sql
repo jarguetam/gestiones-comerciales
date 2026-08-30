@@ -4,7 +4,7 @@
 -- ============================================================
 begin;
 set search_path = public, extensions;
-select plan(45);
+select plan(48);
 
 create schema if not exists tests;
 
@@ -425,6 +425,50 @@ select is(
   ),
   '{"otra":"queda"}'::jsonb,
   'la captura concurrente retira solo webhook_secret'
+);
+
+select ok(
+  not coalesce(
+    (
+      select a.cambios -> 'configuracion' ? 'webhook_secret'
+        from public.auditoria a
+       where a.tenant_id = '44444444-0000-0000-0000-000000000005'
+         and a.tabla = 'tenant'
+         and a.accion = 'update'
+       order by a.id desc
+       limit 1
+    ),
+    false
+  ),
+  'auditoría elimina configuracion.webhook_secret'
+);
+
+select is(
+  (
+    select strpos(a.cambios::text, 'capturado-concurrente')
+      from public.auditoria a
+     where a.tenant_id = '44444444-0000-0000-0000-000000000005'
+       and a.tabla = 'tenant'
+       and a.accion = 'update'
+     order by a.id desc
+     limit 1
+  ),
+  0,
+  'auditoría no contiene el plaintext capturado'
+);
+
+select is(
+  (
+    select a.cambios #>> '{configuracion,otra}'
+      from public.auditoria a
+     where a.tenant_id = '44444444-0000-0000-0000-000000000005'
+       and a.tabla = 'tenant'
+       and a.accion = 'update'
+     order by a.id desc
+     limit 1
+  ),
+  'queda',
+  'redacción conserva el resto de configuracion en auditoría'
 );
 
 alter table public.tenant
