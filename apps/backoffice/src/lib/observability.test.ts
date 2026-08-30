@@ -8,7 +8,7 @@ import { initSentry, scrubSentryEvent } from './sentry.ts'
 test('formatError incluye código GC-*', () => {
   const out = formatError(new Error('GC-CORE-001: sin backend'))
   assert.equal(out.code, 'GC-CORE-001')
-  assert.match(out.message, /sin backend|GC-CORE-001/i)
+  assert.match(out.message, /configuración pública|backend|GC-CORE-001/i)
 })
 
 test('formatError adjunta request_id', () => {

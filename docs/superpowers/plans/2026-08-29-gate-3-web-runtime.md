@@ -218,9 +218,9 @@ git commit -m "feat: ErrorBoundary, Sentry, and request_id on web clients"
 **Files:**
 - Modify: `erroresUi.ts` + `errors.json` para `GC-CORE-001` y cada `GcCode` del índice
 
-- [ ] **Step 1: Test** — cada código en `GcCode` tiene entrada JSON
+- [x] **Step 1: Test** — cada código en `GcCode` tiene entrada JSON
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git commit -m "feat: humanize GC-* error codes in the UI"

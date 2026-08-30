@@ -1,21 +1,46 @@
+import catalogoEs from '../locales/es/errors.json' with { type: 'json' }
+
 const CODIGO = /\b(GC-[A-Z]+-\d{3})\b/
+
+const CATALOGO: Record<string, string> = catalogoEs
 
 export function extraerCodigoGc(texto: string): string | null {
   const m = texto.match(CODIGO)
   return m ? m[1] : null
 }
 
-export function formatError(
-  err: unknown,
-  requestId?: string,
-): { message: string; code: string | null; requestId?: string } {
+export function mensajeCatalogo(codigo: string, idioma = 'es'): string | null {
+  if (idioma !== 'es') return null
+  return CATALOGO[codigo] ?? null
+}
+
+export function mensajeToast(err: unknown): { titulo: string; descripcion?: string } {
   const crudo =
     err instanceof Error
       ? err.message
       : typeof err === 'string'
         ? err
-        : 'No se pudo completar la acción'
-  const code = extraerCodigoGc(crudo)
-  const message = crudo.replace(CODIGO, '').replace(/^[:\s—-]+/, '').replace(/[:\s—-]+$/, '').trim() || crudo
-  return { message, code, requestId }
+        : err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+          ? (err as { message: string }).message
+          : 'No se pudo completar la acción'
+  const codigo = extraerCodigoGc(crudo)
+  if (!codigo) return { titulo: crudo }
+  const deCatalogo = mensajeCatalogo(codigo)
+  const humano = crudo.replace(CODIGO, '').replace(/^[:\s—-]+/, '').replace(/[:\s—-]+$/, '').trim()
+  return {
+    titulo: deCatalogo || humano || 'No se pudo completar la acción',
+    descripcion: codigo,
+  }
+}
+
+export function formatError(
+  err: unknown,
+  requestId?: string,
+): { message: string; code: string | null; requestId?: string } {
+  const t = mensajeToast(err)
+  return {
+    message: t.titulo,
+    code: t.descripcion ?? extraerCodigoGc(t.titulo),
+    requestId,
+  }
 }
