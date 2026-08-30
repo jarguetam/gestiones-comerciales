@@ -201,11 +201,11 @@ git commit -m "feat: backoffice role claim and mandatory TOTP MFA"
 
 Header de fetch: `x-request-id` = `RequestContext.requestId` (UUID). Respuesta error muestra el mismo id.
 
-- [ ] **Step 1: Test `formatError(err)` incluye código GC-**
+- [x] **Step 1: Test `formatError(err)` incluye código GC-**
 
-- [ ] **Step 2: `initSentry` requiere DSN en build (Task 1). Local test puede mockear.
+- [x] **Step 2: `initSentry` requiere DSN en build (Task 1). Local test puede mockear.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: ErrorBoundary, Sentry, and request_id on web clients"
@@ -218,9 +218,9 @@ git commit -m "feat: ErrorBoundary, Sentry, and request_id on web clients"
 **Files:**
 - Modify: `erroresUi.ts` + `errors.json` para `GC-CORE-001` y cada `GcCode` del índice
 
-- [ ] **Step 1: Test** — cada código en `GcCode` tiene entrada JSON
+- [x] **Step 1: Test** — cada código en `GcCode` tiene entrada JSON
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git commit -m "feat: humanize GC-* error codes in the UI"
@@ -242,9 +242,9 @@ Flujos mínimos (spec §12.1):
 5. Asesor no accede `/configuracion`
 6. Axe: mismas páginas, sin botón demo
 
-- [ ] **Step 1: Correr Playwright local contra staging; fallan hasta Task 2–4**
+- [x] **Step 1: Correr Playwright local contra staging; fallan hasta Task 2–4**
 
-- [ ] **Step 2: Commit specs verdes**
+- [x] **Step 2: Commit specs verdes**
 
 ```bash
 git commit -m "test: replace demo Playwright flows with staging sessions"
@@ -269,11 +269,11 @@ export async function solicitarReset(email: string): Promise<void> {
 }
 ```
 
-- [ ] **Step 1: Test** — `solicitarReset` llama `resetPasswordForEmail` y no entra demo.
+- [x] **Step 1: Test** — `solicitarReset` llama `resetPasswordForEmail` y no entra demo.
 
-- [ ] **Step 2: Rutas `/recuperar` + form `htmlFor`. Rate limit lo cubre auth-guard.
+- [x] **Step 2: Rutas `/recuperar` + form `htmlFor`. Rate limit lo cubre auth-guard.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: password recovery pages for web and backoffice"
@@ -293,11 +293,11 @@ export function canMutate(online: boolean): boolean {
 }
 ```
 
-- [ ] **Step 1: Test** `canMutate(false) === false`
+- [x] **Step 1: Test** `canMutate(false) === false`
 
-- [ ] **Step 2: Banner “Sin conexión” + disable check-in/import/invitar. Lectura de caché de sesión OK. **No** service worker (PWA fuera).
+- [x] **Step 2: Banner “Sin conexión” + disable check-in/import/invitar. Lectura de caché de sesión OK. **No** service worker (PWA fuera).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: disable unsafe web mutations while offline"
@@ -314,11 +314,11 @@ git commit -m "feat: disable unsafe web mutations while offline"
 
 Presupuesto canónico (ajustar midiendo baseline post-demo): entry JS **≤ 450 kB** gzip, total JS **≤ 900 kB** gzip. Leaflet solo en chunk `mapa`.
 
-- [ ] **Step 1: Test** — `bundle-budget.mjs` falla con fixture 2 MB.
+- [x] **Step 1: Test** — `bundle-budget.mjs` falla con fixture 2 MB.
 
-- [ ] **Step 2: Implement lazy + budget en CI.
+- [x] **Step 2: Implement lazy + budget en CI.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "perf: lazy-load Leaflet and enforce web bundle budget"
@@ -334,11 +334,11 @@ git commit -m "perf: lazy-load Leaflet and enforce web bundle budget"
 - Modify: signature canvas — `pointercancel` aborta trazo
 - Modify: dialogs — `role="dialog"` + focus trap existente del kit `src/components/ui`
 
-- [ ] **Step 1: Test unitario** de firma: `pointercancel` limpia stroke in-progress.
+- [x] **Step 1: Test unitario** de firma: `pointercancel` limpia stroke in-progress.
 
-- [ ] **Step 2: Playwright axe por ruta (`data-spec`).
+- [x] **Step 2: Playwright axe por ruta (`data-spec`).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "fix: axe coverage, map tokens, and signature pointer cancel"
@@ -358,9 +358,9 @@ git commit -m "fix: axe coverage, map tokens, and signature pointer cancel"
 
 `style-src 'unsafe-inline'` permitido (Tailwind runtime/attrs). `script-src` **sin** `unsafe-inline`. Sentry/Pages CDN documentados. Pages no setea headers reales: el meta es el control.
 
-- [ ] **Step 1: Test** — `index.html` no contiene `script-src` con `unsafe-inline`.
+- [x] **Step 1: Test** — `index.html` no contiene `script-src` con `unsafe-inline`.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git commit -m "fix: CSP meta without unsafe-inline scripts"
@@ -376,7 +376,7 @@ git commit -m "fix: CSP meta without unsafe-inline scripts"
 
 No cambiar código por falsos positivos de `persistir.ts` / `CatalogosPage` salvo que el triage los confirme. Fixes reales: secrets en cliente, `dangerouslySetInnerHTML`, keys inestables en listas tocadas.
 
-- [ ] **Step 1: Commit triage + env examples alineados a `requireBuildEnv`
+- [x] **Step 1: Commit triage + env examples alineados a `requireBuildEnv`
 
 ```bash
 git commit -m "docs: React Doctor triage and aligned env examples"

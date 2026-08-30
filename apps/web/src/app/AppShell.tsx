@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { mostrarAuditoria, mostrarConfiguracion, mostrarMapa, mostrarUsuarios } from '../lib/claims'
-import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase } from '../lib/supabase'
+import { BACKEND_CONFIGURADO, supabase } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { useNotificaciones } from '../features/notificaciones/useNotificaciones'
 import { Button } from '../components/ui/Button'
@@ -12,6 +12,7 @@ import { cn } from '../lib/cn'
 import type { BrandingTenant } from '../lib/branding'
 import { nombreComercial } from '../lib/branding'
 import { etiquetaVocab } from '../lib/vocabulario'
+import { canMutate, useOnline } from '../lib/online'
 
 type NavItem = { to: string; label: string; end?: boolean; codigo?: string; icon?: IconName }
 
@@ -34,14 +35,16 @@ export function AppShell({
   onNuevaVisita,
   children,
 }: AppShellProps) {
-  const { session, demo, rol } = useAuth()
+  const { session, rol } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [masAbierto, setMasAbierto] = useState(false)
   const [campanaAbierta, setCampanaAbierta] = useState(false)
-  const live = !DEMO_MODE && fuente === 'supabase'
+  const online = useOnline()
+  const mutar = canMutate(online)
+  const live = fuente === 'supabase'
   const inbox = useNotificaciones(live)
-  const email = session?.user?.email ?? (demo ? 'preview@demo' : '—')
+  const email = session?.user?.email ?? '—'
   const marca = nombreComercial(branding, tenantNombre)
   const noLeidas = inbox.pendientes
 
@@ -58,11 +61,11 @@ export function AppShell({
     { to: '/depositos', label: 'Depósitos', codigo: 'depositos' },
     { to: '/cuentas', label: 'Cuentas', codigo: 'creditos' },
     { to: '/kilometraje', label: 'Kilometraje', codigo: 'kilometraje' },
-    ...(mostrarMapa(rol, DEMO_MODE) ? [{ to: '/mapa', label: 'Mapa' }] : []),
-    ...(mostrarConfiguracion(rol, DEMO_MODE) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
-    ...(mostrarUsuarios(rol, DEMO_MODE) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
-    ...(mostrarAuditoria(rol, DEMO_MODE) ? [{ to: '/auditoria', label: 'Auditoría' }] : []),
-  ].filter((item) => !item.codigo || DEMO_MODE || modulos.includes(item.codigo))
+    ...(mostrarMapa(rol) ? [{ to: '/mapa', label: 'Mapa' }] : []),
+    ...(mostrarConfiguracion(rol) ? [{ to: '/configuracion', label: 'Configuración' }] : []),
+    ...(mostrarUsuarios(rol) ? [{ to: '/usuarios', label: 'Usuarios' }] : []),
+    ...(mostrarAuditoria(rol) ? [{ to: '/auditoria', label: 'Auditoría' }] : []),
+  ].filter((item) => !item.codigo || modulos.includes(item.codigo))
 
   const desktopNav: NavItem[] = [
     { to: '/', label: 'Dashboard', end: true },
@@ -82,7 +85,6 @@ export function AppShell({
   }, [location.pathname])
 
   async function cerrarSesion() {
-    desactivarSesionDemo()
     if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
     navigate('/login', { replace: true })
   }
@@ -176,7 +178,7 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita}>
+            <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita} disabled={!mutar}>
               <Icon name="plus" size={14} />
               Nueva visita
             </Button>
@@ -187,6 +189,13 @@ export function AppShell({
           </div>
         </header>
 
+        {!online && (
+          <div className="mx-4 mt-4">
+            <Alert tone="warning" role="status">
+              Sin conexión. Podés leer la jornada en caché; check-in, importar e invitar quedan deshabilitados.
+            </Alert>
+          </div>
+        )}
         {aviso && (
           <div className="mx-4 mt-4">
             <Alert tone="warning">{aviso}</Alert>
@@ -268,7 +277,8 @@ export function AppShell({
       <button
         type="button"
         onClick={onNuevaVisita}
-        className="fixed bottom-[4.75rem] right-3 z-40 inline-flex min-h-14 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-sm md:hidden"
+        disabled={!mutar}
+        className="fixed bottom-[4.75rem] right-3 z-40 inline-flex min-h-14 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-sm disabled:opacity-50 md:hidden"
         aria-label="Nueva visita"
       >
         <Icon name="plus" size={18} />

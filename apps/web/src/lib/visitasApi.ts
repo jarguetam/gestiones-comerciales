@@ -1,5 +1,5 @@
 import type { CalendarEvent } from '../features/calendar/types'
-import { DEMO_MODE, supabase } from './supabase'
+import { supabase } from './supabase'
 import {
   PAGE_SIZE_VISITAS,
   type FiltrosVisita,
@@ -51,7 +51,6 @@ export async function fetchVisitasPaginadas(
   f: FiltrosVisita,
   pageSize = PAGE_SIZE_VISITAS,
 ): Promise<{ items: CalendarEvent[]; total: number }> {
-  if (DEMO_MODE) return { items: [], total: 0 }
   const from = (f.pagina - 1) * pageSize
   const to = from + pageSize - 1
   let q = supabase

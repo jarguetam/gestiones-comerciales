@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDominio } from '../../app/DominioContext'
 import { camposDe, scorePorcentajeCompletado, validarRespuestas } from '../../lib/formulario'
 import { mensajeGc, persistirFormulario } from '../../lib/persistir'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { Alert, Button, PageHeader, PAGE, Table, TBody, Td, Th, THead, Tr } from '../../components/ui'
 import { FormularioRenderer } from './FormularioRenderer'
-import { PLANTILLAS_DEMO, RESPUESTAS_DEMO, type PlantillaFormulario, type RespuestaFormulario } from './plantillasDemo'
+import { type PlantillaFormulario, type RespuestaFormulario } from './plantillasDemo'
 
 function formatearFecha(iso: string) {
   const d = new Date(iso)
@@ -15,10 +15,10 @@ function formatearFecha(iso: string) {
 
 export function FormulariosPage() {
   const { fuente, personas } = useDominio()
-  const live = !DEMO_MODE && fuente === 'supabase'
-  const [plantillas, setPlantillas] = useState<PlantillaFormulario[]>(PLANTILLAS_DEMO)
-  const [historial, setHistorial] = useState<RespuestaFormulario[]>(RESPUESTAS_DEMO)
-  const [plantillaId, setPlantillaId] = useState<string>(PLANTILLAS_DEMO[0].id)
+  const live = fuente === 'supabase'
+  const [plantillas, setPlantillas] = useState<PlantillaFormulario[]>([])
+  const [historial, setHistorial] = useState<RespuestaFormulario[]>([])
+  const [plantillaId, setPlantillaId] = useState<string>('')
   const [valores, setValores] = useState<Record<string, unknown>>({})
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)

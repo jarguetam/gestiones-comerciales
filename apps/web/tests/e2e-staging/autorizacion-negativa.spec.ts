@@ -34,4 +34,16 @@ test.describe('autorización negativa (staging)', () => {
       await expect(page.getByRole('button', { name: /invitar|crear usuario/i })).toHaveCount(0)
     }
   })
+
+  test('asesor no ve Configuración en la navegación', async ({ page }) => {
+    test.skip(!asesorPassword, 'E2E_ASESOR_PASSWORD requerido en Environment staging')
+    await page.goto('/#/login')
+    await page.getByLabel(/^email$/i).fill(asesorEmail)
+    await page.getByLabel(/^contraseña$/i).fill(asesorPassword)
+    await page.getByRole('button', { name: /^ingresar$/i }).click()
+    await expect(page.getByRole('link', { name: /dashboard|hoy|jornada/i }).first()).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByRole('link', { name: /configuración/i })).toHaveCount(0)
+  })
 })

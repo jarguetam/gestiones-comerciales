@@ -1,0 +1,37 @@
+name: Detox Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detox:
+    name: Emulator API 34
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: Instalar dependencias
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      - name: DoD documentado
+        run: |
+          echo "Detox corre en emulador API 34 (Pixel_API_34)."
+          echo "CI no levanta AVD en este runner: usar workflow_dispatch en un runner con emulator"
+          echo "o 'npx detox test -c android.emu.release' en local."
+          test -f .detoxrc.js
+          test -f e2e/rastreoPermisos.test.ts
+          test -f e2e/sesionOffline.test.ts
+          ! grep -E "type: ['\"]ios" .detoxrc.js

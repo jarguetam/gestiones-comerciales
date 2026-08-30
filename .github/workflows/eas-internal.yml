@@ -1,0 +1,46 @@
+name: EAS Play Internal
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'android-*'
+
+permissions:
+  contents: read
+
+jobs:
+  internal:
+    name: Production AAB + submit Android
+    runs-on: ubuntu-latest
+    environment: eas-android
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Instalar dependencias
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      - name: EAS production AAB
+        run: eas build --platform android --profile production --non-interactive
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      - name: Submit Play Internal Testing
+        run: eas submit --platform android --latest --non-interactive --profile production
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}

@@ -86,8 +86,8 @@ Reglas de negocio en RPC/Edge, no en el cliente. Códigos `GC-*` se muestran al 
 (mensaje humano + código). No migraciones ni Edge desde un cambio de UI salvo que el
 ticket lo pida.
 
-`DEMO_MODE` (sin `VITE_` / `EXPO_PUBLIC_` de Supabase) debe seguir abriendo el preview
-estático.
+Sin `VITE_` / `EXPO_PUBLIC_` de Supabase el build falla (`GC-CORE-001`) y el login
+muestra el código; no hay `DEMO_MODE` ni «Entrar al tablero».
 
 ## Tipos de Supabase
 

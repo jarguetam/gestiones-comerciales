@@ -1,4 +1,4 @@
-/** Deep-links `gestiones://{recurso}/{id}` (spec §3.4). */
+/** Deep-links `gc://` y `gestiones://{recurso}/{id}` (spec §3.4). */
 
 export type TabDeepLink = 'agenda' | 'solicitudes' | 'personas' | 'leads' | 'notificaciones'
 
@@ -7,7 +7,12 @@ export interface DestinoDeepLink {
   id: string
 }
 
-const RE = /^gestiones:\/\/(?:[^/]+\/)?(visita|solicitud|persona|lead)\/([^/?#]+)/i
+const RE = /^(?:gc|gestiones):\/\/(?:[^/]+\/)?(visita|solicitud|persona|lead)\/([^/?#]+)/i
+
+export function esRecuperarPassword(url: string | null | undefined): boolean {
+  if (!url) return false
+  return /^(?:gc|gestiones):\/\/recuperar(?:[/?#]|$)/i.test(url)
+}
 
 export function parseDeepLink(url: string | null | undefined): DestinoDeepLink | null {
   if (!url) return null

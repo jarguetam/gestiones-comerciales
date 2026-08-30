@@ -13,9 +13,9 @@ import {
   View,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
-import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { ejecutarMutacion } from '../lib/sync'
 import { Boton, Campo, Card, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -39,10 +39,6 @@ export default function DepositosScreen({ perfil }: Props) {
   const [fotoUri, setFotoUri] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setItems([{ id: 1, monto: 2500, referencia: 'BOLETA-1044', estado: 'pendiente' }])
-      return
-    }
     const { data } = await supabase
       .from('deposito')
       .select('id, monto, referencia, estado')
@@ -75,22 +71,6 @@ export default function DepositosScreen({ perfil }: Props) {
     const n = Number(monto)
     if (!n || n <= 0) {
       Alert.alert('Monto inválido')
-      return
-    }
-    if (DEMO_MODE) {
-      await encolarYSync(
-        {
-          tipo: 'deposito',
-          payload: { monto: n, referencia: ref || (fotoUri ? 'boleta.jpg' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
-          clienteKey: `deposito:${n}:${Date.now()}`,
-        },
-        ejecutarDemo,
-      )
-      setItems((prev) => [
-        { id: Date.now(), monto: n, referencia: ref || (fotoUri ? 'boleta.jpg' : null), estado: 'pendiente' },
-        ...prev,
-      ])
-      setMostrar(false)
       return
     }
     await encolarYSync(

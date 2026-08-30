@@ -11,34 +11,34 @@ function jwtCon(payload: Record<string, unknown>): string {
 test('admin con app_metadata.rol ve Configuración', () => {
   const claims = claimsDeUsuario({ app_metadata: { rol: 'admin', tenant_id: 't1' } })
   assert.equal(claims.rol, 'admin')
-  assert.equal(mostrarConfiguracion(claims.rol, false), true)
+  assert.equal(mostrarConfiguracion(claims.rol), true)
 })
 
 test('sin claims en app_metadata ni JWT no muestra Configuración', () => {
   const claims = claimsDeUsuario({ app_metadata: {} })
   assert.equal(claims.rol, undefined)
-  assert.equal(mostrarConfiguracion(claims.rol, false), false)
+  assert.equal(mostrarConfiguracion(claims.rol), false)
 })
 
 test('asesor no ve Configuración', () => {
-  assert.equal(mostrarConfiguracion('asesor', false), false)
-  assert.equal(mostrarUsuarios('asesor', false), false)
+  assert.equal(mostrarConfiguracion('asesor'), false)
+  assert.equal(mostrarUsuarios('asesor'), false)
 })
 
 test('gerente ve Usuarios pero no Configuración', () => {
-  assert.equal(mostrarConfiguracion('gerente', false), false)
-  assert.equal(mostrarUsuarios('gerente', false), true)
+  assert.equal(mostrarConfiguracion('gerente'), false)
+  assert.equal(mostrarUsuarios('gerente'), true)
 })
 
-test('demo muestra Configuración aunque no haya rol', () => {
-  assert.equal(mostrarConfiguracion(undefined, true), true)
+test('sin rol no muestra Configuración', () => {
+  assert.equal(mostrarConfiguracion(undefined), false)
 })
 
-test('solo admin ve Auditoría (W-12); en demo también', () => {
-  assert.equal(mostrarAuditoria('admin', false), true)
-  assert.equal(mostrarAuditoria('gerente', false), false)
-  assert.equal(mostrarAuditoria('asesor', false), false)
-  assert.equal(mostrarAuditoria(undefined, true), true)
+test('solo admin ve Auditoría (W-12)', () => {
+  assert.equal(mostrarAuditoria('admin'), true)
+  assert.equal(mostrarAuditoria('gerente'), false)
+  assert.equal(mostrarAuditoria('asesor'), false)
+  assert.equal(mostrarAuditoria(undefined), false)
 })
 
 test('hidrata rol desde la raíz del JWT (hook custom_access_token)', () => {
@@ -46,7 +46,7 @@ test('hidrata rol desde la raíz del JWT (hook custom_access_token)', () => {
   const claims = claimsDeUsuario({ app_metadata: {} }, token)
   assert.equal(claims.rol, 'admin')
   assert.equal(claims.tenantId, 't1')
-  assert.equal(mostrarConfiguracion(claims.rol, false), true)
+  assert.equal(mostrarConfiguracion(claims.rol), true)
 })
 
 test('hidrata rol desde app_metadata embebido en el JWT', () => {

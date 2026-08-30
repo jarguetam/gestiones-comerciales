@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Login } from '../features/auth/Login'
+import { RecuperarPasswordPage } from '../features/auth/RecuperarPasswordPage'
 import { RequireAuth } from './RequireAuth'
 import { EmpresaApp } from './EmpresaApp'
 import { DashboardHome } from '../features/dashboard/DashboardHome'
@@ -14,17 +15,17 @@ import { KilometrajePage } from '../features/kilometraje/KilometrajePage'
 import { CatalogosPage } from '../features/configuracion/CatalogosPage'
 import { UsuariosPage } from '../features/usuarios/UsuariosPage'
 import { FormulariosPage } from '../features/formularios/FormulariosPage'
-import { MapaPage } from '../features/mapa/MapaPage'
+const MapaPage = lazy(() => import('../features/mapa/MapaPage'))
 import { AuditoriaPage } from '../features/auditoria/AuditoriaPage'
 import { NotificacionesPage } from '../features/notificaciones/NotificacionesPage'
 import { useDominio } from './DominioContext'
-import { DEMO_MODE } from '../lib/supabase'
 import { useAuth } from '../features/auth/useAuth'
 import { mostrarAuditoria } from '../lib/claims'
+import { RequireRol } from '../components/RequireRol'
 
 function RequiereAdmin({ children }: { children: ReactNode }) {
   const { rol } = useAuth()
-  if (!mostrarAuditoria(rol, DEMO_MODE)) {
+  if (!mostrarAuditoria(rol)) {
     return (
       <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-12">
         <h2 className="text-lg font-semibold mt-1">Solo administradores</h2>
@@ -36,8 +37,8 @@ function RequiereAdmin({ children }: { children: ReactNode }) {
 }
 
 function RequiereModulo({ codigo, children }: { codigo: string; children: ReactNode }) {
-  const { modulos, fuente } = useDominio()
-  if (DEMO_MODE || fuente === 'demo' || modulos.includes(codigo)) return <>{children}</>
+  const { modulos } = useDominio()
+  if (modulos.includes(codigo)) return <>{children}</>
   return (
     <div className="max-w-lg rounded-2xl border border-line bg-surface p-6">
       <h2 className="text-lg font-semibold mt-1">Este módulo no está activo</h2>
@@ -52,6 +53,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/recuperar" element={<RecuperarPasswordPage />} />
       <Route
         element={
           <RequireAuth>
@@ -64,7 +66,16 @@ export default function App() {
         <Route path="/personas" element={<PersonasPage />} />
         <Route path="/crm" element={<CrmPage />} />
         <Route path="/formularios" element={<FormulariosPage />} />
-        <Route path="/mapa" element={<MapaPage />} />
+        <Route
+          path="/mapa"
+          element={
+            <RequireRol>
+              <Suspense fallback={<p className="text-sm text-muted">Cargando mapa…</p>}>
+                <MapaPage />
+              </Suspense>
+            </RequireRol>
+          }
+        />
         <Route
           path="/solicitudes"
           element={
@@ -101,13 +112,29 @@ export default function App() {
         <Route
           path="/auditoria"
           element={
-            <RequiereAdmin>
-              <AuditoriaPage />
-            </RequiereAdmin>
+            <RequireRol>
+              <RequiereAdmin>
+                <AuditoriaPage />
+              </RequiereAdmin>
+            </RequireRol>
           }
         />
-        <Route path="/configuracion" element={<CatalogosPage />} />
-        <Route path="/usuarios" element={<UsuariosPage />} />
+        <Route
+          path="/configuracion"
+          element={
+            <RequireRol>
+              <CatalogosPage />
+            </RequireRol>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <RequireRol>
+              <UsuariosPage />
+            </RequireRol>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

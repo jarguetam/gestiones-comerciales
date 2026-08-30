@@ -19,7 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { BadgeEstado, Cargando, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 import NuevaVisitaModal from './NuevaVisitaModal'
@@ -64,9 +64,6 @@ export default function LeadsScreen({ perfil }: Props) {
   const [nMonto, setNMonto] = useState('')
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setLeads([]); setEstados([]); setCargando(false); return
-    }
     const [{ data: e }, { data: l }] = await Promise.all([
       supabase.from('lead_estado').select('id, codigo, nombre, orden, es_ganado, es_perdido')
         .eq('activo', true).order('orden'),
@@ -81,7 +78,6 @@ export default function LeadsScreen({ perfil }: Props) {
   useEffect(() => { cargar() }, [cargar])
 
   async function transicion(lead: LeadRow, estadoCod: string) {
-    if (DEMO_MODE) return
     setOcupado(true)
     let motivo: string | undefined
     const destino = estados.find((e) => e.codigo === estadoCod)
@@ -104,7 +100,6 @@ export default function LeadsScreen({ perfil }: Props) {
   }
 
   async function convertir(lead: LeadRow) {
-    if (DEMO_MODE) return
     setOcupado(true)
     const { error } = await supabase.rpc('lead_convertir', { p_lead_id: lead.id })
     setOcupado(false)
@@ -117,7 +112,6 @@ export default function LeadsScreen({ perfil }: Props) {
       Alert.alert('Requerido', 'Nombre y teléfono son requeridos')
       return
     }
-    if (DEMO_MODE) { setMostrarNuevo(false); return }
     setOcupado(true)
     const estadoInicial = estados.find((e) => e.codigo === 'nuevo') ?? estados[0]
     const { error } = await supabase.from('lead').insert({
@@ -169,7 +163,7 @@ export default function LeadsScreen({ perfil }: Props) {
             )
           }}
           ListEmptyComponent={
-            <Vacio titulo={DEMO_MODE ? 'Modo demo: cartera de demostración (sin leads reales).' : 'Sin leads asignados.'} />
+            <Vacio titulo="Sin leads asignados." />
           }
         />
       )}

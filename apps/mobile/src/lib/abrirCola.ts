@@ -1,10 +1,8 @@
 import { persistenciaMemoria, persistenciaSqlite, type ColaPersist, type SqliteRunner } from './colaPersistencia'
-import { DEMO_MODE } from './supabase'
 import * as SQLite from 'expo-sqlite'
 
-/** Abre SQLite nativo; en demo degrada a memoria. */
+/** Abre SQLite nativo; si falla (tests/web) degrada a memoria. */
 export async function abrirPersistenciaCola(): Promise<ColaPersist> {
-  if (DEMO_MODE) return persistenciaMemoria()
   try {
     const db = SQLite.openDatabaseSync('gc-cola.db')
     const runner: SqliteRunner = {

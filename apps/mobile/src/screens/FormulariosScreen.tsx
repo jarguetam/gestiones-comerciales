@@ -18,9 +18,9 @@ import {
   validarRespuestas,
   type CampoEsquema,
 } from '../lib/formulario'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
-import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { ejecutarMutacion } from '../lib/sync'
 import { Boton, Card } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -32,68 +32,18 @@ interface Plantilla {
   calculo: string | null
 }
 
-const DEMO: Plantilla[] = [
-  {
-    id: 'ficha-cultivo',
-    nombre: 'Ficha de cultivo',
-    descripcion: 'Levantamiento en campo del estado del cultivo financiado',
-    calculo: 'porcentaje_completado',
-    esquema: {
-      campos: [
-        { clave: 'cultivo', etiqueta: 'Cultivo', tipo: 'texto', requerido: true },
-        { clave: 'hectareas', etiqueta: 'Hectáreas sembradas', tipo: 'numero', requerido: true, min: 0.1, max: 10000 },
-        {
-          clave: 'estado_fenologico',
-          etiqueta: 'Estado fenológico',
-          tipo: 'seleccion',
-          requerido: true,
-          opciones: ['Germinación', 'Crecimiento', 'Floración', 'Llenado de grano', 'Madurez', 'Cosecha'],
-        },
-        { clave: 'observaciones', etiqueta: 'Observaciones', tipo: 'texto', requerido: false },
-      ],
-    },
-  },
-  {
-    id: 'verificacion-garantias',
-    nombre: 'Verificación de garantías',
-    descripcion: 'Inspección prendaria de activos del crédito',
-    calculo: 'porcentaje_completado',
-    esquema: {
-      campos: [
-        {
-          clave: 'tipo_garantia',
-          etiqueta: 'Tipo de garantía',
-          tipo: 'seleccion',
-          requerido: true,
-          opciones: ['Maquinaria agrícola', 'Vehículo', 'Inventario', 'Inmueble', 'Prenda ganadera'],
-        },
-        {
-          clave: 'estado_conservacion',
-          etiqueta: 'Estado de conservación',
-          tipo: 'seleccion',
-          requerido: true,
-          opciones: ['Excelente', 'Bueno', 'Regular', 'Deteriorado'],
-        },
-        { clave: 'valor_estimado', etiqueta: 'Valor estimado (Q)', tipo: 'numero', requerido: true, min: 0, max: 10000000 },
-        { clave: 'observaciones', etiqueta: 'Observaciones', tipo: 'texto', requerido: false },
-      ],
-    },
-  },
-]
-
 interface Props {
   perfil: Perfil
 }
 
 export default function FormulariosScreen({ perfil }: Props) {
   const t = useTheme()
-  const [plantillas, setPlantillas] = useState<Plantilla[]>(DEMO)
-  const [plantillaId, setPlantillaId] = useState(DEMO[0].id)
+  const [plantillas, setPlantillas] = useState<Plantilla[]>([])
+  const [plantillaId, setPlantillaId] = useState('')
   const [valores, setValores] = useState<Record<string, unknown>>({})
   const [enviando, setEnviando] = useState(false)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) return
     const { data, error } = await supabase
       .from('formulario_plantilla')
       .select('id, nombre, descripcion, esquema, calculo')
@@ -153,9 +103,9 @@ export default function FormulariosScreen({ perfil }: Props) {
           },
           clienteKey: `formulario:${plantilla.id}:${Date.now()}`,
         },
-        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+        ejecutarMutacion(supabase),
       )
-      Alert.alert(DEMO_MODE ? 'Encolado (demo)' : 'Encolado', `Score ${score ?? '—'}%. Revisá la cola de sincronización.`)
+      Alert.alert('Encolado', `Score ${score ?? '—'}%. Revisá la cola de sincronización.`)
       setValores({})
     } finally {
       setEnviando(false)

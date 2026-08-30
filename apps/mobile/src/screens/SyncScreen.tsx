@@ -4,10 +4,10 @@
  */
 import React, { useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { DEMO_MODE, supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useCola } from '../lib/useCola'
 import { sincronizarAhora } from '../lib/colaStore'
-import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { ejecutarMutacion } from '../lib/sync'
 import { Card, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -26,7 +26,7 @@ export default function SyncScreen({ colorPrimario }: Props) {
     setSyncing(true)
     setAviso(null)
     try {
-      const next = await sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
+      const next = await sincronizarAhora(ejecutarMutacion(supabase))
       const r = next.filter((i) => i.estado === 'enviado').length
       setAviso(`Sincronizado. Enviados en cola: ${r}.`)
     } catch (e) {

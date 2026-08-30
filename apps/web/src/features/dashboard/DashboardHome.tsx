@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDominio } from '../../app/DominioContext'
 import { useAuth } from '../auth/useAuth'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import {
-  demoFilasDashboard,
   filasDelEquipo,
   kpisDeFilas,
   puedeDrillDown,
@@ -32,16 +31,16 @@ function filaDeRpc(row: Record<string, unknown>): FilaDashboard {
 export function DashboardHome() {
   const { eventos, personas, leads, tenantNombre, abrirNuevaVisita, fuente, modulos } = useDominio()
   const { rol } = useAuth()
-  const live = !DEMO_MODE && fuente === 'supabase'
-  const [filas, setFilas] = useState<FilaDashboard[]>(demoFilasDashboard())
+  const live = fuente === 'supabase'
+  const [filas, setFilas] = useState<FilaDashboard[]>([])
   const [supervisorId, setSupervisorId] = useState('')
-  const [depositosPendientes, setDepositosPendientes] = useState(2)
-  const [cuentasMora, setCuentasMora] = useState(1)
+  const [depositosPendientes, setDepositosPendientes] = useState(0)
+  const [cuentasMora, setCuentasMora] = useState(0)
   const [cargandoKpi, setCargandoKpi] = useState(live)
 
   useEffect(() => {
     if (!live) {
-      setFilas(demoFilasDashboard())
+      setFilas([])
       setCargandoKpi(false)
       return
     }
@@ -73,7 +72,7 @@ export function DashboardHome() {
     }
   }, [live, rol, modulos])
 
-  const drill = puedeDrillDown(rol, DEMO_MODE)
+  const drill = puedeDrillDown(rol)
   const visibles = useMemo(
     () => filasDelEquipo(filas, drill && supervisorId ? supervisorId : null),
     [filas, drill, supervisorId],
@@ -131,16 +130,16 @@ export function DashboardHome() {
         </article>
         <article className={ESTILO_KPI}>
           <p className="text-xs text-muted">
-            {modulos.includes('depositos') || DEMO_MODE ? 'Depósitos pendientes' : 'Personas'}
+            {modulos.includes('depositos') ? 'Depósitos pendientes' : 'Personas'}
           </p>
           <p className="mt-1.5 text-2xl font-semibold tabular-nums text-ink">
-            {modulos.includes('depositos') || DEMO_MODE ? depositosPendientes : personas.length}
+            {modulos.includes('depositos') ? depositosPendientes : personas.length}
           </p>
         </article>
       </section>
       )}
 
-      {(modulos.includes('creditos') || DEMO_MODE) && (
+      {modulos.includes('creditos') && (
         <p className="text-sm text-muted">
           Cuentas en mora: <span className="font-semibold text-ink">{cuentasMora}</span>
           {leadsAbiertos ? ` · Leads abiertos ${leadsAbiertos}` : ''}

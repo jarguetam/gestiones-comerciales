@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { etiquetaFactor } from './mfa'
 import { Alert, Button, EmptyState, Input, PAGE, PageHeader } from '../../components/ui'
 
@@ -19,10 +19,6 @@ export function MfaPage() {
   const [loading, setLoading] = useState(false)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setFactors([{ id: 'demo', friendlyName: 'Authy (demo)', status: 'verified' }])
-      return
-    }
     const { data, error } = await supabase.auth.mfa.listFactors()
     if (error) {
       setError(error.message)
@@ -40,12 +36,6 @@ export function MfaPage() {
     setAviso(null)
     setLoading(true)
     try {
-      if (DEMO_MODE) {
-        setQr('data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#0f172a"/><text x="60" y="64" fill="#5eead4" text-anchor="middle" font-size="11">DEMO QR</text></svg>'))
-        setFactorId('demo-enroll')
-        setAviso('Preview: escaneá el QR de demostración y verificá con cualquier código.')
-        return
-      }
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: 'GC Backoffice',
@@ -67,14 +57,6 @@ export function MfaPage() {
     setAviso(null)
     setLoading(true)
     try {
-      if (DEMO_MODE) {
-        setQr(null)
-        setFactorId(null)
-        setCodigo('')
-        setAviso('Factor TOTP verificado (demo).')
-        await cargar()
-        return
-      }
       if (!factorId) throw new Error('GC-AUTH-002: no hay factor pendiente')
       const { data: challenge, error: errC } = await supabase.auth.mfa.challenge({ factorId })
       if (errC) throw errC
@@ -100,11 +82,6 @@ export function MfaPage() {
     setError(null)
     setAviso(null)
     try {
-      if (DEMO_MODE) {
-        setFactors((f) => f.filter((x) => x.id !== id))
-        setAviso('Factor eliminado (demo).')
-        return
-      }
       const { error } = await supabase.auth.mfa.unenroll({ factorId: id })
       if (error) throw error
       setAviso('Factor eliminado.')

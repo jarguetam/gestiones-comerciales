@@ -1,0 +1,12 @@
+# Extiende el default de gitleaks. El JWT de abajo es un fixture de tests
+# (mismo valor que ya está en apps/mobile/tests/supabase-env.test.ts en main).
+title = "gestiones-comerciales"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "JWT dummy de unit tests (header.payload.okxx, no es un secreto)"
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJyb2xlIjoiYW5vbiJ9\.okxx''',
+]

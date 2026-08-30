@@ -61,13 +61,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_RELEASE: ${{ github.sha }}
           VITE_ENVIRONMENT: staging
         run: pnpm --filter @gc/web build
 
       - name: Instalar Chromium
         run: pnpm --filter @gc/web exec playwright install --with-deps chromium
 
-      - name: E2E staging (autorización negativa)
+      - name: E2E staging web (sesiones reales)
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
@@ -79,3 +80,25 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E_SUITE: staging
         run: pnpm --filter @gc/web exec playwright test tests/e2e-staging
+
+      - name: Build preview backoffice
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_RELEASE: ${{ github.sha }}
+          VITE_ENVIRONMENT: staging
+        run: pnpm --filter @gc/backoffice build
+
+      - name: E2E staging backoffice (JWT empresa → 403)
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4174
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          E2E_ADMIN_EMAIL: admin@staging.test
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_PLATFORM_EMAIL: ${{ secrets.E2E_PLATFORM_EMAIL }}
+          E2E_PLATFORM_PASSWORD: ${{ secrets.E2E_PLATFORM_PASSWORD }}
+          E2E_SUITE: staging
+        run: pnpm --filter @gc/backoffice exec playwright test tests/e2e-staging

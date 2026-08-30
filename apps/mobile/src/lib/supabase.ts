@@ -4,59 +4,29 @@
  * solo la anon key pública; nunca service_role en el dispositivo.
  *
  * En Expo las variables públicas se exponen como EXPO_PUBLIC_*.
- * En builds de desarrollo nativos, process.env se rellena en build time.
+ * Sin URL/anon key reales el arranque falla con GC-CORE-001.
  */
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
-import { BRANDING_DEMO, brandingDeJson, nombreComercial } from './branding'
+import { brandingDeJson, nombreComercial } from './branding'
 import { claimsEmpresaDe, type Rol } from './claims'
+import { requireMobileEnv } from './env'
 import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
 import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
-import { credencialesPublicasValidas, mensajePreviewSinBackend, varsFaltantesSupabase } from './supabaseEnv'
 
 export { claimsDe, type Rol } from './claims'
 export type { Perfil } from './perfil'
 
-declare const process: { env: Record<string, string | undefined> }
+const { url: supabaseUrl, key: supabaseAnonKey } = requireMobileEnv()
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined
-
-export const BACKEND_CONFIGURADO = credencialesPublicasValidas(supabaseUrl, supabaseAnonKey)
-export const FALTANTES_BACKEND = varsFaltantesSupabase(supabaseUrl, supabaseAnonKey)
-export const MENSAJE_BACKEND = mensajePreviewSinBackend(FALTANTES_BACKEND)
-
-/** Sin keys reales, o el asesor eligió demostración. Mutar solo desde Login/logout. */
-export let DEMO_MODE = !BACKEND_CONFIGURADO
-
-export function activarSesionDemo() {
-  DEMO_MODE = true
-}
-
-export function desactivarSesionDemo() {
-  DEMO_MODE = !BACKEND_CONFIGURADO
-}
-
-export const supabase: SupabaseClient = BACKEND_CONFIGURADO
-  ? createClient(supabaseUrl!, supabaseAnonKey!, {
-      auth: {
-        storage: sesionStorage,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    })
-  : ({} as SupabaseClient)
-
-export const PERFIL_DEMO: Perfil = {
-  id: 'demo-asesor',
-  tenantId: 'demo-tenant',
-  nombre: 'Luisa Asesora',
-  rol: 'asesor',
-  tenantNombre: BRANDING_DEMO.nombre_comercial,
-  modulos: ['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje'],
-  branding: BRANDING_DEMO,
-}
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: sesionStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+})
 
 /**
  * Hidrata tenant/rol como la web: JWT + app_metadata del user,

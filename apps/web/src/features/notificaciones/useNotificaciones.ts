@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { QK } from '../../lib/queryClient'
 import { contarNoLeidas, marcarLeida, type ItemNotificacion } from './notificaciones'
 import { fetchNotificaciones, persistirLeida } from './notificacionesApi'
@@ -14,7 +14,7 @@ export function useNotificaciones(live: boolean) {
   })
 
   useEffect(() => {
-    if (!live || DEMO_MODE) return
+    if (!live) return
     const ch = supabase
       .channel('inbox-notificacion')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notificacion' }, () => {
