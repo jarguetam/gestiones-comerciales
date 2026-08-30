@@ -208,18 +208,10 @@ begin
 end
 $$;
 
--- ADD ... NOT VALID toma el lock DDL solo para metadata. VALIDATE usa un lock
--- compatible con writes normales y hace el scan fuera de ACCESS EXCLUSIVE.
+-- ADD ... NOT VALID toma ACCESS EXCLUSIVE solo para metadata y confirma en
+-- esta migración. El scan ocurre en la migración siguiente.
 alter table public.tenant
   add constraint tenant_configuracion_sin_webhook_secret
   check (not (configuracion ? 'webhook_secret')) not valid;
-
-alter table public.tenant
-  validate constraint tenant_configuracion_sin_webhook_secret;
-
--- El trigger permanente queda como defensa si el constraint se deshabilita
--- durante una futura operación; su función no es invocable por roles API.
-comment on trigger capture_tenant_webhook_secret on public.tenant is
-  'Guard de compatibilidad y defensa para impedir secretos públicos; la función privada no tiene EXECUTE API.';
 
 notify pgrst, 'reload schema';

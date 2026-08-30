@@ -155,6 +155,96 @@ create trigger capture_tenant_webhook_secret
   for each row
   execute function private.capture_tenant_webhook_secret();
 
+-- Compatibilidad del RPC de edición: aplica p_cambios intacto, pero jamás
+-- entrega webhook_secret a auditoría. El trigger de arriba captura y retira el
+-- secreto antes de que esta función registre su copia sanitizada.
+create or replace function public.admin_tenant_actualizar(
+  p_tenant_id uuid,
+  p_cambios jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conf jsonb;
+  v_cambios_auditoria jsonb;
+begin
+  if not (
+    public.es_superadmin()
+    or public.plataforma_puede_operar(p_tenant_id)
+  ) then
+    raise exception 'GC-AUTH-001: requiere rol de plataforma';
+  end if;
+
+  if not exists (
+    select 1
+      from public.tenant
+     where id = p_tenant_id
+  ) then
+    raise exception 'GC-CORE-001: tenant inexistente';
+  end if;
+
+  if p_cambios ? 'dominios' then
+    select configuracion
+           || jsonb_build_object(
+             'dominios_cors',
+             p_cambios -> 'dominios'
+           )
+      into v_conf
+      from public.tenant
+     where id = p_tenant_id;
+  end if;
+
+  update public.tenant
+     set nombre = coalesce(p_cambios ->> 'nombre', nombre),
+         rubro = coalesce(p_cambios ->> 'rubro', rubro),
+         plan = coalesce(p_cambios ->> 'plan', plan),
+         branding = case
+           when p_cambios ? 'branding'
+             then p_cambios -> 'branding'
+           else branding
+         end,
+         configuracion = coalesce(
+           v_conf,
+           case
+             when p_cambios ? 'configuracion'
+               then p_cambios -> 'configuracion'
+             else configuracion
+           end
+         ),
+         activo = coalesce((p_cambios ->> 'activo')::boolean, activo)
+   where id = p_tenant_id;
+
+  if jsonb_typeof(p_cambios) = 'object' then
+    v_cambios_auditoria := p_cambios - 'webhook_secret';
+
+    if jsonb_typeof(p_cambios -> 'configuracion') = 'object' then
+      v_cambios_auditoria := jsonb_set(
+        v_cambios_auditoria,
+        '{configuracion}',
+        (p_cambios -> 'configuracion') - 'webhook_secret',
+        false
+      );
+    end if;
+  else
+    v_cambios_auditoria := p_cambios;
+  end if;
+
+  perform public.registrar_auditoria(
+    p_tenant_id,
+    'tenant',
+    p_tenant_id::text,
+    'update',
+    v_cambios_auditoria
+  );
+end;
+$$;
+
+revoke all on function public.admin_tenant_actualizar(uuid, jsonb) from public;
+grant execute on function public.admin_tenant_actualizar(uuid, jsonb) to authenticated;
+
 -- Conserva nombre, parámetro y RETURNS text del contrato histórico.
 create or replace function public.admin_webhook_rotar_secret(p_tenant_id uuid)
 returns text
