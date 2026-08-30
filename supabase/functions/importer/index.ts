@@ -10,6 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
 import { esXlsx, parseCsv } from "../_shared/csv.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 
 const TIPOS = new Set(["personas", "cuentas", "catalogos"]);
 const RPC: Record<string, string> = {
@@ -42,7 +43,8 @@ function filasDesdeCsv(
   return rows as unknown as Record<string, unknown>[];
 }
 
-Deno.serve(async (req) => {
+serveEdge("importer", async (req) => {
+  const _ctx = readRequestContext(req);
   const pre = handleOptions(req);
   if (pre) return pre;
   if (req.method !== "POST") {

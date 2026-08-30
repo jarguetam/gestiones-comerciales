@@ -8,6 +8,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 
 function generarPassword(): string {
   const bytes = new Uint8Array(12);
@@ -17,7 +18,8 @@ function generarPassword(): string {
   }Aa1!`;
 }
 
-Deno.serve(async (req) => {
+serveEdge("invitar-usuario", async (req) => {
+  const _ctx = readRequestContext(req);
   const preflight = handleOptions(req);
   if (preflight) return preflight;
   if (req.method !== "POST") {

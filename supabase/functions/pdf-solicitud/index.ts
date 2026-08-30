@@ -9,6 +9,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -63,7 +64,8 @@ function simplePdf(lineas: string[]): Uint8Array {
   return new TextEncoder().encode(bodyParts.join(""));
 }
 
-Deno.serve(async (req) => {
+serveEdge("pdf-solicitud", async (req) => {
+  const _ctx = readRequestContext(req);
   const pre = handleOptions(req);
   if (pre) return pre;
   if (req.method !== "POST") {

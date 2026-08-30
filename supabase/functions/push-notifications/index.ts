@@ -11,6 +11,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 import {
   enviarFcm,
   getAccessToken,
@@ -40,7 +41,8 @@ function claimsDe(req: Request): JwtClaims | null {
   }
 }
 
-Deno.serve(async (req) => {
+serveEdge("push-notifications", async (req) => {
+  const _ctx = readRequestContext(req);
   const pre = handleOptions(req);
   if (pre) return pre;
   if (req.method !== "POST") {

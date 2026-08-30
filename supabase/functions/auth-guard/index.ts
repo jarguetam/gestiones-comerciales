@@ -7,6 +7,7 @@
  * → 200 { bloqueado: false } | 429 { bloqueado: true, reintenta_en }
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 
 const WINDOW_MIN = 15;
 const MAX_ATTEMPTS = 5;
@@ -14,7 +15,7 @@ const MAX_ATTEMPTS = 5;
 const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-request-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -25,7 +26,8 @@ function json(body: unknown, status = 200) {
   });
 }
 
-Deno.serve(async (req) => {
+serveEdge("auth-guard", async (req) => {
+  const _ctx = readRequestContext(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
