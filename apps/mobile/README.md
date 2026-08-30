@@ -20,12 +20,12 @@ cp apps/mobile/.env.example apps/mobile/.env
 pnpm --filter @gc/mobile start
 ```
 
-Sin URL/anon key y con `NODE_ENV !== production` la app entra en **modo demo**.
+Sin URL/anon key reales la app no arranca (`GC-CORE-001`). No hay modo demo.
 
 ## Build de producción (EAS)
 
 1. Instalá EAS CLI: `pnpm add -g eas-cli` y `eas login`.
-2. En `apps/mobile`: `eas init` (guarda `extra.eas.projectId` en `app.json`).
+2. `extra.eas.projectId` ya está en `app.json`. Confirmalo con `eas init` en la org Expo (reemplazá el UUID si Expo asigna otro).
 3. Secretos (nunca en git):
 
 ```bash
@@ -34,15 +34,15 @@ eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xcoeipsnykceo
 ```
 
 4. Preview interna (APK): `eas build --profile preview --platform android`
-5. Producción: `eas build --profile production --platform android` (AAB) y `--platform ios`.
-6. Store: `eas submit --profile production` (requiere cuentas Apple Developer + Google Play, privacy policy y captura de pantalla).
+5. Producción Android: `eas build --profile production --platform android` (AAB). iOS queda fuera de Gate 4.
+6. Store: `eas submit --platform android --profile production` (Play Internal Testing; requiere cuenta Google Play).
 
 ## Qué ya cubre el código
 
 - Cola offline persistente (sobrevive kill de la app) por usuario
 - Sesión en SecureStore
 - Permisos de ubicación / cámara / notificaciones para revisión de tiendas
-- Rastreo a nivel de app con toggle y justificación en Ajustes
+- Rastreo a nivel de app (el asesor no puede apagarlo; intervalo en `config_rastreo`)
 - Registro de token FCM en `dispositivo`
 - Deep links `gestiones://visita|{solicitud}/id`
 - Foto de boleta (cámara/galería)

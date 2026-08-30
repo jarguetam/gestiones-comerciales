@@ -16,9 +16,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
+import RecuperarPasswordScreen from './screens/RecuperarPasswordScreen'
 import AgendaScreen from './screens/AgendaScreen'
 import PersonaScreen from './screens/PersonaScreen'
 import LeadsScreen from './screens/LeadsScreen'
@@ -26,19 +26,29 @@ import FormulariosScreen from './screens/FormulariosScreen'
 import SolicitudesScreen from './screens/SolicitudesScreen'
 import DepositosScreen from './screens/DepositosScreen'
 import AjustesScreen from './screens/AjustesScreen'
+import CampoBloqueadoScreen from './screens/CampoBloqueadoScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { suscribirSesion } from './lib/sesion'
+import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
+import { clearCola } from './lib/colaStore'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
-import { demoNotificaciones, contarNoLeidas } from './lib/notificaciones'
+import { contarNoLeidas } from './lib/notificaciones'
 import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
 import { abrirPersistenciaCola } from './lib/abrirCola'
-import { ejecutarDemo, ejecutarMutacion } from './lib/sync'
-import { parseDeepLink } from './lib/deepLink'
+import { ejecutarMutacion } from './lib/sync'
+import { esRecuperarPassword, parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
 import { tokenPushNativo } from './lib/push'
-import { detenerRastreo, iniciarRastreo } from './services/rastreoServicio'
+import { resolveCampoAccess, type CampoAccess } from './services/permisosCampo'
+import {
+  detenerRastreo,
+  iniciarRastreo,
+  leerConfigRastreo,
+  suscribirRastreoAuth,
+} from './services/rastreoServicio'
 import { ThemeProvider, useTheme } from './theme'
 import { Cargando, Icono, Marca, type IconoName } from './components/ui'
 
@@ -65,13 +75,10 @@ const TITULOS: Record<Tab, string> = {
   sync: 'Sincronización',
 }
 
-function claveRastreo(userId: string) {
-  return `gc.rastreo:${userId}`
-}
-
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [listo, setListo] = useState(false)
+  const [recuperar, setRecuperar] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -82,29 +89,38 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      setListo(true)
-      return
+    function aplicar(url: string | null) {
+      if (esRecuperarPassword(url)) setRecuperar(true)
     }
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) {
-        const claims = await resolverClaims(data.session)
-        if (claims) {
-          setPerfil(await cargarPerfil(data.session, claims))
-        }
+    const sub = Linking.addEventListener('url', ({ url }) => aplicar(url))
+    void Linking.getInitialURL().then(aplicar)
+    return () => sub.remove()
+  }, [])
+
+  useEffect(() => {
+    return suscribirSesion(supabase, async (estado, event) => {
+      if (event === 'SIGNED_OUT' || !estado.session) {
+        if (event === 'SIGNED_OUT') setPerfil(null)
+        setListo(true)
+        return
       }
-      setListo(true)
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        const claims = await resolverClaims(estado.session)
+        if (claims) setPerfil(await cargarPerfil(estado.session, claims))
+        else setPerfil(null)
+        setListo(true)
+      }
     })
   }, [])
 
   useEffect(() => {
     if (!perfil) return
     const t = setInterval(() => {
-      void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
+      void sincronizarAhora(ejecutarMutacion(supabase))
     }, 30_000)
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        void sincronizarAhora(DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase))
+        void sincronizarAhora(ejecutarMutacion(supabase))
       }
     })
     return () => {
@@ -119,7 +135,11 @@ export default function App() {
         <Cargando etiqueta="Cargando sesión…" />
       ) : !perfil ? (
         <View style={{ flex: 1 }}>
-          <LoginScreen onLogin={setPerfil} />
+          {recuperar ? (
+            <RecuperarPasswordScreen onVolver={() => setRecuperar(false)} />
+          ) : (
+            <LoginScreen onLogin={setPerfil} onRecuperar={() => setRecuperar(true)} />
+          )}
           <ExpoStatusBar style="dark" />
         </View>
       ) : (
@@ -133,19 +153,14 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const t = useTheme()
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
-  const [rastreoOn, setRastreoOn] = useState(true)
   const [noLeidas, setNoLeidas] = useState(0)
+  const [campo, setCampo] = useState<CampoAccess | null>(null)
+  const [intervaloRastreoMin, setIntervaloRastreoMin] = useState<number | null>(null)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
+  const campoBloqueado = campo === 'blocked_location'
 
   useEffect(() => {
-    void AsyncStorage.getItem(claveRastreo(perfil.id)).then((v) => {
-      setRastreoOn(v !== '0')
-    })
-  }, [perfil.id])
-
-  useEffect(() => {
-    if (DEMO_MODE) return
     let cancel = false
     tokenPushNativo()
       .then((token) => {
@@ -159,16 +174,31 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [perfil.id])
 
   useEffect(() => {
-    if (DEMO_MODE) return
-    if (!rastreoOn) {
-      void detenerRastreo(supabase)
-      return
+    let vivo = true
+    async function refrescarCampo() {
+      const acceso = await resolveCampoAccess()
+      if (!vivo) return
+      setCampo(acceso)
+      if (acceso === 'ok') {
+        await iniciarRastreo(supabase)
+        const cfg = await leerConfigRastreo(supabase)
+        if (vivo) setIntervaloRastreoMin(cfg?.intervalo_min ?? null)
+      } else {
+        await detenerRastreo(supabase)
+      }
     }
-    void iniciarRastreo(supabase)
+    void refrescarCampo()
+    const unsubAuth = suscribirRastreoAuth(supabase)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void refrescarCampo()
+    })
     return () => {
+      vivo = false
+      unsubAuth()
+      sub.remove()
       void detenerRastreo(supabase)
     }
-  }, [perfil.id, rastreoOn])
+  }, [perfil.id])
 
   useEffect(() => {
     function aplicarUrl(url: string | null) {
@@ -182,10 +212,6 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [])
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      setNoLeidas(contarNoLeidas(demoNotificaciones()))
-      return
-    }
     supabase
       .from('notificacion')
       .select('id', { count: 'exact', head: true })
@@ -196,22 +222,16 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   }, [tab])
 
   async function handleLogout() {
-    await detenerRastreo(DEMO_MODE ? undefined : supabase)
-    desactivarSesionDemo()
-    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
+    await detenerRastreo(supabase)
+    await logoutCleanupNativo(supabase, perfil, clearCola)
     onLogout()
   }
 
-  async function handleRastreo(next: boolean) {
-    setRastreoOn(next)
-    await AsyncStorage.setItem(claveRastreo(perfil.id), next ? '1' : '0')
-  }
-
   const extras: { id: Extract<IconoName, 'solicitudes' | 'depositos' | 'ajustes'>; etiqueta: string }[] = [
-    ...(DEMO_MODE || perfil.modulos.includes('solicitudes')
+    ...(perfil.modulos.includes('solicitudes')
       ? [{ id: 'solicitudes' as const, etiqueta: 'Solicitudes' }]
       : []),
-    ...(DEMO_MODE || perfil.modulos.includes('depositos')
+    ...(perfil.modulos.includes('depositos')
       ? [{ id: 'depositos' as const, etiqueta: 'Depósitos' }]
       : []),
     { id: 'ajustes', etiqueta: 'Ajustes' },
@@ -234,9 +254,12 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         </View>
         <TouchableOpacity
           style={[styles.headerBtn, { borderColor: t.line }]}
-          onPress={() => setTab('notificaciones')}
+          onPress={() => {
+            if (!campoBloqueado) setTab('notificaciones')
+          }}
+          disabled={campoBloqueado}
           accessibilityLabel="Notificaciones"
-          accessibilityState={{ selected: tab === 'notificaciones' }}
+          accessibilityState={{ selected: tab === 'notificaciones', disabled: campoBloqueado }}
         >
           <Icono name="inbox" color={t.ink} size={18} />
           {noLeidas > 0 ? (
@@ -247,9 +270,12 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.headerBtn, { borderColor: t.line }]}
-          onPress={() => setTab('sync')}
+          onPress={() => {
+            if (!campoBloqueado) setTab('sync')
+          }}
+          disabled={campoBloqueado}
           accessibilityLabel="Sincronización"
-          accessibilityState={{ selected: tab === 'sync' }}
+          accessibilityState={{ selected: tab === 'sync', disabled: campoBloqueado }}
         >
           <Icono name="cola" color={t.ink} size={18} />
           {pendientes > 0 ? (
@@ -278,31 +304,39 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       ) : null}
 
       <View style={[styles.body, { backgroundColor: t.canvas }]}>
-        {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
-        {tab === 'personas' && <PersonaScreen perfil={perfil} />}
-        {tab === 'leads' && <LeadsScreen perfil={perfil} />}
-        {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}
-        {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
-        {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
-        {tab === 'ajustes' && (
-          <AjustesScreen
-            perfil={perfil}
-            rastreoOn={rastreoOn}
-            onRastreo={(v) => void handleRastreo(v)}
-            onLogout={() => void handleLogout()}
-            onAbrirCola={() => setTab('sync')}
-          />
+        {campo == null ? (
+          <Cargando etiqueta="Comprobando ubicación…" />
+        ) : campoBloqueado ? (
+          <CampoBloqueadoScreen onLogout={() => void handleLogout()} />
+        ) : (
+          <>
+            {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
+            {tab === 'personas' && <PersonaScreen perfil={perfil} />}
+            {tab === 'leads' && <LeadsScreen perfil={perfil} />}
+            {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}
+            {tab === 'solicitudes' && <SolicitudesScreen perfil={perfil} />}
+            {tab === 'depositos' && <DepositosScreen perfil={perfil} />}
+            {tab === 'ajustes' && (
+              <AjustesScreen
+                perfil={perfil}
+                rastreoBloqueado={false}
+                intervaloRastreoMin={intervaloRastreoMin}
+                onLogout={() => void handleLogout()}
+                onAbrirCola={() => setTab('sync')}
+              />
+            )}
+            {tab === 'notificaciones' && (
+              <NotificacionesScreen
+                colorPrimario={t.primary}
+                onDeepLink={(url) => {
+                  const dest = parseDeepLink(url)
+                  if (dest) setTab(dest.tab)
+                }}
+              />
+            )}
+            {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
+          </>
         )}
-        {tab === 'notificaciones' && (
-          <NotificacionesScreen
-            colorPrimario={t.primary}
-            onDeepLink={(url) => {
-              const dest = parseDeepLink(url)
-              if (dest) setTab(dest.tab)
-            }}
-          />
-        )}
-        {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
       </View>
 
       <View style={[styles.tabs, { backgroundColor: t.surface, borderTopColor: t.line }]}>
@@ -312,10 +346,13 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
             <TouchableOpacity
               key={item.id}
               style={styles.tab}
-              onPress={() => setTab(item.id)}
+              onPress={() => {
+                if (!campoBloqueado) setTab(item.id)
+              }}
+              disabled={campoBloqueado}
               accessibilityRole="tab"
               accessibilityLabel={item.etiqueta}
-              accessibilityState={{ selected: activo }}
+              accessibilityState={{ selected: activo, disabled: campoBloqueado }}
             >
               <View style={[styles.tabIndicador, { backgroundColor: activo ? t.primary : 'transparent' }]} />
               <Icono name={item.id} color={activo ? t.primary : t.muted} size={22} />
@@ -327,10 +364,13 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         })}
         <TouchableOpacity
           style={styles.tab}
-          onPress={() => setMas(true)}
+          onPress={() => {
+            if (!campoBloqueado) setMas(true)
+          }}
+          disabled={campoBloqueado}
           accessibilityRole="button"
           accessibilityLabel="Más opciones"
-          accessibilityState={{ selected: masActivo }}
+          accessibilityState={{ selected: masActivo, disabled: campoBloqueado }}
         >
           <View style={[styles.tabIndicador, { backgroundColor: masActivo ? t.primary : 'transparent' }]} />
           <Icono name="mas" color={masActivo ? t.primary : t.muted} size={22} />

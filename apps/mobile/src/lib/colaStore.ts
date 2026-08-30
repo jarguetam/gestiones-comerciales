@@ -1,5 +1,4 @@
 import {
-  demoCola,
   encolar,
   procesarCola,
   type AltaCola,
@@ -42,8 +41,8 @@ export function hidratarCola(inicial: ItemCola[]) {
   publicar(inicial)
 }
 
-export function resetColaDemo() {
-  publicar(demoCola())
+export async function clearCola(_clave?: string) {
+  publicar([])
 }
 
 export function encolarMutacion(alta: AltaCola) {

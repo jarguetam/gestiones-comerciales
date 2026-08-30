@@ -15,10 +15,10 @@ import {
   View,
 } from 'react-native'
 import * as Location from 'expo-location'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import type { Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
-import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { ejecutarMutacion } from '../lib/sync'
 import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
 import { fechaLocalHoy } from '../lib/visita'
 import NuevaVisitaModal from './NuevaVisitaModal'
@@ -33,20 +33,6 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   rechazada: 'Rechazada',
   anulada: 'Anulada',
 }
-
-const DEMO_VISITAS: Visita[] = [
-  {
-    id: 201,
-    persona_nombre: 'Agropecuaria El Triunfo',
-    direccion: 'Km 56 Carretera a Puerto San José',
-    fecha_visita: fechaLocalHoy(),
-    hora_inicio: '08:30:00',
-    estado: 'programada',
-    actividad: 'Verificación de garantías',
-    latitud: 14.3,
-    longitud: -90.78,
-  },
-]
 
 const UMBRAL_GEOCERCA_M = 200
 
@@ -72,8 +58,8 @@ function mapFila(row: Record<string, unknown>): Visita {
 
 export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   const t = useTheme()
-  const [visitas, setVisitas] = useState<Visita[]>(DEMO_MODE ? DEMO_VISITAS : [])
-  const [cargando, setCargando] = useState(!DEMO_MODE)
+  const [visitas, setVisitas] = useState<Visita[]>([])
+  const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
   const [checkinDe, setCheckinDe] = useState<number | null>(null)
   const [checkins, setCheckins] = useState<Set<number>>(new Set())
@@ -82,12 +68,6 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   const [mostrarAlta, setMostrarAlta] = useState(false)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setVisitas(DEMO_VISITAS)
-      setCargando(false)
-      setRefrescando(false)
-      return
-    }
     const hoy = fechaLocalHoy()
     const rpc = await supabase.rpc('visitas_del_dia', { p_fecha: hoy })
     if (!rpc.error && rpc.data) {
@@ -116,7 +96,6 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   }, [cargar])
 
   async function gps(): Promise<{ lat: number; lng: number }> {
-    if (DEMO_MODE) return { lat: 14.6349, lng: -90.5069 }
     const { status } = await Location.requestForegroundPermissionsAsync()
     if (status !== 'granted') throw new Error('GC-RAS-010: permiso de ubicación denegado')
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
@@ -143,11 +122,11 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
           payload: { visitaId: visita.id, latitud: pos.lat, longitud: pos.lng },
           clienteKey: `visita_checkin:${visita.id}`,
         },
-        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+        ejecutarMutacion(supabase),
       )
       setCheckins((prev) => new Set(prev).add(visita.id))
       setMensaje(avisoGeocerca(visita, pos.lat, pos.lng) ?? `Check-in en ${visita.persona_nombre}`)
-      if (!DEMO_MODE) await cargar()
+      await cargar()
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'No se pudo registrar el check-in')
     } finally {
@@ -166,11 +145,11 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
           payload: { visitaId: visita.id, latitud: pos.lat, longitud: pos.lng },
           clienteKey: `visita_completar:${visita.id}`,
         },
-        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+        ejecutarMutacion(supabase),
       )
       setVisitas((prev) => prev.map((v) => (v.id === visita.id ? { ...v, estado: 'completada' } : v)))
       setMensaje(`Visita completada · ${visita.persona_nombre}`)
-      if (!DEMO_MODE) await cargar()
+      await cargar()
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'No se pudo completar')
     } finally {
@@ -269,12 +248,8 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
         }
         ListEmptyComponent={
           <Vacio
-            titulo={DEMO_MODE ? 'Agenda de demostración vacía' : 'Sin visitas programadas para hoy'}
-            descripcion={
-              DEMO_MODE
-                ? 'Agenda de demostración. Si el APK se compiló con EXPO_PUBLIC_SUPABASE_*, ingresá con tu cuenta para ver visitas reales.'
-                : 'Agendá una visita a un cliente de tu cartera o un prospecto.'
-            }
+            titulo="Sin visitas programadas para hoy"
+            descripcion="Agendá una visita a un cliente de tu cartera o un prospecto."
           />
         }
         contentContainerStyle={{ padding: 16, paddingBottom: 96 }}

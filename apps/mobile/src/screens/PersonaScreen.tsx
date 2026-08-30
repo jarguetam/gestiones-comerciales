@@ -13,9 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { DEMO_MODE, supabase, type Perfil } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
-import { ejecutarDemo, ejecutarMutacion } from '../lib/sync'
+import { ejecutarMutacion } from '../lib/sync'
 import type { Persona } from '../lib/tipos'
 import { Cargando, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
@@ -48,20 +48,6 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
   const [categoria, setCategoria] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setPersonas([
-        {
-          id: 1,
-          nombre: 'Agropecuaria El Triunfo',
-          documento: 'NIT-1044',
-          documento_tipo: 'NIT',
-          direccion: 'Km 56 Carretera a Puerto San José',
-          categoria: 'agricultor',
-        },
-      ])
-      setCargando(false)
-      return
-    }
     const { data, error } = await supabase
       .from('persona')
       .select('id, nombre, documento, documento_tipo, direccion, categoria')
@@ -118,21 +104,8 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
           },
           clienteKey: `persona:${documento.trim() || nombre.trim()}:${Date.now()}`,
         },
-        DEMO_MODE ? ejecutarDemo : ejecutarMutacion(supabase),
+        ejecutarMutacion(supabase),
       )
-      if (DEMO_MODE) {
-        setPersonas((prev) => [
-          {
-            id: Date.now(),
-            nombre: nombre.trim(),
-            documento: documento.trim() || null,
-            documento_tipo: 'DPI',
-            direccion: direccion.trim() || null,
-            categoria,
-          },
-          ...prev,
-        ])
-      }
       setNombre('')
       setDocumento('')
       setTelefono('')
@@ -250,7 +223,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
             </View>
           )}
           ListEmptyComponent={
-            <Vacio titulo={DEMO_MODE ? 'Modo demo: cartera de demostración.' : 'No hay registros.'} />
+            <Vacio titulo="No hay registros." />
           }
           contentContainerStyle={{ padding: 16 }}
         />
