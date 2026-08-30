@@ -87,7 +87,9 @@
       "policy": "appVersion"
     },
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "4f8a1c2e-7b93-4d61-a8e0-9c3f5b2d1e70"
+      }
     }
   }
 }

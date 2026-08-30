@@ -43,7 +43,5 @@ apps/web/playwright-report/
 *.apk
 *.aab
 *.ipa
-!apps/mobile/releases/*.apk
-!releases/*.apk
 apps/mobile/android/
 apps/mobile/ios/
