@@ -104,3 +104,9 @@ jobs:
           SHORT="${GITHUB_SHA:0:7}"
           SENTRY_PROJECT="${SENTRY_PROJECT_WEB:-web}" bash scripts/ops/sentry-release.sh "web@${SHORT}"
           SENTRY_PROJECT="${SENTRY_PROJECT_BACKOFFICE:-backoffice}" bash scripts/ops/sentry-release.sh "backoffice@${SHORT}"
+
+      - name: Smoke login (sin demo)
+        env:
+          PAGES_PROD_URL: ${{ steps.deployment.outputs.page_url }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        run: bash scripts/ops/pages-smoke.sh "${PAGES_PROD_URL:-https://jarguetam.github.io/gestiones-comerciales/}"

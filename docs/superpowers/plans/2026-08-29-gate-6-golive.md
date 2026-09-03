@@ -72,9 +72,9 @@ export async function runGolivePreflight(input: {
 
 CLI: combina `gh run list`, `rg DEMO_MODE apps/web/src`, `git ls-files '*.apk'`, output JSON Gate 0.
 
-- [ ] **Step 1: Unit tests** — `ready===false` si cualquier check falla; `true` solo si todos ok
+- [x] **Step 1: Unit tests** — `ready===false` si cualquier check falla; `true` solo si todos ok
 
-- [ ] **Step 2: Implement CLI + commit**
+- [x] **Step 2: Implement CLI + commit**
 
 ```bash
 git commit -m "feat: go-live preflight that blocks promotion on red gates"
@@ -96,11 +96,11 @@ Pasos:
 
 **No** restore a prod.
 
-- [ ] **Step 1: Script exit 0 en dry-run con dump fixture mínimo (SQL `select 1`)**
+- [x] **Step 1: Script exit 0 en dry-run con dump fixture mínimo (SQL `select 1`)**
 
 - [ ] **Step 2: Ejecutar ensayo real cuando exista artifact; adjuntar log al PR de go-live
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "docs: staging restore drill required before production promote"
@@ -124,9 +124,9 @@ Orden de promoción (expand/contract ya en prod schema):
 6. Smoke: `scripts/ops/pages-smoke.sh` contra `https://jarguetam.github.io/gestiones-comerciales/` — login form visible, **no** “Entrar al tablero”, Edge 401 sin JWT.
 7. Sentry release finalize + `gate6-ping` y borrar.
 
-- [ ] **Step 1: Contract test** — `supabase-prod.yml` tiene `environment: production` y `workflow_dispatch` only
+- [x] **Step 1: Contract test** — `supabase-prod.yml` tiene `environment: production` y `workflow_dispatch` only
 
-- [ ] **Step 2: Implement + commit**
+- [x] **Step 2: Implement + commit**
 
 ```bash
 git commit -m "ci: reviewed production promote for db, functions, and Pages"
@@ -146,7 +146,7 @@ Pasos canónicos:
 4. **Android:** Play Internal halt; testers siguen APK preview SHA-1.
 5. **Secret leak:** rotar (Gate 5 script) + invalidar sesiones `auth.users` via Admin API.
 
-- [ ] **Step 1: Commit runbook (no código de down)**
+- [x] **Step 1: Commit runbook (no código de down)**
 
 ```bash
 git commit -m "docs: production rollback without down-migrations"
@@ -162,7 +162,7 @@ git commit -m "docs: production rollback without down-migrations"
 
 Columnas: Gate, PR, CI run, fecha, `ready`.
 
-- [ ] **Step 1: Test contrato README** — no afirma “24 migraciones” ni “pdf-solicitud 404”
+- [x] **Step 1: Test contrato README** — no afirma “24 migraciones” ni “pdf-solicitud 404”
 
 ```ts
 const r = readFileSync("README.md", "utf8");
