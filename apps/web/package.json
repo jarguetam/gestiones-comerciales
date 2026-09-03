@@ -9,6 +9,7 @@
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:qa-paseo": "playwright test tests/qa-paseo/qa-paseo.spec.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "lint": "eslint src --max-warnings 9999"
   },
