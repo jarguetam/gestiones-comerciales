@@ -1,6 +1,9 @@
 -- Expand: overload subordinados(uuid) para dashboard_asesor(p_usuario_id).
 -- Remotos que ya aplicaron 20260826120000 sin el overload lo reciben aquí.
 -- Blank reset también lo define en 20260826120000 (create or replace).
+-- DROP necesario para poder renombrar el parámetro (Postgres no permite
+-- cambiar nombre de parámetro con CREATE OR REPLACE).
+drop function if exists public.subordinados(uuid);
 
 create or replace function public.subordinados(p_raiz uuid)
 returns setof uuid
