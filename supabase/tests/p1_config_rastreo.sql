@@ -33,16 +33,18 @@ select set_config(
   true
 );
 
+-- gerente intenta actualizar (RLS bloquea silenciosamente)
+update public.config_rastreo
+   set intervalo_min = 30
+ where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
+   and dia_semana = 1;
+
 select is(
-  (with upd as (
-    update public.config_rastreo
-       set intervalo_min = 30
-     where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
-       and dia_semana = 1
-    returning 1
-  ) select count(*) from upd),
-  0::bigint,
-  'gerente no puede actualizar config_rastreo (RLS bloquea)'
+  (select intervalo_min from public.config_rastreo
+    where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
+      and dia_semana = 1),
+  15,
+  'gerente no puede actualizar config_rastreo (valor sigue en 15)'
 );
 
 select set_config(
@@ -51,15 +53,18 @@ select set_config(
   true
 );
 
-select ok(
-  (with upd as (
-    update public.config_rastreo
-       set intervalo_min = 20
-     where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
-       and dia_semana = 1
-    returning 1
-  ) select count(*) from upd) > 0,
-  'admin puede actualizar config_rastreo'
+-- admin actualiza
+update public.config_rastreo
+   set intervalo_min = 20
+ where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
+   and dia_semana = 1;
+
+select is(
+  (select intervalo_min from public.config_rastreo
+    where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
+      and dia_semana = 1),
+  20,
+  'admin puede actualizar config_rastreo (valor cambia a 20)'
 );
 
 select * from finish();

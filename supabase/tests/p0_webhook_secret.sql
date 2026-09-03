@@ -303,15 +303,17 @@ select tests.set_claims(
 );
 
 -- admin tenant: RLS bloquea el UPDATE silenciosamente (0 filas), el trigger nunca se dispara.
-select is(
-  (with upd as (
-    update public.tenant
-       set configuracion = configuracion
-                           || '{"webhook_secret":"bypass-admin"}'::jsonb
+update public.tenant
+   set configuracion = configuracion
+                       || '{"webhook_secret":"bypass-admin"}'::jsonb
+ where id = '44444444-0000-0000-0000-000000000005';
+
+select ok(
+  not exists (
+    select 1 from public.tenant
      where id = '44444444-0000-0000-0000-000000000005'
-    returning 1
-  ) select count(*) from upd),
-  0::bigint,
+       and configuracion ? 'webhook_secret'
+  ),
   'el guard rechaza bypass por configuracion de admin tenant (RLS bloquea sin excepción)'
 );
 
