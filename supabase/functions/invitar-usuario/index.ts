@@ -8,7 +8,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
-import { serveEdge } from "../_shared/request_context.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 import {
   invitarUsuario,
   type InviteDeps,
@@ -31,6 +31,7 @@ type InviteRpcClient = {
 };
 
 serveEdge("invitar-usuario", async (req) => {
+  const _ctx = readRequestContext(req);
   const preflight = handleOptions(req);
   if (preflight) return preflight;
 
