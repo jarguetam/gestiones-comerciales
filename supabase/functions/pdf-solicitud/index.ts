@@ -8,7 +8,6 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
-import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -46,7 +45,7 @@ function simplePdf(lineas: string[]): Uint8Array {
     `4 0 obj << /Length ${contenido.length} >> stream\n${contenido}\nendstream\nendobj\n`,
     "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n",
   ];
-  let offset = 9; // "%PDF-1.4\n"
+  let offset = 9;
   const xref = ["xref", "0 6", "0000000000 65535 f "];
   const bodyParts = ["%PDF-1.4\n"];
   for (const o of objs) {
@@ -102,11 +101,9 @@ Deno.serve(async (req) => {
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const userClient = createClient(url, anon, {
       global: { headers: { Authorization: auth } },
     });
-    const admin = createClient(url, service);
 
     const { data: sol, error: errSol } = await userClient
       .from("solicitud")
@@ -114,10 +111,12 @@ Deno.serve(async (req) => {
       .eq("id", solicitudId)
       .maybeSingle();
     if (errSol || !sol) {
-      return json({ error: "GC-SOLI-004: solicitud no encontrada" }, 404);
+      return json({
+        error: "GC-SOLI-001: solicitud no encontrada o sin acceso",
+      }, 404);
     }
 
-    const { data: tenant } = await admin
+    const { data: tenant } = await userClient
       .from("tenant")
       .select("nombre, branding")
       .eq("id", sol.tenant_id)
@@ -127,14 +126,11 @@ Deno.serve(async (req) => {
     const firmaPath = `${sol.tenant_id}/${solicitudId}/${uid}.png`;
     const pdfPath = `${sol.tenant_id}/${solicitudId}/${uid}.pdf`;
 
-    const { error: errUpFirma } = await admin.storage.from("firmas").upload(
-      firmaPath,
-      bytes,
-      {
+    const { error: errUpFirma } = await userClient.storage.from("firmas")
+      .upload(firmaPath, bytes, {
         contentType: "image/png",
         upsert: true,
-      },
-    );
+      });
     if (errUpFirma) {
       return json({ error: "GC-SOLI-013: no se pudo guardar la firma" }, 500);
     }
@@ -149,14 +145,11 @@ Deno.serve(async (req) => {
       `Firmado: ${new Date().toISOString().slice(0, 10)}`,
     ].filter(Boolean));
 
-    const { error: errUpPdf } = await admin.storage.from("documentos").upload(
-      pdfPath,
-      pdf,
-      {
+    const { error: errUpPdf } = await userClient.storage.from("documentos")
+      .upload(pdfPath, pdf, {
         contentType: "application/pdf",
         upsert: true,
-      },
-    );
+      });
     if (errUpPdf) {
       return json({ error: "GC-SOLI-014: no se pudo guardar el PDF" }, 500);
     }
@@ -177,14 +170,7 @@ Deno.serve(async (req) => {
       },
     );
     if (errFirma) {
-      // service_role fallback (p.ej. upsert sin política)
-      await admin.from("solicitud_firma").upsert({
-        solicitud_id: solicitudId,
-        firma_ruta: `firmas/${firmaPath}`,
-        pdf_ruta: `documentos/${pdfPath}`,
-        firmado_por: firmadoPor,
-        firmado_en: new Date().toISOString(),
-      });
+      return json({ error: "GC-SOLI-001: no se pudo registrar la firma" }, 403);
     }
 
     console.log(JSON.stringify({
@@ -195,12 +181,6 @@ Deno.serve(async (req) => {
       resultado: "ok",
     }));
 
-    await registrarInvocacion(admin, {
-      funcion: "pdf-solicitud",
-      ok: true,
-      duracionMs: Date.now() - inicio,
-      tenantId: sol.tenant_id,
-    });
     return json({
       solicitud_id: solicitudId,
       firma_ruta: `firmas/${firmaPath}`,

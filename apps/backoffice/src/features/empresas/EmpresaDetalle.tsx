@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { SUPABASE_URL, supabase } from '../../lib/supabase'
-import { ejemploCurlWebhook, urlWebhookTenant } from './webhook'
+import { BACKEND_CONFIGURADO, SUPABASE_URL, supabase } from '../../lib/supabase'
+import {
+  actualizarWebhookSecretRevelado,
+  ejemploCurlWebhook,
+  urlWebhookTenant,
+  webhookSecretStatusDeRpc,
+  type WebhookSecretRevelado,
+  type WebhookSecretStatus,
+} from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
 import {
   Alert,
@@ -34,7 +41,7 @@ interface TenantDetalle {
   plan: string
   activo: boolean
   branding: { color_primario?: string } | null
-  configuracion: { dominios_cors?: string[]; webhook_secret?: string } | null
+  configuracion: { dominios_cors?: string[] } | null
 }
 
 interface ModuloTenant {
@@ -52,8 +59,36 @@ interface UsuarioTenant {
   email: string | null
 }
 
+const DEMO_DETALLE: Record<string, TenantDetalle> = {
+  demo: {
+    id: 'demo',
+    codigo: 'demo-agromoney',
+    nombre: 'AgroMoney (demo)',
+    rubro: 'agromoney',
+    plan: 'estandar',
+    activo: true,
+    branding: { color_primario: '#0f766e' },
+    configuracion: { dominios_cors: ['app.agromoney.gt'] },
+  },
+  demo2: {
+    id: 'demo2',
+    codigo: 'demo-distri',
+    nombre: 'Distribuidora GT (demo)',
+    rubro: 'distribuidora',
+    plan: 'basico',
+    activo: true,
+    branding: { color_primario: '#1d4ed8' },
+    configuracion: null,
+  },
+}
+
+const DEMO_USERS: UsuarioTenant[] = [
+  { id: 'u1', nombre: 'Ana Admin', rol: 'admin', activo: true, jefe_id: null, zona_id: null, email: 'ana@demo.gt' },
+]
+
 export function EmpresaDetalle() {
   const { id } = useParams<{ id: string }>()
+  const live = BACKEND_CONFIGURADO
   const [tenant, setTenant] = useState<TenantDetalle | null>(null)
   const [modulos, setModulos] = useState<ModuloTenant[]>([])
   const [catalogoModulos, setCatalogoModulos] = useState(MODULOS)
@@ -66,8 +101,10 @@ export function EmpresaDetalle() {
   const [nombre, setNombre] = useState('')
   const [rol, setRol] = useState('asesor')
   const [password, setPassword] = useState('')
-  const [webhookSecret, setWebhookSecret] = useState<string | null>(null)
+  const [webhookSecretRevelado, setWebhookSecretRevelado] = useState<WebhookSecretRevelado | null>(null)
+  const [webhookStatus, setWebhookStatus] = useState<WebhookSecretStatus | null>(null)
   const [rotando, setRotando] = useState(false)
+  const tenantIdActualRef = useRef<string | undefined>(id)
   const webhookUrl = urlWebhookTenant(SUPABASE_URL)
 
   async function copiar(texto: string, etiqueta: string) {
@@ -82,18 +119,29 @@ export function EmpresaDetalle() {
   const cargar = useCallback(async () => {
     if (!id) return
     setError(null)
-    const [tRes, mRes, uRes, catRes] = await Promise.all([
+    setWebhookStatus(null)
+    if (!live) {
+      setTenant(DEMO_DETALLE[id] ?? DEMO_DETALLE.demo)
+      setModulos(MODULOS.map((m) => ({ codigo: m.codigo, activo: m.codigo === 'crm' })))
+      setCatalogoModulos(MODULOS)
+      setUsuarios(DEMO_USERS)
+      setWebhookStatus({
+        tenantId: id,
+        configurado: false,
+        rotadoEn: null,
+        last4: null,
+      })
+      return
+    }
+    const [tRes, mRes, uRes, catRes, webhookRes] = await Promise.all([
       supabase.from('tenant').select('id, codigo, nombre, rubro, plan, activo, branding, configuracion').eq('id', id).maybeSingle(),
       supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('tenant_id', id),
       supabase.rpc('admin_usuarios_tenant', { p_tenant_id: id }),
       supabase.from('modulo').select('codigo, nombre, nucleo').order('codigo'),
+      supabase.rpc('admin_webhook_secret_estado', { p_tenant_id: id }),
     ])
     if (tRes.error) {
       setError(tRes.error.message)
-      return
-    }
-    if (!tRes.data) {
-      setError('Empresa no encontrada')
       return
     }
     setTenant(tRes.data as TenantDetalle)
@@ -110,6 +158,28 @@ export function EmpresaDetalle() {
         (catRes.data as Array<{ codigo: string; nombre: string; nucleo: boolean }>).filter((m) => !m.nucleo),
       )
     }
+    if (webhookRes.error) {
+      setError(webhookRes.error.message)
+    } else {
+      try {
+        setWebhookStatus(webhookSecretStatusDeRpc(webhookRes.data))
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No se pudo interpretar el estado del webhook')
+      }
+    }
+  }, [id, live])
+
+  useEffect(() => {
+    tenantIdActualRef.current = id
+    setWebhookSecretRevelado((actual) =>
+      actualizarWebhookSecretRevelado(actual, { tipo: 'tenant_cambiado' }),
+    )
+
+    return () => {
+      // El estado React se destruye al desmontar; el ref evita que una
+      // respuesta asíncrona tardía vuelva a revelar el secreto.
+      tenantIdActualRef.current = undefined
+    }
   }, [id])
 
   useEffect(() => {
@@ -122,6 +192,10 @@ export function EmpresaDetalle() {
     setAviso(null)
     setGuardando(true)
     try {
+      if (!live) {
+        setAviso('Preview: no se persiste')
+        return
+      }
       const { error } = await supabase.rpc('admin_tenant_actualizar', {
         p_tenant_id: tenant.id,
         p_cambios: {
@@ -145,7 +219,13 @@ export function EmpresaDetalle() {
   async function toggleModulo(codigo: string, activo: boolean) {
     setError(null)
     try {
-      if (!tenant) return
+      if (!live || !tenant) {
+        setModulos((prev) => {
+          const existe = prev.some((m) => m.codigo === codigo)
+          return existe ? prev.map((m) => (m.codigo === codigo ? { ...m, activo } : m)) : [...prev, { codigo, activo }]
+        })
+        return
+      }
       const { error } = await supabase.rpc('admin_modulo_activar', {
         p_tenant_id: tenant.id,
         p_modulo: codigo,
@@ -161,6 +241,18 @@ export function EmpresaDetalle() {
   async function gestionarUsuario(usuarioId: string, accion: string, datos: Record<string, unknown> = {}) {
     setError(null)
     try {
+      if (!live) {
+        setUsuarios((prev) =>
+          prev.map((u) => {
+            if (u.id !== usuarioId) return u
+            if (accion === 'activar') return { ...u, activo: true }
+            if (accion === 'desactivar') return { ...u, activo: false }
+            if (accion === 'cambiar_rol') return { ...u, rol: String(datos.rol) }
+            return u
+          }),
+        )
+        return
+      }
       const { error } = await supabase.rpc('admin_usuario_gestionar', {
         p_usuario_id: usuarioId,
         p_accion: accion,
@@ -177,14 +269,53 @@ export function EmpresaDetalle() {
     if (!tenant) return
     setError(null)
     setAviso(null)
+    setWebhookSecretRevelado((actual) =>
+      actualizarWebhookSecretRevelado(actual, { tipo: 'rotacion_iniciada' }),
+    )
     setRotando(true)
     try {
+      if (!live) {
+        const secret = 'demo-webhook-secret-no-persistido'
+        setWebhookSecretRevelado((actual) =>
+          actualizarWebhookSecretRevelado(actual, {
+            tipo: 'rotacion_exitosa',
+            tenantId: tenant.id,
+            respuesta: secret,
+          }),
+        )
+        setWebhookStatus({
+          tenantId: tenant.id,
+          configurado: true,
+          rotadoEn: new Date().toISOString(),
+          last4: secret.slice(-4),
+        })
+        setAviso('Preview: secreto de demostración (no se persiste)')
+        return
+      }
       const { data, error } = await supabase.rpc('admin_webhook_rotar_secret', {
         p_tenant_id: tenant.id,
       })
       if (error) throw error
-      setWebhookSecret(String(data))
+      if (tenantIdActualRef.current !== tenant.id) return
+
+      setWebhookSecretRevelado((actual) =>
+        actualizarWebhookSecretRevelado(actual, {
+          tipo: 'rotacion_exitosa',
+          tenantId: tenant.id,
+          respuesta: data,
+        }),
+      )
       setAviso('Secreto rotado. Cópialo ahora; no se vuelve a mostrar.')
+
+      const statusRes = await supabase.rpc('admin_webhook_secret_estado', {
+        p_tenant_id: tenant.id,
+      })
+      if (tenantIdActualRef.current !== tenant.id) return
+      if (statusRes.error) {
+        setError(`El secreto se rotó, pero no se pudo actualizar el estado: ${statusRes.error.message}`)
+        return
+      }
+      setWebhookStatus(webhookSecretStatusDeRpc(statusRes.data))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo rotar el secreto')
     } finally {
@@ -202,6 +333,17 @@ export function EmpresaDetalle() {
       return
     }
     try {
+      if (!live) {
+        setUsuarios((prev) => [
+          ...prev,
+          { id: `u${Date.now()}`, nombre: nombre || email, rol, activo: true, jefe_id: null, zona_id: null, email },
+        ])
+        setEmail('')
+        setNombre('')
+        setPassword('')
+        setAviso('Usuario agregado (demo)')
+        return
+      }
       const { data, error } = await supabase.functions.invoke('invitar-usuario', {
         body: { tenant_id: tenant.id, email: email.trim(), nombre: nombre.trim() || email.trim(), rol, password },
       })
@@ -221,22 +363,17 @@ export function EmpresaDetalle() {
   if (!tenant) {
     return (
       <main className={PAGE}>
-        {error ? (
-          <>
-            <Alert tone="danger" role="alert">{error}</Alert>
-            <EmptyState titulo="No se pudo cargar la empresa" descripcion="Revisá el identificador o reintentá más tarde." />
-          </>
-        ) : (
-          <>
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-48 rounded-2xl" />
-          </>
-        )}
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-48 rounded-2xl" />
       </main>
     )
   }
 
   const moduloActivo = (codigo: string) => modulos.find((m) => m.codigo === codigo)?.activo ?? false
+  const webhookSecret =
+    webhookSecretRevelado?.tenantId === tenant.id
+      ? webhookSecretRevelado.secret
+      : null
 
   return (
     <main className={PAGE}>
@@ -356,13 +493,30 @@ export function EmpresaDetalle() {
                 Copiar
               </Button>
             </div>
-            <p className="text-xs text-muted">
-              {tenant.configuracion?.webhook_secret
-                ? 'Hay un secreto configurado. Rotarlo invalida el anterior.'
-                : 'Aún no hay secreto. Generá uno para habilitar el webhook.'}
-            </p>
+            <dl className="grid gap-2 text-xs text-muted sm:grid-cols-3">
+              <div>
+                <dt className="font-medium text-ink">Configurado</dt>
+                <dd>{webhookStatus ? (webhookStatus.configurado ? 'Sí' : 'No') : 'Consultando…'}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">Última rotación</dt>
+                <dd>
+                  {webhookStatus?.rotadoEn
+                    ? new Date(webhookStatus.rotadoEn).toLocaleString('es-GT')
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">Últimos 4</dt>
+                <dd className="font-mono">{webhookStatus?.last4 ? `••••${webhookStatus.last4}` : '—'}</dd>
+              </div>
+            </dl>
             <Button variant="secondary" onClick={() => void rotarWebhook()} disabled={rotando}>
-              {rotando ? 'Rotando…' : 'Rotar secreto HMAC'}
+              {rotando
+                ? 'Rotando…'
+                : webhookStatus?.configurado
+                  ? 'Rotar secreto HMAC'
+                  : 'Crear secreto HMAC'}
             </Button>
             {webhookSecret && (
               <div>
@@ -376,6 +530,16 @@ export function EmpresaDetalle() {
                   />
                   <Button variant="secondary" size="sm" onClick={() => void copiar(webhookSecret, 'Secreto')}>
                     Copiar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setWebhookSecretRevelado((actual) =>
+                        actualizarWebhookSecretRevelado(actual, { tipo: 'descartado' }),
+                      )}
+                  >
+                    Descartar
                   </Button>
                 </div>
               </div>

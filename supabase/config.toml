@@ -48,6 +48,18 @@ enabled = true
 enabled = true
 policy = "per_worker"
 
+# auth-guard: login centralizado, rate limit y CORS propios (sin JWT previo)
+[functions.auth-guard]
+verify_jwt = false
+
+# rastreo-ingesta: JWT del asesor en campo
+[functions.rastreo-ingesta]
+verify_jwt = true
+
+# push-notifications: solo service_role (Task 12)
+[functions.push-notifications]
+verify_jwt = true
+
 # pdf-solicitud se autentica con JWT del usuario (firma + PDF)
 [functions.pdf-solicitud]
 verify_jwt = true

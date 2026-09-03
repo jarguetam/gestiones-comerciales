@@ -1,96 +1,149 @@
 /**
  * Edge Function: invitar-usuario
- * Crea el auth user (service_role) y lo da de alta en public.usuario
- * vía admin_usuario_invitar (permiso del JWT del invitador).
+ * Autoriza a un superadmin de plataforma con AAL2, crea el usuario Auth y
+ * después da de alta su perfil mediante admin_usuario_invitar.
  *
  * POST { tenant_id, email, nombre, rol, password, jefe_id?, zona_id? }
- * Auth: JWT (verify_jwt). Superadmin de plataforma o admin del tenant.
+ * Auth: JWT verificado. Solo usuario_plataforma.es_superadmin con AAL2.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { handleOptions, json } from "../_shared/cors.ts";
+import { corsHeaders, handleOptions } from "../_shared/cors.ts";
+import {
+  invitarUsuario,
+  type InviteDeps,
+  InviteError,
+  requireActorFromBearer,
+} from "./invitar.ts";
 
-function generarPassword(): string {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  return `${
-    Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
-  }Aa1!`;
-}
+type InviteRpcClient = {
+  rpc: (
+    name: "admin_usuario_invitar",
+    args: {
+      p_tenant_id: string;
+      p_email: string;
+      p_rol: string;
+      p_jefe_id: string | null;
+      p_nombre: string;
+      p_zona_id: number | null;
+    },
+  ) => Promise<{ error: { message: string } | null }>;
+};
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req);
   if (preflight) return preflight;
-  if (req.method !== "POST") {
-    return json({ error: "GC-AUTH-010: método no permitido" }, 405);
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return json({ error: "GC-AUTH-001: sin autorización" }, 401);
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  const userClient = createClient(url, anon, {
-    global: { headers: { Authorization: authHeader } },
-  });
   const admin = createClient(url, service);
+  let userClient: ReturnType<typeof createClient> | undefined;
 
-  try {
-    const body = await req.json() as {
-      tenant_id?: string;
-      email?: string;
-      nombre?: string;
-      rol?: string;
-      password?: string;
-      jefe_id?: string | null;
-      zona_id?: number | null;
-    };
+  const deps: InviteDeps = {
+    requireActor: async (request) => {
+      const authHeader = request.headers.get("Authorization");
+      if (!authHeader) {
+        throw new InviteError("GC-AUTH-001: sin autorización", 401);
+      }
 
-    const email = body.email?.trim().toLowerCase();
-    const tenantId = body.tenant_id;
-    const rol = body.rol ?? "asesor";
-    if (!email || !tenantId) {
-      return json({ error: "GC-AUTH-011: tenant_id y email requeridos" }, 400);
-    }
-
-    const generado = !body.password || body.password.length < 8;
-    const password = generado ? generarPassword() : body.password!;
-
-    const { data: created, error: createErr } = await admin.auth.admin
-      .createUser({
+      userClient = createClient(url, anon, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      return await requireActorFromBearer(request, {
+        getUser: (jwt) => userClient!.auth.getUser(jwt),
+        getAuthenticatorAssuranceLevel: (jwt) =>
+          userClient!.auth.mfa.getAuthenticatorAssuranceLevel(jwt),
+      });
+    },
+    isPlatformSuperadmin: async (userId) => {
+      const { data, error } = await admin
+        .from("usuario_plataforma")
+        .select("id")
+        .eq("id", userId)
+        .eq("es_superadmin", true)
+        .eq("activo", true)
+        .maybeSingle();
+      if (error) {
+        throw new InviteError(
+          "GC-AUTH-012: no se pudo verificar la autorización",
+          500,
+        );
+      }
+      return data !== null;
+    },
+    isTenantActive: async (tenantId) => {
+      const { data, error } = await admin
+        .from("tenant")
+        .select("id")
+        .eq("id", tenantId)
+        .eq("activo", true)
+        .maybeSingle();
+      if (error) {
+        throw new InviteError(
+          "GC-AUTH-012: no se pudo verificar el tenant",
+          500,
+        );
+      }
+      return data !== null;
+    },
+    createUser: async ({ email, password, metadata }) => {
+      const { data, error } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { nombre: body.nombre ?? email },
+        user_metadata: metadata,
       });
-
-    if (createErr && !/already|exists|registered/i.test(createErr.message)) {
-      return json({ error: `GC-AUTH-003: ${createErr.message}` }, 400);
-    }
-
-    const { data: invited, error: invErr } = await userClient.rpc(
-      "admin_usuario_invitar",
-      {
-        p_tenant_id: tenantId,
-        p_email: email,
-        p_rol: rol,
-        p_nombre: body.nombre ?? email,
-        p_jefe_id: body.jefe_id ?? null,
-        p_zona_id: body.zona_id ?? null,
-      },
-    );
-
-    if (invErr) {
-      return json({ error: invErr.message }, 400);
-    }
-
-    return json({
-      id: invited ?? created?.user?.id,
+      if (error || !data.user) {
+        throw new InviteError(
+          "GC-AUTH-012: no se pudo crear el usuario de autenticación",
+          500,
+        );
+      }
+      return { id: data.user.id };
+    },
+    inviteProfile: async ({
+      tenantId,
       email,
-      password_temporal: generado ? password : undefined,
-    });
-  } catch (_e) {
-    return json({ error: "GC-AUTH-013: payload inválido" }, 400);
+      rol,
+      nombre,
+      jefeId,
+      zonaId,
+    }) => {
+      if (!userClient) {
+        throw new InviteError("GC-AUTH-001: sin autorización", 401);
+      }
+      const { error } = await (userClient as unknown as InviteRpcClient).rpc(
+        "admin_usuario_invitar",
+        {
+          p_tenant_id: tenantId,
+          p_email: email,
+          p_rol: rol,
+          p_jefe_id: jefeId,
+          p_nombre: nombre,
+          p_zona_id: zonaId,
+        },
+      );
+      if (error) throw new Error(error.message);
+    },
+    deleteUser: async (id) => {
+      const { error } = await admin.auth.admin.deleteUser(id);
+      if (error) {
+        throw new InviteError(
+          "GC-AUTH-012: no se pudo revertir el usuario de autenticación",
+          500,
+        );
+      }
+    },
+    log: (entry) => {
+      const line = JSON.stringify(entry);
+      if (entry.outcome === "error") console.error(line);
+      else console.log(line);
+    },
+  };
+
+  const response = await invitarUsuario(deps, req);
+  for (const [name, value] of Object.entries(corsHeaders)) {
+    response.headers.set(name, value);
   }
+  return response;
 });

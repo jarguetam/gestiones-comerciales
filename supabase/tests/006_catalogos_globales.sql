@@ -57,7 +57,7 @@ insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
 on conflict (id) do update set es_superadmin = true, activo = true;
 
 select set_config('request.jwt.claims',
-  json_build_object('plataforma', true, 'superadmin', true,
+  json_build_object('plataforma', true, 'superadmin', true, 'aal', 'aal2',
                     'sub', 'cccccccc-0000-0000-0000-000000000005')::text, true);
 select set_config('role', 'authenticated', true);
 
@@ -89,7 +89,7 @@ select ok(
   'alta de departamento queda en auditoría'
 );
 select set_config('request.jwt.claims',
-  json_build_object('plataforma', true, 'superadmin', true,
+  json_build_object('plataforma', true, 'superadmin', true, 'aal', 'aal2',
                     'sub', 'cccccccc-0000-0000-0000-000000000005')::text, true);
 select set_config('role', 'authenticated', true);
 
@@ -181,3 +181,5 @@ select throws_ok(
 select tests.reset_claims();
 select * from finish();
 rollback;
+
+
