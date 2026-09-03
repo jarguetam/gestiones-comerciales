@@ -16,6 +16,7 @@
     "test": "pnpm -r test",
     "lint": "eslint apps/web/src apps/backoffice/src apps/mobile/src --max-warnings 9999",
     "ops:preflight": "node --experimental-strip-types scripts/ops/preflight.ts",
+    "ops:golive": "node --experimental-strip-types scripts/ops/golive-preflight.ts",
     "test:contracts": "node --experimental-strip-types --test tests/*.test.ts scripts/ci/*.test.ts scripts/ops/*.test.ts"
   },
   "pnpm": {

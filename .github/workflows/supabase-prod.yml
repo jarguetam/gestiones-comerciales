@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   deploy:
@@ -32,6 +33,12 @@ jobs:
 
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
+
+      - name: Go-live preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: node --experimental-strip-types scripts/ops/golive-preflight.ts
 
       - name: Verificar secretos de producción
         env:

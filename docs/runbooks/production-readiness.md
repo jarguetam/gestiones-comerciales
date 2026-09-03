@@ -86,4 +86,24 @@ node --experimental-strip-types --test scripts/ops/*.test.ts
 
 ## Gate 6 — Go-live
 
-- [ ] Restore drill y promoción a prod. Sin PR aún.
+- [x] `golive-preflight` + `pages-smoke.sh` + runbooks (`golive.md`, rollback, ensayo restore dry-run).
+- [ ] Restore drill **real** en scratch/staging (log adjunto).
+- [ ] Environments `staging`/`production` con la tabla de `environments.md`.
+- [ ] `pnpm ops:golive` → `ready: true` en el SHA candidato.
+- [ ] Promoción `supabase-prod.yml` (reviewers) + smoke Pages.
+
+### Tabla GO / NO-GO
+
+| Gate | PR | CI run | Fecha | ready |
+|------|----|--------|-------|-------|
+| 0 Inventario | #39 | merge | 2026-08-29 | código sí; `canCreateProject` pendiente |
+| 1 Seguridad | #40 | merge | 2026-08-29 | sí (rotación HMAC prod pendiente) |
+| 2 CI/CD | #41 | merge | 2026-08-30 | código sí; staging/SMTP/secrets env pendientes |
+| 3 Web runtime | #42 | merge | 2026-08-30 | sí (Pages redeploy 2026-09-03) |
+| 4 Android | #43 | merge | 2026-08-30 | sí (Play Internal opcional) |
+| 5 Ops | #44 | merge | 2026-08-30 | código sí; PITR real + probes cron pendientes |
+| 6 Go-live | — | — | — | **NO-GO** hasta preflight `ready: true` |
+
+**GO** solo si: preflight verde, staging migrado desde cero y desde schema prod, pgTAP, e2e/Detox, probes 8 Edge, PITR + restore log, privacidad, smoke prod sin writes, cero modo demo en `apps/*/src`, iOS fuera.
+
+**NO-GO** si reaparece P0: webhook en `configuracion`, invite huérfano, importer upload pre-auth.

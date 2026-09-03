@@ -11,7 +11,15 @@ node --experimental-strip-types scripts/ops/enable-pitr.ts
 
 Si la API no expone PITR o el token no tiene `projects:write`: exit ≠ 0 con `GC-OPS-006` y el permiso exacto. No se pide Dashboard.
 
-El restore drill real se ejecuta en Gate 6 (staging).
+## Ensayo Gate 6
+
+Dry-run (obligatorio en CI, no toca remotos):
+
+```bash
+RESTORE_DRY_RUN=1 bash scripts/ops/restore-staging-dryrun.sh
+```
+
+El fixture `scripts/ops/fixtures/restore-dryrun.sql` es `select 1`. El restore real se hace contra un scratch/staging-clone (nunca `xcoeipsnykceorcvjwve`): artifact de `ops-backup-staging.yml`, replay, smoke `select count(*) from tenant`, borrar scratch. Adjuntar el log al PR de go-live.
 
 ## Dump semanal de staging
 

@@ -79,15 +79,16 @@ MODULOS OPTATIVOS (por tenant)
 |---|---|
 | Repo | `jarguetam/gestiones-comerciales` (privado) |
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
-| Fase actual | Hardening productivo (Gates 0–5). **42 migraciones** en `supabase/migrations/`. **8 Edge Functions** (`auth-guard`, `importer`, `invitar-usuario`, `notify-jobs`, `pdf-solicitud`, `push-notifications`, `rastreo-ingesta`, `webhook-tenant`). Invitaciones y recupero van por **SMTP de Auth**; el `emailer` genérico queda fuera de v1. |
+| Fase actual | Hardening productivo. Gates 0–5 en `main`. **Gate 6 (go-live) en curso**. Node **22.14.0** / pnpm **9.15.9**. **42 migraciones** en `supabase/migrations/`. **8 Edge Functions** (`auth-guard`, `importer`, `invitar-usuario`, `notify-jobs`, `pdf-solicitud`, `push-notifications`, `rastreo-ingesta`, `webhook-tenant`). Invitaciones y recupero van por **SMTP de Auth**; el `emailer` genérico queda fuera de v1. |
 
-### Cómo entrar (web y APK)
+### Cómo entrar (web y móvil)
 
 | Superficie | Qué pasa si faltan keys | Qué pasa si hay URL + anon JWT |
 |---|---|---|
-| Web local (`pnpm --filter @gc/web dev`) | `DEMO_MODE`: botón **Entrar al tablero** (type=button, no lo bloquea `type=email`) | Cliente real + **Ingresar** y **Entrar al tablero** (preview) |
-| GitHub Pages | El job `deploy` inyecta `secrets.VITE_SUPABASE_URL` y `secrets.VITE_SUPABASE_ANON_KEY`. Si faltan, Pages es DEMO. | Login contra Supabase. Sin usuario confirmado (`mailer_autoconfirm` está off), usá **Entrar al tablero**. |
-| APK `releases/gestiones-campo-preview.apk` | Mensaje que lista `EXPO_PUBLIC_SUPABASE_*` faltantes. **Entrar al tablero** abre demo. | Cliente real. Mismo par de botones. Compilar: `apps/mobile/scripts/build-apk.sh` |
+| Web local (`pnpm --filter @gc/web dev`) | Build/login fallan con **GC-CORE-001**. Sin modo demo. | Login real: **Ingresar** contra Supabase Auth. |
+| GitHub Pages | `pages-prod` falla cerrado (`GC-OPS-008`) si faltan `VITE_SUPABASE_*` o `VITE_SENTRY_DSN`. | Login contra Supabase. Sin botón de demo. |
+| Staging | Vite en el runner CI (`e2e-staging.yml`). No hay site `/staging/` en github.io. | Usuarios sintéticos (`asesor@staging.test`). |
+| Móvil (EAS preview / AAB Internal) | Build falla si faltan `EXPO_PUBLIC_SUPABASE_*` (**GC-CORE-001**). | Login real. |
 
 La anon key es pública (va al bundle). Nunca commitees `service_role`.
 
@@ -117,8 +118,8 @@ supabase/
 apps/               → web / mobile / backoffice (scaffold en F1)
 ```
 
-## Próximos pasos (según tasks.md)
+## Próximos pasos
 
-1. **Operación:** Gate 5 (Sentry, PITR, probes, privacidad). Secret `SUPABASE_ACCESS_TOKEN` para CI de Edge. Rotar HMAC con `scripts/ops/rotate-webhook-secret.ts` (staging primero).
-2. **Móvil a tiendas:** ver `apps/mobile/README.md` — `eas init`, secretos `EXPO_PUBLIC_*`, Apple Developer / Play Console, política de privacidad, Detox smoke.
-3. **Fuera de código en `main`:** Detox/EAS y Storybook. MFA backoffice (P-01 enrolamiento) y persistencia SQLite de la cola M-09 ya van en `main`.
+1. **Gate 6:** `pnpm ops:golive` debe imprimir `ready: true`. Runbook: `docs/runbooks/golive.md`.
+2. **Staging + SMTP + PITR** reales (environments GitHub). Restore drill: `scripts/ops/restore-staging-dryrun.sh`.
+3. **Play Internal** es opcional; si no hay consola, GO condicional web-only. iOS fuera.
