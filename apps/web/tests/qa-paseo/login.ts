@@ -45,5 +45,17 @@ export async function loginQa(page: Page): Promise<void> {
   }
   await totp.fill(code)
   await page.getByRole('button', { name: /^verificar$/i }).click()
-  await expect(nav).toBeVisible({ timeout: 25_000 })
+
+  // Fallar rápido si el TOTP es inválido/expirado
+  const alert = page.getByRole('alert')
+  await Promise.race([
+    nav.waitFor({ state: 'visible', timeout: 25_000 }),
+    alert.waitFor({ state: 'visible', timeout: 25_000 }).then(async () => {
+      const msg = ((await alert.textContent()) ?? '').trim()
+      if (/invalid|inválid|totp|mfa|código/i.test(msg)) {
+        throw new Error(`GC-QA-MFA-INVALID: ${msg || 'código MFA rechazado'}`)
+      }
+      throw new Error(`GC-QA-LOGIN: ${msg || 'error tras MFA'}`)
+    }),
+  ])
 }
