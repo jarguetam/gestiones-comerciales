@@ -34,13 +34,13 @@ select set_config(
 );
 
 select is(
-  (select count(*) from (
+  (with upd as (
     update public.config_rastreo
        set intervalo_min = 30
      where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
        and dia_semana = 1
     returning 1
-  ) t),
+  ) select count(*) from upd),
   0::bigint,
   'gerente no puede actualizar config_rastreo (RLS bloquea)'
 );
@@ -52,13 +52,13 @@ select set_config(
 );
 
 select ok(
-  (select count(*) from (
+  (with upd as (
     update public.config_rastreo
        set intervalo_min = 20
      where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
        and dia_semana = 1
     returning 1
-  ) t) > 0,
+  ) select count(*) from upd) > 0,
   'admin puede actualizar config_rastreo'
 );
 
