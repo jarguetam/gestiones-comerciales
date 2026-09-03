@@ -12,7 +12,6 @@ export type FirebaseKeyReport = {
   ok: boolean
   code?: string
   message: string
-  keyId?: string
 }
 
 type ServiceAccount = {
@@ -69,8 +68,7 @@ export async function restrictFirebaseAndroidKey(
 
   return {
     ok: true,
-    message: `Listo para PATCH de API key ${keyId} (${ANDROID_RESTRICTION}); ejecutar en CI con credenciales reales`,
-    keyId,
+    message: `Listo para PATCH de API key (${ANDROID_RESTRICTION}); ejecutar en CI con credenciales reales`,
   }
 }
 
