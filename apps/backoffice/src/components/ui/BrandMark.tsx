@@ -19,6 +19,7 @@ export function BrandMark({
       <img
         src={src}
         alt={nombre}
+        referrerPolicy="no-referrer"
         className={cn('object-contain', compact ? 'h-8 w-8' : 'h-9 max-w-[10rem]')}
       />
     )

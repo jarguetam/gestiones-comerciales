@@ -27,6 +27,7 @@ test('nombreComercial usa branding o el fallback del tenant', () => {
 test('logoUrlValido solo acepta http(s)', () => {
   assert.equal(logoUrlValido('https://cdn.example.com/logo.png'), 'https://cdn.example.com/logo.png')
   assert.equal(logoUrlValido('javascript:alert(1)'), null)
+  assert.equal(logoUrlValido('https://user:pass@cdn.example.com/logo.png'), null)
   assert.equal(logoUrlValido(''), null)
 })
 

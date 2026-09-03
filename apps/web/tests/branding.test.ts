@@ -47,9 +47,12 @@ test('brandingDeJson lee color, nombre y logo del jsonb del tenant', () => {
   assert.deepEqual(brandingDeJson('x'), {})
 })
 
-test('logoUrlValido solo acepta http(s)', () => {
+test('logoUrlValido solo acepta http(s) reconstruido, sin credenciales', () => {
   assert.equal(logoUrlValido('https://cdn.ejemplo/a.png'), 'https://cdn.ejemplo/a.png')
+  assert.equal(logoUrlValido('  https://cdn.ejemplo/a.png  '), 'https://cdn.ejemplo/a.png')
   assert.equal(logoUrlValido('javascript:alert(1)'), null)
+  assert.equal(logoUrlValido('data:text/html,<script>alert(1)</script>'), null)
+  assert.equal(logoUrlValido('https://user:pass@cdn.ejemplo/a.png'), null)
   assert.equal(logoUrlValido('/local.svg'), null)
   assert.equal(logoUrlValido(''), null)
 })

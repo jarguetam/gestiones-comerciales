@@ -137,7 +137,7 @@ function BrandingPanel({
     nombre_comercial: nombre,
     color_primario: color,
     color_secundario: secundario,
-    logo_url: logo,
+    logo_url: logoUrlValido(logo) ?? undefined,
     vocabulario: vocabPersona.trim() ? { persona: vocabPersona.trim() } : undefined,
   }
 
@@ -159,7 +159,7 @@ function BrandingPanel({
       nombre_comercial: nombre.trim() || tenantNombre,
       color_primario: color,
       color_secundario: secundario.trim() || undefined,
-      logo_url: logo.trim() || undefined,
+      logo_url: logoUrlValido(logo) ?? undefined,
       vocabulario: vocabPersona.trim() ? { ...branding.vocabulario, persona: vocabPersona.trim() } : branding.vocabulario,
     }
     setBranding(next)
