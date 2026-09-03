@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { DEMO_MODE, SUPABASE_URL, supabase } from '../../lib/supabase'
+import { BACKEND_CONFIGURADO, SUPABASE_URL, supabase } from '../../lib/supabase'
 import {
   actualizarWebhookSecretRevelado,
   ejemploCurlWebhook,
@@ -88,7 +88,7 @@ const DEMO_USERS: UsuarioTenant[] = [
 
 export function EmpresaDetalle() {
   const { id } = useParams<{ id: string }>()
-  const live = !DEMO_MODE
+  const live = BACKEND_CONFIGURADO
   const [tenant, setTenant] = useState<TenantDetalle | null>(null)
   const [modulos, setModulos] = useState<ModuloTenant[]>([])
   const [catalogoModulos, setCatalogoModulos] = useState(MODULOS)

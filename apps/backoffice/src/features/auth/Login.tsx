@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { activarSesionDemo, BACKEND_CONFIGURADO, desactivarSesionDemo, supabase } from '../../lib/supabase'
+import { Link, useNavigate } from 'react-router-dom'
+import { BACKEND_CONFIGURADO, supabase } from '../../lib/supabase'
 import { loginConAuthGuard } from '../../lib/authGuardLogin'
 import { Alert, BrandMark, Button, Input } from '../../components/ui'
 
@@ -15,21 +15,15 @@ export function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  function entrarDemo() {
-    activarSesionDemo()
-    navigate('/', { replace: true })
-  }
-
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
     if (!BACKEND_CONFIGURADO) {
-      entrarDemo()
+      setError('GC-CORE-001')
       return
     }
     setError(null)
     setLoading(true)
     try {
-      desactivarSesionDemo()
       const { requiresMfa } = await loginConAuthGuard(supabase, email, password)
       if (requiresMfa) {
         const { data: factors, error: errF } = await supabase.auth.mfa.listFactors()
@@ -77,26 +71,26 @@ export function Login() {
         <p className="mb-6 text-center text-sm text-muted">
           {paso === 'totp' ? 'Confirmá el código TOTP de tu autenticador.' : 'Backoffice de plataforma'}
         </p>
-        <div className="mb-4">
-          {BACKEND_CONFIGURADO ? (
-            <Alert tone="info">Backend conectado. Ingresá con tu cuenta o «Entrar al backoffice» para el preview.</Alert>
-          ) : (
-            <Alert tone="warning">Modo demo: faltan VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY. Preview estático.</Alert>
-          )}
-        </div>
+        {!BACKEND_CONFIGURADO && (
+          <div className="mb-4">
+            <Alert tone="danger" role="alert">
+              Faltan VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY (GC-CORE-001).
+            </Alert>
+          </div>
+        )}
         {paso === 'password' ? (
-          <form onSubmit={(e) => void handlePassword(e)} className="space-y-4" noValidate={!BACKEND_CONFIGURADO}>
-            <Input id="email" label="Email" type={BACKEND_CONFIGURADO ? 'email' : 'text'} autoComplete="username" required={BACKEND_CONFIGURADO} value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Input id="password" label="Contraseña" type="password" autoComplete="current-password" required={BACKEND_CONFIGURADO} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <form onSubmit={(e) => void handlePassword(e)} className="space-y-4">
+            <Input id="email" label="Email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input id="password" label="Contraseña" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             {error && <Alert tone="danger" role="alert">{error}</Alert>}
-            {BACKEND_CONFIGURADO && (
-              <Button type="submit" size="lg" disabled={loading}>
-                {loading ? 'Ingresando…' : 'Ingresar'}
-              </Button>
-            )}
-            <Button type="button" size="lg" variant={BACKEND_CONFIGURADO ? 'secondary' : 'primary'} disabled={loading} onClick={entrarDemo}>
-              Entrar al backoffice
+            <Button type="submit" size="lg" disabled={loading || !BACKEND_CONFIGURADO}>
+              {loading ? 'Ingresando…' : 'Ingresar'}
             </Button>
+            <p className="text-sm">
+              <Link to="/recuperar" className="text-primary underline-offset-2 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </form>
         ) : (
           <form onSubmit={(e) => void handleTotp(e)} className="space-y-4">
