@@ -70,7 +70,8 @@ export function logoUrlValido(url: string | undefined | null): string | null {
   try {
     const u = new URL(t)
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    return t
+    if (u.username || u.password) return null
+    return u.href
   } catch {
     return null
   }
