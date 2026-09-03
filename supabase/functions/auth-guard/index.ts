@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  type AuthGuardDeps,
   handleAuthGuard,
   resolveAllowedOrigins,
-  type AuthGuardDeps,
 } from "./auth_guard.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;

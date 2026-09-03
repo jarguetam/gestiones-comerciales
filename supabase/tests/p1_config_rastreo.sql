@@ -6,8 +6,8 @@ insert into auth.users (id, email)
 values ('00000000-0000-0000-0000-000000000201'::uuid, 'admin-rastreo@test.local')
 on conflict do nothing;
 
-insert into public.tenant (id, codigo, nombre, activo)
-values ('00000000-0000-0000-0000-000000000301'::uuid, 'rastreo-test', 'Tenant Rastreo', true)
+insert into public.tenant (id, codigo, nombre, rubro, activo)
+values ('00000000-0000-0000-0000-000000000301'::uuid, 'rastreo-test', 'Tenant Rastreo', 'agro', true)
 on conflict do nothing;
 
 insert into public.usuario (id, tenant_id, nombre, rol, activo)

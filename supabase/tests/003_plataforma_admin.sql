@@ -13,7 +13,7 @@ select tests.set_claims(
 
 select throws_ok(
   $$select public.admin_tenant_crear('Tenant Intruso', 'agro')$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'usuario sin membresía de plataforma no puede crear tenants'
 );
 
@@ -23,7 +23,7 @@ select tests.set_claims(
 
 select throws_ok(
   $$select public.admin_modulo_activar('11111111-1111-1111-1111-111111111111', 'creditos', true)$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de tenant de negocio tampoco puede activar módulos (eso es de plataforma)'
 );
 
@@ -39,7 +39,8 @@ on conflict (id) do nothing;
 
 select set_config('request.jwt.claims',
   json_build_object('plataforma', true, 'superadmin', true,
-                    'sub', 'cccccccc-0000-0000-0000-000000000001')::text, true);
+                    'sub', 'cccccccc-0000-0000-0000-000000000001',
+                    'aal', 'aal2')::text, true);
 select set_config('role', 'authenticated', true);
 
 select lives_ok(
@@ -61,7 +62,8 @@ select ok(
 -- ---------- 3. admin_modulo_activar con plataforma: funciona + audita ----------
 select set_config('request.jwt.claims',
   json_build_object('plataforma', true, 'superadmin', true,
-                    'sub', 'cccccccc-0000-0000-0000-000000000001')::text, true);
+                    'sub', 'cccccccc-0000-0000-0000-000000000001',
+                    'aal', 'aal2')::text, true);
 select set_config('role', 'authenticated', true);
 
 select lives_ok(

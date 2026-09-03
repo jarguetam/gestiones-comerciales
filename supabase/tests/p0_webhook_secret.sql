@@ -8,33 +8,7 @@ select plan(48);
 
 create schema if not exists tests;
 
-create or replace function tests.set_claims(
-  p_tenant uuid,
-  p_rol text,
-  p_uid uuid,
-  p_aal text default 'aal1'
-)
-returns void
-language sql
-as $$
-  select set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'tenant_id', p_tenant::text,
-      'rol', p_rol,
-      'sub', p_uid::text,
-      'aal', p_aal
-    )::text,
-    true
-  );
-$$;
-
-create or replace function tests.reset_claims()
-returns void
-language sql
-as $$
-  select set_config('request.jwt.claims', '', true);
-$$;
+-- set_claims y reset_claims ya están en 000_setup_tests.sql (con p_aal default 'aal1')
 
 -- Auth siempre precede a public.usuario/public.usuario_plataforma por FK.
 insert into auth.users (id, email)

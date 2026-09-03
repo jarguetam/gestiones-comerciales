@@ -1,10 +1,10 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  type AuthGuardDeps,
   corsHeadersForOrigin,
   handleAuthGuard,
   hashEmail,
   parseClientIp,
-  type AuthGuardDeps,
 } from "./auth_guard.ts";
 
 function baseDeps(overrides: Partial<AuthGuardDeps> = {}): AuthGuardDeps {
@@ -35,7 +35,10 @@ const allowed = [
 Deno.test("OPTIONS sin ALLOWED_ORIGINS responde 500 GC-CORE-001", async () => {
   const res = await handleAuthGuard(
     baseDeps(),
-    new Request("http://n", { method: "OPTIONS", headers: { origin: allowed[0] } }),
+    new Request("http://n", {
+      method: "OPTIONS",
+      headers: { origin: allowed[0] },
+    }),
     [],
   );
   assertEquals(res.status, 500);
@@ -84,7 +87,10 @@ Deno.test("el sexto intento fallido desde la misma IP responde 429", async () =>
   assertEquals(res.status, 429);
   assertEquals(blocked, 1);
   const body = await res.json();
-  assertEquals(body.error, "GC-AUTH-040: demasiados intentos de inicio de sesión");
+  assertEquals(
+    body.error,
+    "GC-AUTH-040: demasiados intentos de inicio de sesión",
+  );
 });
 
 Deno.test("login exitoso registra ok y devuelve sesión", async () => {

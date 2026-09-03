@@ -32,7 +32,9 @@ const EXPECTED: Record<(typeof FUNCTIONS)[number], boolean> = {
 test("config.toml declara verify_jwt para las 8 Edge Functions", () => {
   for (const name of FUNCTIONS) {
     const block = new RegExp(
-      `\\[functions\\.${name.replace("-", "\\-")}\\][\\s\\S]*?verify_jwt\\s*=\\s*(true|false)`,
+      `\\[functions\\.${
+        name.replace("-", "\\-")
+      }\\][\\s\\S]*?verify_jwt\\s*=\\s*(true|false)`,
     );
     const m = CONFIG.match(block);
     assert.ok(m, `falta bloque [functions.${name}] con verify_jwt`);

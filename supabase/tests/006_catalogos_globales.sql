@@ -12,25 +12,25 @@ select tests.set_claims(
 
 select throws_ok(
   $$select public.admin_departamento_guardar(null, 'Sololá Test')$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de empresa no crea departamentos globales'
 );
 
 select throws_ok(
   $$select public.admin_plantilla_guardar(null, 'agro', 'hora', '3 horas', '{"cantidad":3}'::jsonb, true)$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de empresa no edita plantillas base'
 );
 
 select throws_ok(
   $$select public.admin_geografia_importar('[{"departamento":"X","municipio":"Y"}]'::jsonb)$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de empresa no importa geografía global'
 );
 
 select throws_ok(
   $$select public.admin_modulo_catalogo_guardar('intruso', 'Intruso', false)$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de empresa no muta el catálogo de módulos'
 );
 
@@ -57,7 +57,7 @@ insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
 on conflict (id) do update set es_superadmin = true, activo = true;
 
 select set_config('request.jwt.claims',
-  json_build_object('plataforma', true, 'superadmin', true,
+  json_build_object('plataforma', true, 'superadmin', true, 'aal', 'aal2',
                     'sub', 'cccccccc-0000-0000-0000-000000000005')::text, true);
 select set_config('role', 'authenticated', true);
 
@@ -89,7 +89,7 @@ select ok(
   'alta de departamento queda en auditoría'
 );
 select set_config('request.jwt.claims',
-  json_build_object('plataforma', true, 'superadmin', true,
+  json_build_object('plataforma', true, 'superadmin', true, 'aal', 'aal2',
                     'sub', 'cccccccc-0000-0000-0000-000000000005')::text, true);
 select set_config('role', 'authenticated', true);
 
@@ -174,10 +174,11 @@ select set_config('role', 'authenticated', true);
 
 select throws_ok(
   $$select public.admin_departamento_guardar(null, 'Lectura No Puede')$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'plataforma con rol lectura no escribe catálogos globales'
 );
 
 select tests.reset_claims();
 select * from finish();
 rollback;
+

@@ -3,7 +3,14 @@ begin;
 select plan(2);
 
 insert into auth.users (id, email)
-values ('00000000-0000-0000-0000-000000000401'::uuid, 'plat-aal2@test.local')
+values
+  ('00000000-0000-0000-0000-000000000401'::uuid, 'plat-aal2@test.local'),
+  ('00000000-0000-0000-0000-000000000402'::uuid, 'empresa-aal2@test.local')
+on conflict do nothing;
+
+-- tenant requerido por FK de usuario
+insert into public.tenant (id, codigo, nombre, rubro, activo)
+values ('00000000-0000-0000-0000-000000000301'::uuid, 'aal2-test', 'Tenant AAL2', 'agro', true)
 on conflict do nothing;
 
 insert into public.usuario (id, tenant_id, nombre, rol, activo)
