@@ -4,7 +4,7 @@
 -- perdido exige motivo, conversión idempotente, duplicados por teléfono.
 -- ============================================================
 begin;
-select plan(11);
+select plan(12);
 
 -- ---------- setup: embudo + leads de prueba ----------
 insert into public.lead_estado (tenant_id, codigo, nombre, orden, es_ganado, es_perdido) values
@@ -28,7 +28,8 @@ select throws_ok(
   $$insert into public.lead (tenant_id, estado_id, nombre, telefono, asesor_id)
     select tenant_id, estado_id, 'Duplicado', '+502 5000-0001', asesor_id
     from public.lead where telefono = '+502 5000-0001'$$,
-  'duplicate key value violates unique constraint "lead_tel_unico_idx"',
+  '23505',
+  null,
   'no se puede crear un lead activo con teléfono duplicado (índice único parcial)'
 );
 
@@ -101,8 +102,11 @@ begin
            (select count(*) from public.persona
              where tenant_id='11111111-1111-1111-1111-111111111111' and documento='NIT-L-A') as despues;
 end $$;
-select is((select despues from _conv_check), (select antes from _conv_check),
-  're-convertir el mismo lead no crea una segunda persona (idempotente)');
+select is(
+  (select despues::int from _conv_check),
+  (select antes::int from _conv_check),
+  're-convertir el mismo lead no crea una segunda persona (idempotente)'
+);
 
 -- ---------- 9. lead convertido no retrocede (CRM-4) ----------
 select throws_ok(

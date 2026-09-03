@@ -34,11 +34,10 @@ export function varsFaltantesSupabase(
 
 export function mensajePreviewSinBackend(faltantes: string[]): string {
   if (faltantes.length === 0) {
-    return 'Conectado a Supabase. Podés ingresar con tu cuenta o entrar en demostración.'
+    return 'Conectado a Supabase. Ingresá con tu cuenta de campo.'
   }
   return (
-    `Este APK de releases/ es preview DEMO: no está conectado al backend. ` +
-    `Falta ${faltantes.join(' y ')} en el build. ` +
-    `Recompilá con esas variables (ver apps/mobile/.env.example y scripts/build-apk.sh).`
+    `Faltan credenciales públicas (${faltantes.join(' y ')}). ` +
+    `El build no puede arrancar (GC-CORE-001). Completá apps/mobile/.env.example.`
   )
 }

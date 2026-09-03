@@ -124,20 +124,28 @@ create trigger trg_usuario_actualizado before update on public.usuario
   for each row execute function public.set_actualizado_en();
 
 -- ---------- subárbol del autenticado (requerido por RLS de usuario) ----------
-create or replace function public.subordinados()
+create or replace function public.subordinados(p_raiz uuid)
 returns setof uuid
 language sql stable security definer
 set search_path = public
 as $$
   with recursive arbol as (
-    select u.id, u.rol, u.activo from public.usuario u where u.id = auth.uid()
+    select u.id, u.rol, u.activo from public.usuario u where u.id = p_raiz
     union all
     select u.id, u.rol, u.activo
     from public.usuario u
     join arbol a on u.jefe_id = a.id
     where u.activo
   )
-  select id from arbol where id <> auth.uid();
+  select id from arbol where p_raiz is not null and id <> p_raiz;
+$$;
+
+create or replace function public.subordinados()
+returns setof uuid
+language sql stable security definer
+set search_path = public
+as $$
+  select public.subordinados(auth.uid());
 $$;
 
 -- ---------- RLS ----------

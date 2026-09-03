@@ -33,3 +33,15 @@ export function mensajeToast(err: unknown): { titulo: string; descripcion?: stri
     descripcion: codigo,
   }
 }
+
+export function formatError(
+  err: unknown,
+  requestId?: string,
+): { message: string; code: string | null; requestId?: string } {
+  const t = mensajeToast(err)
+  return {
+    message: t.titulo,
+    code: t.descripcion ?? extraerCodigoGc(t.titulo),
+    requestId,
+  }
+}

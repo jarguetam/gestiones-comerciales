@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Compila el APK preview. Si hay URL+anon (env, .env o VITE_*), las inyecta
-# como EXPO_PUBLIC_* — el cliente deja de estar en DEMO_MODE.
+# como EXPO_PUBLIC_*. Sin esas variables el runtime lanza GC-CORE-001.
 # Nunca imprime la anon key.
 set -euo pipefail
 

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { boundsDe, type PuntoMapa } from '../../lib/mapa'
+import { colorDeToken } from '../../lib/mapaTokens'
 import type { ClienteMapa } from './puntosDemo'
 
 const GT: L.LatLngExpression = [14.63, -90.51]
@@ -41,11 +42,16 @@ export function MapaLeaflet({ ultimas, recorrido, clientes, seleccionado, onSele
     if (!map || !grupo) return
     grupo.clearLayers()
 
+    const primary = colorDeToken('--gc-primary')
+    const ink = colorDeToken('--gc-ink')
+    const warn = colorDeToken('--gc-warn')
+    const muted = colorDeToken('--gc-muted')
+
     for (const c of clientes) {
       L.circleMarker([c.lat, c.lng], {
         radius: 7,
-        color: '#B45309',
-        fillColor: '#F59E0B',
+        color: warn,
+        fillColor: warn,
         fillOpacity: 0.9,
         weight: 1,
       })
@@ -56,7 +62,7 @@ export function MapaLeaflet({ ultimas, recorrido, clientes, seleccionado, onSele
     if (recorrido.length > 1) {
       L.polyline(
         recorrido.map((p) => [p.lat, p.lng] as L.LatLngExpression),
-        { color: '#6D28D9', weight: 3, opacity: 0.85 },
+        { color: primary, weight: 3, opacity: 0.85 },
       ).addTo(grupo)
     }
 
@@ -64,8 +70,8 @@ export function MapaLeaflet({ ultimas, recorrido, clientes, seleccionado, onSele
       const activo = p.usuarioId === seleccionado
       L.circleMarker([p.lat, p.lng], {
         radius: activo ? 10 : 8,
-        color: activo ? '#4C1D95' : '#1B2430',
-        fillColor: activo ? '#7C3AED' : '#334155',
+        color: activo ? primary : ink,
+        fillColor: activo ? primary : muted,
         fillOpacity: 1,
         weight: 2,
       })

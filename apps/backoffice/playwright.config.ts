@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
+  testMatch: process.env.E2E_SUITE === 'staging' ? /e2e-staging\/.*\.spec\.ts/ : /.*\.spec\.ts/,
+  testIgnore: process.env.E2E_SUITE === 'staging' ? [] : ['**/e2e-staging/**'],
   timeout: 30_000,
   retries: 1,
   use: {

@@ -1,11 +1,10 @@
 import type { CalendarEvent } from '../features/calendar/types'
-import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_EVENTS } from '../features/calendar/eventsData'
-import { INITIAL_PERSONAS, type PersonaItem } from '../features/calendar/personasData'
-import { INITIAL_LEADS, type LeadItem } from '../features/calendar/leadsData'
+import type { PersonaItem } from '../features/calendar/personasData'
+import type { LeadItem } from '../features/calendar/leadsData'
 import { claimsDeUsuario } from './claims'
-import { DEMO_MODE, supabase } from './supabase'
+import { supabase } from './supabase'
 import type { CatalogoActividad, CatalogoHora, GeoDefaults, ZonaCatalogo } from './catalogos'
-import { BRANDING_DEMO, brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
+import { brandingDeJson, nombreComercial, type BrandingTenant } from './branding'
 
 export type FuenteDominio = 'demo' | 'supabase'
 
@@ -32,39 +31,6 @@ export interface DominioCargado {
   aviso?: string
 }
 
-const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
-
-const ZONAS_DEMO: ZonaCatalogo[] = [
-  { id: 1, codigo: 'Z1', nombre: 'Zona Centro', activo: true },
-  { id: 2, codigo: 'Z2', nombre: 'Zona Sur', activo: true },
-]
-
-const MODULOS_DEMO = ['crm', 'creditos', 'solicitudes', 'depositos', 'kilometraje']
-
-const ASESORES_DEMO: AsesorOpcion[] = [
-  { id: '1', nombre: 'Luisa Fernanda Roldán' },
-  { id: '2', nombre: 'Erick Bardales' },
-  { id: '3', nombre: 'Ana Lucía Perén' },
-  { id: '4', nombre: 'Marco Tulio Méndez' },
-]
-
-function eventosDemo(): CalendarEvent[] {
-  return INITIAL_EVENTS.map((e, i) => ({
-    ...e,
-    asesorId: e.asesorId ?? e.attendees?.[0]?.id,
-    asesorNombre: e.asesorNombre ?? e.attendees?.[0]?.name,
-    zonaId: e.zonaId ?? (i % 2) + 1,
-    zonaNombre: e.zonaNombre ?? ((i % 2) + 1 === 1 ? 'Zona Centro' : 'Zona Sur'),
-  }))
-}
-
-const CONFIG_DEMO: Record<string, unknown> = {
-  dominios_cors: ['app.agromoney.gt'],
-  plantillas_notificacion: [
-    { codigo: 'agenda', asunto: 'Recordatorio de visita', cuerpo: 'Tenés una visita programada mañana.' },
-  ],
-}
-
 const CATEGORIAS: CalendarEvent['category'][] = ['amber', 'lavender', 'mint', 'rose', 'sky']
 
 function telefonoDe(detalles: unknown): string {
@@ -75,25 +41,6 @@ function telefonoDe(detalles: unknown): string {
 }
 
 export async function cargarDominio(): Promise<DominioCargado> {
-  if (DEMO_MODE) {
-    return {
-      fuente: 'demo',
-      tenantNombre: nombreComercial(BRANDING_DEMO, 'AgroMoney S.A.'),
-      tenantCodigo: 'agromoney',
-      branding: BRANDING_DEMO,
-      configuracion: CONFIG_DEMO,
-      personas: INITIAL_PERSONAS,
-      eventos: eventosDemo(),
-      leads: INITIAL_LEADS,
-      asesores: ASESORES_DEMO,
-      modulos: MODULOS_DEMO,
-      catalogos: CATALOGO_ACTIVIDADES,
-      horas: CATALOGO_HORAS,
-      zonas: ZONAS_DEMO,
-      geo: { zonaId: 1, departamentoId: 1, municipioId: 1, horaDefaultId: 2 },
-    }
-  }
-
   try {
     const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes, usuarioRes] =
       await Promise.all([
@@ -230,23 +177,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
     }>
 
     if (error) {
-      return {
-        fuente: 'demo',
-        tenantNombre,
-        tenantCodigo,
-        branding,
-        configuracion,
-        personas: INITIAL_PERSONAS,
-        eventos: eventosDemo(),
-        leads: INITIAL_LEADS,
-        asesores: asesores.length > 0 ? asesores : ASESORES_DEMO,
-        modulos: modulos.length > 0 ? modulos : MODULOS_DEMO,
-        catalogos: catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES,
-        horas: horas.length > 0 ? horas : CATALOGO_HORAS,
-        zonas: zonas.length > 0 ? zonas : ZONAS_DEMO,
-        geo,
-        aviso: `No se pudo leer el tenant (${error.message}). Mostrando cartera de demostración.`,
-      }
+      throw new Error('GC-CORE-001')
     }
 
     const vacio = personasDb.length === 0 && visitasDb.length === 0 && leadsDb.length === 0
@@ -331,23 +262,7 @@ export async function cargarDominio(): Promise<DominioCargado> {
         ? 'Esta empresa aún no tiene clientes, visitas ni leads. Creá el primero desde Personas, Visitas o CRM.'
         : undefined,
     }
-  } catch (err) {
-    return {
-      fuente: 'demo',
-      tenantNombre: nombreComercial(BRANDING_DEMO, 'AgroMoney S.A.'),
-      tenantCodigo: 'agromoney',
-      branding: BRANDING_DEMO,
-      configuracion: CONFIG_DEMO,
-      personas: INITIAL_PERSONAS,
-      eventos: eventosDemo(),
-      leads: INITIAL_LEADS,
-      asesores: ASESORES_DEMO,
-      modulos: MODULOS_DEMO,
-      catalogos: CATALOGO_ACTIVIDADES,
-      horas: CATALOGO_HORAS,
-      zonas: ZONAS_DEMO,
-      geo: GEO_VACIO,
-      aviso: err instanceof Error ? err.message : 'No se pudo cargar el dominio',
-    }
+  } catch {
+    throw new Error('GC-CORE-001')
   }
 }

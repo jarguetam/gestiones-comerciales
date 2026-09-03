@@ -222,6 +222,7 @@ $$;
 
 -- grants
 grant execute on function public.subordinados() to authenticated;
+grant execute on function public.subordinados(uuid) to authenticated;
 grant execute on function public.estructura_comercial() to authenticated;
 grant execute on function public.admin_tenant_crear(text,text,text,jsonb,jsonb,text[]) to authenticated;
 grant execute on function public.admin_usuario_invitar(uuid,text,text,uuid,text,bigint) to authenticated;

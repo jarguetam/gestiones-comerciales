@@ -103,6 +103,3 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
   }
 }
 
-export async function ejecutarDemo(_item: ItemCola): Promise<void> {
-  /* Preview: la cola avanza sin backend. */
-}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import {
   MODULOS, RUBROS, PLANES, branding, dominiosArray, wizardInicial,
   validarPaso1, validarPaso2, validarPaso3, validarPaso4,
@@ -22,7 +22,6 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
   const [modulos, setModulos] = useState<ModuloInfo[]>(MODULOS)
 
   useEffect(() => {
-    if (DEMO_MODE) return
     void supabase.from('modulo').select('codigo, nombre, nucleo').order('codigo').then(({ data }) => {
       if (!data) return
       const optativos = (data as ModuloInfo[]).filter((m) => !m.nucleo)
@@ -35,10 +34,6 @@ export function WizardEmpresa({ onClose, onCreated }: Props) {
 
   async function crear() {
     setError(null)
-    if (DEMO_MODE) {
-      setError('GC-AUTH-020: preview sin backend — conectá Supabase para crear empresas reales.')
-      return
-    }
     setEnviando(true)
     try {
       // 1) crear tenant (módulos incluidos) — dominios CORS van en configuracion

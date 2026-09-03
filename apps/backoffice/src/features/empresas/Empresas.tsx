@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
-import { DEMO_MODE, supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { WizardEmpresa } from './WizardEmpresa'
 import { nombreRubro } from './wizard'
 import type { TenantRow } from './types'
@@ -23,25 +22,21 @@ import {
 import { buttonClass } from '../../components/ui/buttonVariants'
 
 export function Empresas() {
-  const { demo } = useAuth()
   const [tenants, setTenants] = useState<TenantRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
 
   const cargar = useCallback(async () => {
-    if (DEMO_MODE) {
-      setTenants([
-        { id: 'demo', codigo: 'demo-agromoney', nombre: 'AgroMoney (demo)', rubro: 'agromoney', plan: 'estandar', activo: true },
-        { id: 'demo2', codigo: 'demo-distri', nombre: 'Distribuidora GT (demo)', rubro: 'distribuidora', plan: 'basico', activo: true },
-      ])
-      return
-    }
     const { data, error } = await supabase
       .from('tenant')
       .select('id, codigo, nombre, rubro, plan, activo')
       .order('creado_en', { ascending: false })
-    if (error) setError(error.message)
-    else setTenants(data as TenantRow[])
+    if (error) {
+      setError(error.message)
+      setTenants([])
+    } else {
+      setTenants(data as TenantRow[])
+    }
   }, [])
 
   useEffect(() => {
@@ -62,9 +57,6 @@ export function Empresas() {
           </>
         }
       />
-      {demo && (
-        <Alert tone="warning">Preview estático — abrí una fila para ver detalle y usuarios.</Alert>
-      )}
       {error && (
         <Alert tone="danger" role="alert">{error}</Alert>
       )}

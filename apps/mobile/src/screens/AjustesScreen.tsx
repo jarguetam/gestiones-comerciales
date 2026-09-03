@@ -1,50 +1,40 @@
 /**
- * M-10 Ajustes: perfil, rastreo de jornada, cambio de contraseña y cierre de sesión.
+ * M-10 Ajustes: perfil, estado de rastreo (solo lectura), cambio de contraseña y cierre de sesión.
  */
 import React, { useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Constants from 'expo-constants'
-import { BACKEND_CONFIGURADO, DEMO_MODE, desactivarSesionDemo, supabase, type Perfil } from '../lib/supabase'
-import { TEXTO_PERMISO_UBICACION } from '../services/rastreoServicio'
+import { supabase, type Perfil } from '../lib/supabase'
+import { RastreoEstado } from '../components/RastreoEstado'
 import { Boton, Campo, Card } from '../components/ui'
 import { useTheme } from '../theme'
 
 interface Props {
   perfil: Perfil
-  rastreoOn: boolean
-  onRastreo: (activo: boolean) => void
+  rastreoBloqueado?: boolean
+  intervaloRastreoMin?: number | null
   onLogout: () => void
   onAbrirCola?: () => void
 }
 
-export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, onAbrirCola }: Props) {
+export default function AjustesScreen({
+  perfil,
+  rastreoBloqueado = false,
+  intervaloRastreoMin,
+  onLogout,
+  onAbrirCola,
+}: Props) {
   const t = useTheme()
   const [nueva, setNueva] = useState('')
   const [guardando, setGuardando] = useState(false)
   const version = Constants.expoConfig?.version ?? '1.0.0'
 
   async function handleLogout() {
-    desactivarSesionDemo()
-    if (BACKEND_CONFIGURADO) await supabase.auth.signOut()
+    await supabase.auth.signOut()
     onLogout()
   }
 
-  function handleRastreo(valor: boolean) {
-    if (valor) {
-      Alert.alert('Ubicación durante la jornada', TEXTO_PERMISO_UBICACION, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Continuar', onPress: () => onRastreo(true) },
-      ])
-      return
-    }
-    onRastreo(false)
-  }
-
   async function cambiarPassword() {
-    if (DEMO_MODE) {
-      Alert.alert('Modo demo', 'El cambio de contraseña requiere backend.')
-      return
-    }
     if (nueva.trim().length < 8) {
       Alert.alert('Contraseña débil', 'Usá al menos 8 caracteres.')
       return
@@ -76,18 +66,7 @@ export default function AjustesScreen({ perfil, rastreoOn, onRastreo, onLogout, 
       </Card>
 
       <Card>
-        <View style={styles.fila}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text style={[styles.valor, { color: t.ink }]}>Rastreo de jornada</Text>
-            <Text style={[styles.ayuda, { color: t.muted }]}>{TEXTO_PERMISO_UBICACION}</Text>
-          </View>
-          <Switch
-            value={rastreoOn}
-            onValueChange={handleRastreo}
-            accessibilityLabel="Rastreo de jornada"
-            accessibilityState={{ checked: rastreoOn }}
-          />
-        </View>
+        <RastreoEstado bloqueado={rastreoBloqueado} intervaloMin={intervaloRastreoMin} />
       </Card>
 
       <Card>
@@ -121,6 +100,4 @@ const styles = StyleSheet.create({
   contenedor: { flex: 1, padding: 16 },
   etiqueta: { fontSize: 12, marginTop: 8 },
   valor: { fontSize: 15, fontWeight: '500', marginTop: 2 },
-  ayuda: { fontSize: 12, marginTop: 4 },
-  fila: { flexDirection: 'row', alignItems: 'center' },
 })

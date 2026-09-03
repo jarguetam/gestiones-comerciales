@@ -9,18 +9,22 @@
  * Body: JSON crudo (la firma se calcula sobre el texto exacto).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { json, handleOptions } from "../_shared/cors.ts";
+import { handleOptions, json } from "../_shared/cors.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
 
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
   if (pre) return pre;
-  if (req.method !== "POST") return json({ error: "GC-IMP-050: método no permitido" }, 405);
+  if (req.method !== "POST") {
+    return json({ error: "GC-IMP-050: método no permitido" }, 405);
+  }
 
   const inicio = Date.now();
   const raw = await req.text();
-  const firma = req.headers.get("x-gc-signature") ?? req.headers.get("x-signature") ?? "";
-  const idem = req.headers.get("idempotency-key") ?? req.headers.get("x-idempotency-key");
+  const firma = req.headers.get("x-gc-signature") ??
+    req.headers.get("x-signature") ?? "";
+  const idem = req.headers.get("idempotency-key") ??
+    req.headers.get("x-idempotency-key");
   const tenantHeader = req.headers.get("x-gc-tenant-id") ?? "";
   const codigoHeader = req.headers.get("x-gc-tenant") ?? "";
 
@@ -40,16 +44,22 @@ Deno.serve(async (req) => {
 
   let tenantId = tenantHeader;
   if (!tenantId && codigoHeader) {
-    const { data } = await admin.from("tenant").select("id").eq("codigo", codigoHeader).maybeSingle();
+    const { data } = await admin.from("tenant").select("id").eq(
+      "codigo",
+      codigoHeader,
+    ).maybeSingle();
     tenantId = (data as { id?: string } | null)?.id ?? "";
   }
   if (!tenantId && typeof payload.tenant_id === "string") {
     tenantId = payload.tenant_id;
   }
-  if (!tenantId) return json({ error: "GC-IMP-015: tenant no identificado" }, 400);
+  if (!tenantId) {
+    return json({ error: "GC-IMP-015: tenant no identificado" }, 400);
+  }
 
   const tipo = String(
-    req.headers.get("x-gc-event") ?? payload.tipo ?? payload.event ?? "persona.upsert",
+    req.headers.get("x-gc-event") ?? payload.tipo ?? payload.event ??
+      "persona.upsert",
   );
   const origen = String(payload.origen ?? payload.source ?? "webhook");
 
@@ -65,7 +75,11 @@ Deno.serve(async (req) => {
 
   if (error) {
     const msg = error.message ?? "GC-IMP-018: no se pudo encolar";
-    const status = msg.includes("GC-IMP-010") ? 401 : msg.includes("GC-IMP-011") ? 403 : 400;
+    const status = msg.includes("GC-IMP-010")
+      ? 401
+      : msg.includes("GC-IMP-011")
+      ? 403
+      : 400;
     return json({ error: msg }, status);
   }
 

@@ -10,8 +10,8 @@ import {
 
 test('urlWebhookTenant apunta a functions/v1/webhook-tenant', () => {
   assert.equal(
-    urlWebhookTenant('https://xcoeipsnykceorcvjwve.supabase.co'),
-    'https://xcoeipsnykceorcvjwve.supabase.co/functions/v1/webhook-tenant',
+    urlWebhookTenant('https://ejemplo.supabase.co'),
+    'https://ejemplo.supabase.co/functions/v1/webhook-tenant',
   )
   assert.equal(urlWebhookTenant(undefined), 'https://<proyecto>.supabase.co/functions/v1/webhook-tenant')
 })

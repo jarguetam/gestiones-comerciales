@@ -4,7 +4,7 @@
     "slug": "gestiones-comerciales",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "gestiones",
+    "scheme": "gc",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
     "splash": {
@@ -53,7 +53,7 @@
         {
           "action": "VIEW",
           "autoVerify": false,
-          "data": [{ "scheme": "gestiones" }],
+          "data": [{ "scheme": "gc" }, { "scheme": "gestiones" }],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
@@ -81,13 +81,16 @@
           "photosPermission": "La galería se usa para adjuntar la foto de una boleta."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-task-manager"
     ],
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "4f8a1c2e-7b93-4d61-a8e0-9c3f5b2d1e70"
+      }
     }
   }
 }

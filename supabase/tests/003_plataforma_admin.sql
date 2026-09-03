@@ -4,7 +4,7 @@
 -- las operaciones autorizadas quedan auditadas (GC-AUD-*).
 -- ============================================================
 begin;
-select plan(5);
+select plan(6);
 
 -- ---------- 1. Sin membresía de plataforma: admin_tenant_crear rechazado ----------
 -- usuario de negocio común (asesor T1): sin claim plataforma, sin membresía
@@ -30,10 +30,11 @@ select throws_ok(
 select tests.reset_claims();
 
 -- ---------- 2. Con membresía owner: admin_tenant_crear funciona + audita ----------
-insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
-  ('cccccccc-0000-0000-0000-000000000001', 'owner@plataforma.test', 'Owner Plataforma', true);
 insert into auth.users (id, email) values
   ('cccccccc-0000-0000-0000-000000000001', 'owner@plataforma.test')
+on conflict (id) do nothing;
+insert into public.usuario_plataforma (id, email, nombre, es_superadmin) values
+  ('cccccccc-0000-0000-0000-000000000001', 'owner@plataforma.test', 'Owner Plataforma', true)
 on conflict (id) do nothing;
 
 select set_config('request.jwt.claims',
@@ -46,16 +47,23 @@ select lives_ok(
   'plataforma (superadmin) puede crear tenant'
 );
 
+-- RLS de auditoria es por tenant_id + rol admin; plataforma no la lee.
+select tests.reset_claims();
 select ok(
   exists (
     select 1 from public.auditoria
     where accion = 'insert' and tabla = 'tenant'
-      and detalles ->> 'nombre' = 'Tenant Nuevo Test'
+      and cambios ->> 'nombre' = 'Tenant Nuevo Test'
   ),
   'la creación del tenant quedó en auditoría (GC-AUD-*)'
 );
 
 -- ---------- 3. admin_modulo_activar con plataforma: funciona + audita ----------
+select set_config('request.jwt.claims',
+  json_build_object('plataforma', true, 'superadmin', true,
+                    'sub', 'cccccccc-0000-0000-0000-000000000001')::text, true);
+select set_config('role', 'authenticated', true);
+
 select lives_ok(
   $$select public.admin_modulo_activar(
       (select id from public.tenant where nombre = 'Tenant Nuevo Test'),
@@ -63,11 +71,12 @@ select lives_ok(
   'plataforma puede activar módulo creditos para el tenant nuevo'
 );
 
+select tests.reset_claims();
 select ok(
   exists (
     select 1 from public.auditoria
     where tabla = 'tenant_modulo' and accion = 'update'
-      and detalles ->> 'activo' = 'true'
+      and cambios ->> 'activo' = 'true'
   ),
   'la activación del módulo quedó en auditoría'
 );

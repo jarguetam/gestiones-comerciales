@@ -1,22 +1,14 @@
-# Production readiness runbook
+# Production readiness
 
-## Gate 0 — Drift y preflight
+Checklist vivo. Cada gate marca su sección.
 
-Antes de mergear cualquier cambio de seguridad:
+## Gate 0 — Inventario
 
-```bash
-pnpm ops:preflight
-```
+- [x] Preflight de solo lectura (`pnpm ops:preflight`, job CI).
+- [x] Node `22.14.0` / pnpm `9.15.9` anclados (`.nvmrc`, `packageManager`).
+- [ ] Token con permiso para crear/administrar staging (`canCreateProject`). Si falta: `GC-OPS-006`.
 
-- **GC-OPS-007**: migraciones locales ≠ remoto. Aplicar pendientes con `supabase db push` (requiere `SUPABASE_ACCESS_TOKEN` y proyecto linkeado).
-- No mergear Gate 1 con preflight rojo.
-
-Migraciones históricas pendientes en prod (al 2026-08-30):
-
-- `20260829010000_rls_jwt_app_metadata.sql`
-- `20260829100000_persona_visita_rls_claims.sql`
-
-## Gate 1 — Seguridad (este PR)
+## Gate 1 — Contención de seguridad
 
 ### Checklist
 
@@ -55,17 +47,27 @@ node --experimental-strip-types --test scripts/ops/*.test.ts
 | `scripts/ops/rotate-all-webhook-secrets.ts` | Rotación masiva staging (service_role) |
 | `scripts/ops/restrict-firebase-android-key.ts` | Restricción API key Android FCM |
 
-### Edge Functions `verify_jwt`
-
-| Función | `verify_jwt` |
-|---------|--------------|
-| auth-guard | false |
-| webhook-tenant | false |
-| notify-jobs | false |
-| resto | true |
-
 ### Post-merge
 
 - Rotar HMAC en staging con `rotate-all-webhook-secrets.ts`; entregar plaintext una vez al admin.
 - Gate 3: MFA enroll UI backoffice.
 - Gate 6: rotación prod.
+
+## Gate 2 — CI/CD y entornos
+
+- [x] CI: Node `22.14.0`, `--frozen-lockfile`, lint, typecheck, unit, deno, pgTAP blank+replay, gitleaks, audit `--prod --audit-level=high`, allowlist `SECURITY DEFINER`.
+- [x] Pages solo producción (`.github/workflows/pages-prod.yml`). Sin site `/staging/` en github.io.
+- [x] Staging: `supabase-staging.yml` + `e2e-staging.yml` (Vite en el runner).
+- [x] Prod Supabase: solo `workflow_dispatch` (`.github/workflows/supabase-prod.yml`).
+- [x] `requirePublicConfig` (`GC-CORE-001`) y contrato anti-ref hardcodeada.
+- [x] Seeds sintéticos (`Acme Staging`). Contraseñas e2e en secrets, no en SQL.
+- [ ] GitHub Environments `staging` y `production` con la tabla de secrets de `docs/runbooks/environments.md`.
+- [ ] Proyecto Supabase staging creado (misma región/major que prod). El script falla `GC-OPS-006` si el token no puede.
+- [ ] SMTP configurado en ambos proyectos (`scripts/ops/configure-supabase-project.ts`; ausencia = `GC-OPS-008`).
+
+## Gate 3+ — completados
+
+- [x] Gate 3 — Runtime web y backoffice (sin demo). PR #42 mergeado.
+- [x] Gate 4 — Android interno (EAS, rastreo, sin demo). PR #43 mergeado.
+- [ ] Gate 5 — Observabilidad, privacidad y operación. PR #44 abierto (mergeable, CI verde).
+- [ ] Gate 6 — Go-live (restore drill, promoción prod). Sin PR aún.

@@ -3,7 +3,10 @@
  * Sin dependencias — corre en Edge (Deno) y se cubre con deno test.
  */
 export function parseCsv(text: string): Record<string, string>[] {
-  const cleaned = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const cleaned = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(
+    /\r/g,
+    "\n",
+  );
   const rows = splitCsv(cleaned);
   if (rows.length === 0) return [];
   const headers = rows[0].map((h) => h.trim().toLowerCase());
