@@ -6,14 +6,14 @@ insert into auth.users (id, email)
 values ('00000000-0000-0000-0000-000000000201'::uuid, 'admin-rastreo@test.local')
 on conflict do nothing;
 
-insert into public.tenant (id, nombre, activo)
-values ('00000000-0000-0000-0000-000000000301'::uuid, 'Tenant Rastreo', true)
+insert into public.tenant (id, codigo, nombre, activo)
+values ('00000000-0000-0000-0000-000000000301'::uuid, 'rastreo-test', 'Tenant Rastreo', true)
 on conflict do nothing;
 
-insert into public.usuario (id, tenant_id, email, nombre, rol, activo)
+insert into public.usuario (id, tenant_id, nombre, rol, activo)
 values
-  ('00000000-0000-0000-0000-000000000201'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'admin-rastreo@test.local', 'Admin', 'admin', true),
-  ('00000000-0000-0000-0000-000000000202'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'asesor-rastreo@test.local', 'Asesor', 'asesor', true)
+  ('00000000-0000-0000-0000-000000000201'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'Admin', 'admin', true),
+  ('00000000-0000-0000-0000-000000000202'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'Asesor', 'asesor', true)
 on conflict do nothing;
 
 insert into public.config_rastreo (tenant_id, dia_semana, hora_inicio, hora_fin, intervalo_min, precision_max_m)

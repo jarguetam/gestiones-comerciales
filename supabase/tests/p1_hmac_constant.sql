@@ -197,11 +197,10 @@ select ok(
   'integracion_recibir no compara digests con igualdad directa'
 );
 
-select unlike(
+select ok(
   pg_get_functiondef(
     'public.integracion_recibir(uuid,text,text,jsonb,text,text,text)'::regprocedure
-  ),
-  '%configuracion%',
+  ) NOT LIKE '%configuracion%',
   'integracion_recibir conserva lectura exclusiva desde Vault'
 );
 

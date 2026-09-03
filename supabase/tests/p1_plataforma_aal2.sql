@@ -6,11 +6,10 @@ insert into auth.users (id, email)
 values ('00000000-0000-0000-0000-000000000401'::uuid, 'plat-aal2@test.local')
 on conflict do nothing;
 
-insert into public.usuario (id, tenant_id, email, nombre, rol, activo)
+insert into public.usuario (id, tenant_id, nombre, rol, activo)
 values (
   '00000000-0000-0000-0000-000000000402'::uuid,
   '00000000-0000-0000-0000-000000000301'::uuid,
-  'empresa-aal2@test.local',
   'Empresa',
   'admin',
   true

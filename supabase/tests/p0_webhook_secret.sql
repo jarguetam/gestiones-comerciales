@@ -11,7 +11,8 @@ create schema if not exists tests;
 create or replace function tests.set_claims(
   p_tenant uuid,
   p_rol text,
-  p_uid uuid
+  p_uid uuid,
+  p_aal text default 'aal1'
 )
 returns void
 language sql
@@ -21,7 +22,8 @@ as $$
     json_build_object(
       'tenant_id', p_tenant::text,
       'rol', p_rol,
-      'sub', p_uid::text
+      'sub', p_uid::text,
+      'aal', p_aal
     )::text,
     true
   );
@@ -353,7 +355,8 @@ reset role;
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000005'
+  'dddddddd-0000-0000-0000-000000000005',
+  'aal2'
 );
 set local role authenticated;
 
@@ -371,7 +374,8 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000006'
+  'dddddddd-0000-0000-0000-000000000006',
+  'aal2'
 );
 set local role authenticated;
 
@@ -563,13 +567,13 @@ select throws_ok(
 
 select throws_ok(
   $$select public.admin_webhook_rotar_secret('11111111-1111-1111-1111-111111111111')$$,
-  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de empresa no puede rotar'
 );
 
 select throws_ok(
   $$select public.admin_webhook_secret_estado('11111111-1111-1111-1111-111111111111')$$,
-  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'admin de empresa no puede consultar estado'
 );
 
@@ -577,10 +581,12 @@ reset role;
 select tests.reset_claims();
 
 -- Owner, soporte y superadmin inactivo deben ser rechazados por ambos RPC.
+-- Se pasa aal2 para que la verificación llegue al check de superadmin.
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000005'
+  'dddddddd-0000-0000-0000-000000000005',
+  'aal2'
 );
 set local role authenticated;
 
@@ -601,7 +607,8 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000006'
+  'dddddddd-0000-0000-0000-000000000006',
+  'aal2'
 );
 set local role authenticated;
 
@@ -622,7 +629,8 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000007'
+  'dddddddd-0000-0000-0000-000000000007',
+  'aal2'
 );
 set local role authenticated;
 
