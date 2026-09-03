@@ -1,6 +1,6 @@
 -- Gate 1 / Task 9 — solo admin escribe config_rastreo.
 begin;
-select plan(3);
+select plan(2);
 
 insert into auth.users (id, email)
 values
@@ -34,15 +34,15 @@ select set_config(
 );
 
 select is(
-  (
+  (select count(*) from (
     update public.config_rastreo
        set intervalo_min = 30
      where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
        and dia_semana = 1
     returning 1
-  ),
-  null,
-  'gerente no puede actualizar config_rastreo'
+  ) t),
+  0::bigint,
+  'gerente no puede actualizar config_rastreo (RLS bloquea)'
 );
 
 select set_config(
@@ -52,13 +52,13 @@ select set_config(
 );
 
 select ok(
-  exists (
+  (select count(*) from (
     update public.config_rastreo
        set intervalo_min = 20
      where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
        and dia_semana = 1
     returning 1
-  ),
+  ) t) > 0,
   'admin puede actualizar config_rastreo'
 );
 

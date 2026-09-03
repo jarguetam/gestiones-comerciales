@@ -302,13 +302,17 @@ select tests.set_claims(
   'aaaaaaaa-0000-0000-0000-000000000001'
 );
 
-select throws_ok(
-  $$update public.tenant
+-- admin tenant: RLS bloquea el UPDATE silenciosamente (0 filas), el trigger nunca se dispara.
+select is(
+  (select count(*) from (
+    update public.tenant
        set configuracion = configuracion
                            || '{"webhook_secret":"bypass-admin"}'::jsonb
-     where id = '44444444-0000-0000-0000-000000000005'$$,
-  'GC-AUTH-001: requiere rol de plataforma',
-  'el guard rechaza bypass por configuracion de admin tenant'
+     where id = '44444444-0000-0000-0000-000000000005'
+    returning 1
+  ) t),
+  0::bigint,
+  'el guard rechaza bypass por configuracion de admin tenant (RLS bloquea sin excepción)'
 );
 
 select tests.reset_claims();
@@ -319,7 +323,7 @@ select throws_ok(
        set configuracion = configuracion
                            || '{"webhook_secret":"bypass-service-role"}'::jsonb
      where id = '44444444-0000-0000-0000-000000000005'$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-001: requiere superadmin activo de plataforma',
   'service_role sin marca de backfill no puede capturar por configuracion'
 );
 reset role;
