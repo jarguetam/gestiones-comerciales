@@ -43,7 +43,7 @@ select is(
   (select intervalo_min from public.config_rastreo
     where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
       and dia_semana = 1),
-  15,
+  15::smallint,
   'gerente no puede actualizar config_rastreo (valor sigue en 15)'
 );
 
@@ -63,7 +63,7 @@ select is(
   (select intervalo_min from public.config_rastreo
     where tenant_id = '00000000-0000-0000-0000-000000000301'::uuid
       and dia_semana = 1),
-  20,
+  20::smallint,
   'admin puede actualizar config_rastreo (valor cambia a 20)'
 );
 
