@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BACKEND_CONFIGURADO, supabase } from '../../lib/supabase'
-import { requierePasoTotp } from './mfa'
+import { loginConAuthGuard } from '../../lib/authGuardLogin'
 import { Alert, BrandMark, Button, Input } from '../../components/ui'
 
 export function Login() {
@@ -24,10 +24,8 @@ export function Login() {
     setError(null)
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (requierePasoTotp(aal)) {
+      const { requiresMfa } = await loginConAuthGuard(supabase, email, password)
+      if (requiresMfa) {
         const { data: factors, error: errF } = await supabase.auth.mfa.listFactors()
         if (errF) throw errF
         const totp = factors?.totp?.[0]

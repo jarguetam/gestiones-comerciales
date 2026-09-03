@@ -10,7 +10,48 @@ Checklist vivo. Cada gate marca su sección.
 
 ## Gate 1 — Contención de seguridad
 
-Ver PR `cursor/gate-1-security-9de6`. Este checklist no bloquea Gate 2.
+### Checklist
+
+| Área | Verificación |
+|------|----------------|
+| Invitaciones | Solo `usuario_plataforma.es_superadmin` + AAL2; rollback Auth en fallo |
+| Importer | Autorización antes de Storage; allowlist GC-* |
+| Webhook HMAC | Secreto en Vault; `hmac_eq` timing-safe; rotación UI last4 |
+| `seed_solicitud_estados` | Revocado para authenticated |
+| Máquinas de estado | Columnas `estado` bloqueadas; transiciones vía RPC |
+| Login | `auth-guard` centralizado; `auth_evento` 5 fails/10 min → 429 `GC-AUTH-040` |
+| `config_rastreo` | Escritura solo admin tenant |
+| RLS helpers | `tenant_id_actual()` / `rol_actual()` en deposito, solicitud, storage |
+| PDF / Push | Sin fallback service_role; push solo service_role |
+| Plataforma | `require_plataforma_aal2()` en RPCs backoffice |
+| Storage | Buckets `firmas`, `documentos`, `importes` privados |
+| `verify_jwt` | Explícito en las 8 Edge Functions (`config.toml`) |
+| Auth hook | `node --experimental-strip-types scripts/ops/check-auth-hook.ts` |
+
+### Comandos locales
+
+```bash
+pnpm -r typecheck
+pnpm -r test
+deno test --allow-read supabase/functions/
+node --experimental-strip-types --test scripts/ops/*.test.ts
+# pgTAP (requiere Docker):
+# supabase test db
+```
+
+### Scripts ops
+
+| Script | Uso |
+|--------|-----|
+| `scripts/ops/check-auth-hook.ts` | Valida `custom_access_token` en Management API |
+| `scripts/ops/rotate-all-webhook-secrets.ts` | Rotación masiva staging (service_role) |
+| `scripts/ops/restrict-firebase-android-key.ts` | Restricción API key Android FCM |
+
+### Post-merge
+
+- Rotar HMAC en staging con `rotate-all-webhook-secrets.ts`; entregar plaintext una vez al admin.
+- Gate 3: MFA enroll UI backoffice.
+- Gate 6: rotación prod.
 
 ## Gate 2 — CI/CD y entornos
 
@@ -24,9 +65,10 @@ Ver PR `cursor/gate-1-security-9de6`. Este checklist no bloquea Gate 2.
 - [ ] Proyecto Supabase staging creado (misma región/major que prod). El script falla `GC-OPS-006` si el token no puede.
 - [ ] SMTP configurado en ambos proyectos (`scripts/ops/configure-supabase-project.ts`; ausencia = `GC-OPS-008`).
 
-## Gate 3+ — pendiente
+## Gate 3+ — completados
 
-Demo runtime y Android interno están en PRs #42 y #43. Gate 5 (este) cubre observabilidad y operación.
+- [x] Gate 3 — Runtime web y backoffice (sin demo). PR #42 mergeado.
+- [x] Gate 4 — Android interno (EAS, rastreo, sin demo). PR #43 mergeado.
 
 ## Gate 5 — Observabilidad y operación
 
@@ -35,10 +77,13 @@ Demo runtime y Android interno están en PRs #42 y #43. Gate 5 (este) cubre obse
 - [x] Probes cada 15 min (`ops-health.yml`) + runbook de incidentes.
 - [x] Rotación HMAC script + runbook (staging primero).
 - [x] PITR assert 7d + dump semanal staging.
-- [x] `auth_evento_stats` sobre `auth_attempts` (Gate 1 traerá `auth_evento`).
+- [x] `auth_evento_stats` sobre `auth_evento`.
 - [x] Purga GPS 180d + compactación anual de auditoría.
 - [x] Política de privacidad + SMTP Auth (sin `emailer`).
 - [x] `SECURITY.md`, `CODEOWNERS`, Dependabot.
 - [ ] PITR verificado en el proyecto real (`enable-pitr.ts` con token).
 - [ ] Probe cron verde en production.
-- [ ] Merge de Gate 3 y Gate 4 (builds reales) antes de cerrar el gate.
+
+## Gate 6 — Go-live
+
+- [ ] Restore drill y promoción a prod. Sin PR aún.

@@ -1,72 +1,69 @@
-/**
- * Edge Function: auth-guard
- * Rate limiting de intentos de login por email+IP (spec backend §3.1).
- * Bloquea 5 intentos fallidos por 15 min.
- *
- * POST { email, ip }
- * → 200 { bloqueado: false } | 429 { bloqueado: true, reintenta_en }
- */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
+import { serveEdge } from "../_shared/request_context.ts";
+import {
+  type AuthGuardDeps,
+  handleAuthGuard,
+  resolveAllowedOrigins,
+} from "./auth_guard.ts";
 
-const WINDOW_MIN = 15;
-const MAX_ATTEMPTS = 5;
+const url = Deno.env.get("SUPABASE_URL")!;
+const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+const allowedOrigins = resolveAllowedOrigins(Deno.env.get("ALLOWED_ORIGINS"));
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-request-id",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+function serviceClient() {
+  return createClient(
+    url,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 }
 
-serveEdge("auth-guard", async (req) => {
-  const _ctx = readRequestContext(req);
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-  if (req.method !== "POST") {
-    return json({ error: "GC-AUTH-010: método no permitido" }, 405);
-  }
+serveEdge("auth-guard", (req) => {
+  const authClient = createClient(url, anon);
+  const deps: AuthGuardDeps = {
+    signIn: async ({ email, password }) => {
+      const { data, error } = await authClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error || !data.session) {
+        return { session: null, error };
+      }
+      return {
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        },
+        error: null,
+      };
+    },
+    getAuthenticatorAssuranceLevel: async () => {
+      const { data, error } = await authClient.auth.mfa
+        .getAuthenticatorAssuranceLevel();
+      return { data, error };
+    },
+    countRecentFails: async (ip, sinceIso) => {
+      const { count, error } = await serviceClient()
+        .from("auth_evento")
+        .select("id", { count: "exact", head: true })
+        .eq("ip", ip)
+        .in("outcome", ["fail", "blocked"])
+        .gte("creado_en", sinceIso);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    recordEvent: async ({ ip, emailHash, outcome, requestId }) => {
+      const { error } = await serviceClient().from("auth_evento").insert({
+        ip,
+        email_hash: emailHash,
+        outcome,
+        request_id: requestId,
+      });
+      if (error) throw error;
+    },
+    log: (entry) => {
+      console.log(JSON.stringify({ ts: new Date().toISOString(), ...entry }));
+    },
+  };
 
-  try {
-    const { email, ip: _ip } = await req.json();
-    if (!email) return json({ error: "GC-AUTH-011: email requerido" }, 400);
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    // ventana de 15 min hacia atrás
-    const desde = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
-
-    const { data, error } = await supabase
-      .from("auth_attempts")
-      .select("creado_en")
-      .eq("email", email)
-      .eq("exitoso", false)
-      .gte("creado_en", desde);
-
-    if (error) return json({ error: "GC-AUTH-012: no se pudo evaluar" }, 500);
-
-    // nota: la tabla auth_attempts la alimenta el cliente/Edge tras cada intento fallido.
-    // v1: bloqueo por email; el filtro por IP se agrega cuando exista la columna ip.
-    const intentos = (data ?? []).length;
-    const bloqueado = intentos >= MAX_ATTEMPTS;
-
-    return json({
-      bloqueado,
-      intentos,
-      reintenta_en: bloqueado ? WINDOW_MIN * 60 : 0,
-    });
-  } catch (_e) {
-    return json({ error: "GC-AUTH-013: payload inválido" }, 400);
-  }
+  return handleAuthGuard(deps, req, allowedOrigins);
 });

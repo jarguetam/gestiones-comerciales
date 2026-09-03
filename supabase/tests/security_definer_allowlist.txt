@@ -16,6 +16,7 @@ public.admin_usuario_gestionar
 public.admin_usuario_invitar
 public.admin_usuarios_tenant
 public.admin_webhook_rotar_secret
+public.admin_webhook_secret_estado
 public.aplicar_plantillas_rubro
 public.asesor_en_alcance
 public.crm_funnel
@@ -27,6 +28,7 @@ public.deposito_confirmar
 public.es_superadmin
 public.es_usuario_plataforma
 public.formulario_enviar
+public.hmac_eq
 public.integracion_recibir
 public.km_registrar
 public.lead_convertir
@@ -41,6 +43,8 @@ public.recordatorio_depositos
 public.recordatorio_kilometraje
 public.registrar_auditoria
 public.registrar_edge_invocacion
+private.capture_tenant_webhook_secret
+public.require_plataforma_aal2
 public.requiere_plataforma
 public.rol_actual
 public.seed_solicitud_estados

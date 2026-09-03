@@ -1,3 +1,72 @@
+export interface WebhookSecretStatus {
+  tenantId: string
+  configurado: boolean
+  rotadoEn: string | null
+  last4: string | null
+}
+
+export interface WebhookSecretRevelado {
+  tenantId: string
+  secret: string
+}
+
+export type WebhookSecretRevealAction =
+  | {
+      tipo: 'rotacion_exitosa'
+      tenantId: string
+      respuesta: unknown
+    }
+  | {
+      tipo: 'rotacion_iniciada' | 'descartado' | 'tenant_cambiado'
+    }
+
+function objetoRpc(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('estado de webhook inválido')
+  }
+  return value as Record<string, unknown>
+}
+
+export function webhookSecretStatusDeRpc(value: unknown): WebhookSecretStatus {
+  const data = objetoRpc(value)
+  if (
+    Object.hasOwn(data, 'secret')
+    || typeof data.tenantId !== 'string'
+    || typeof data.configurado !== 'boolean'
+    || (data.rotadoEn !== null && typeof data.rotadoEn !== 'string')
+    || (data.last4 !== null && typeof data.last4 !== 'string')
+  ) {
+    throw new Error('estado de webhook inválido')
+  }
+
+  return {
+    tenantId: data.tenantId,
+    configurado: data.configurado,
+    rotadoEn: data.rotadoEn,
+    last4: data.last4,
+  }
+}
+
+export function webhookSecretRotadoDeRpc(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error('Respuesta de rotación de webhook inválida')
+  }
+  return value
+}
+
+export function actualizarWebhookSecretRevelado(
+  _actual: WebhookSecretRevelado | null,
+  accion: WebhookSecretRevealAction,
+): WebhookSecretRevelado | null {
+  if (accion.tipo === 'rotacion_exitosa') {
+    return {
+      tenantId: accion.tenantId,
+      secret: webhookSecretRotadoDeRpc(accion.respuesta),
+    }
+  }
+  return null
+}
+
 export function urlWebhookTenant(base: string | undefined): string {
   if (!base) return 'https://<proyecto>.supabase.co/functions/v1/webhook-tenant'
   return `${base.replace(/\/$/, '')}/functions/v1/webhook-tenant`

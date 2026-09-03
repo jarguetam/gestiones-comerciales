@@ -59,7 +59,7 @@ select set_config('role', 'authenticated', true);
 
 select throws_ok(
   $$select public.admin_salud_plataforma()$$,
-  'GC-AUTH-001: requiere rol de plataforma',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'usuario de empresa no consulta salud de plataforma'
 );
 
@@ -69,7 +69,8 @@ select set_config('role', 'postgres', true);
 -- 2-6. superadmin
 select set_config('request.jwt.claims',
   json_build_object('plataforma', true, 'superadmin', true,
-                    'sub', 'cccccccc-0000-0000-0000-000000000001')::text, true);
+                    'sub', 'cccccccc-0000-0000-0000-000000000001',
+                    'aal', 'aal2')::text, true);
 select set_config('role', 'authenticated', true);
 
 select lives_ok(
@@ -122,7 +123,8 @@ select set_config('request.jwt.claims', '', true);
 select set_config('role', 'postgres', true);
 select set_config('request.jwt.claims',
   json_build_object('plataforma', true, 'superadmin', false,
-                    'sub', 'cccccccc-0000-0000-0000-000000000002')::text, true);
+                    'sub', 'cccccccc-0000-0000-0000-000000000002',
+                    'aal', 'aal2')::text, true);
 select set_config('role', 'authenticated', true);
 
 select is(

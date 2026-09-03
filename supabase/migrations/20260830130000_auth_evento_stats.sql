@@ -1,13 +1,12 @@
--- Gate 5 Task 6: stats de brute-force sobre auth_attempts (main).
--- Cuando Gate 1 mergee auth_evento, esta vista se puede reescribir sobre esa tabla.
+-- Gate 5 Task 6: stats de brute-force sobre auth_evento (Gate 1).
 
 create or replace view public.auth_evento_stats as
 select
-  coalesce(ip, 'unknown') as ip,
+  coalesce(host(ip), 'unknown') as ip,
   count(*)::int as intentos,
   date_trunc('minute', creado_en) as ventana
-from public.auth_attempts
-where exitoso = false
+from public.auth_evento
+where outcome in ('fail', 'blocked')
   and creado_en > now() - interval '10 minutes'
 group by 1, 3;
 

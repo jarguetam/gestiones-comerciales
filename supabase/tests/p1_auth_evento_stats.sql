@@ -1,8 +1,8 @@
 begin;
 select plan(2);
 
-insert into public.auth_attempts (email, ip, exitoso, creado_en)
-values ('brute@gt1.test', '203.0.113.9', false, now());
+insert into public.auth_evento (ip, email_hash, outcome, creado_en)
+values ('203.0.113.9', 'hash-test', 'fail', now());
 
 select ok(
   exists (

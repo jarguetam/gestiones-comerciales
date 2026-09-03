@@ -75,10 +75,10 @@ insert into public.actividad_hora (tenant_id, nombre, cantidad) values
   ('22222222-2222-2222-2222-222222222222', '1 hora', 1);
 
 -- helpers para simular JWT (postgrest setea request.jwt.claims)
-create or replace function tests.set_claims(p_tenant uuid, p_rol text, p_uid uuid)
+create or replace function tests.set_claims(p_tenant uuid, p_rol text, p_uid uuid, p_aal text default 'aal1')
 returns void language sql as $$
   select set_config('request.jwt.claims',
-    json_build_object('tenant_id', p_tenant::text, 'rol', p_rol, 'sub', p_uid::text)::text, true);
+    json_build_object('tenant_id', p_tenant::text, 'rol', p_rol, 'sub', p_uid::text, 'aal', p_aal)::text, true);
   select set_config('role', 'authenticated', true);
 $$;
 

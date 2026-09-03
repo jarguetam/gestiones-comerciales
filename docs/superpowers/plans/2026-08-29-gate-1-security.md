@@ -20,6 +20,30 @@
 - iOS, PWA, Storybook, i18n EN y `emailer` fuera de alcance.
 - Node 22.14.0; pnpm 9.15.9.
 
+## Decisiones de ejecución aprobadas (2026-08-29)
+
+- Los secretos HMAC se guardan cifrados en Supabase Vault. Una tabla privada
+  relaciona cada tenant con el identificador de Vault y conserva únicamente
+  `last4` y la fecha de rotación; ningún rol `authenticated` puede leer el valor.
+- Invitaciones e importaciones quedan restringidas a administradores de
+  plataforma con AAL2. Admins de tenant y supervisores no obtienen este permiso.
+- `auth-guard` centraliza el login. `auth_evento` sustituye el contrato incompleto
+  de `auth_attempts`: cinco fallos por IP en diez minutos bloquean el siguiente
+  intento con HTTP 429 y `GC-AUTH-040`.
+- `verify_jwt = false` solo para `auth-guard`, `webhook-tenant` y `notify-jobs`;
+  todas las demás Edge Functions declaran `verify_jwt = true`.
+- La rotación de secretos permanece en backoffice y solo para plataforma. La UI
+  muestra estado y `last4`; el secreto en claro aparece una sola vez al rotarlo.
+- La comparación HMAC SQL usa trabajo fijo byte a byte. Se documenta como
+  mitigación best-effort porque PostgreSQL no garantiza tiempo constante.
+- Gate 1 se desarrolla y revisa en un PR draft, pero no se marca listo ni se
+  mergea mientras el preflight de Gate 0 permanezca rojo.
+- Los paths obsoletos del plan se adaptan al árbol real sin crear capas
+  duplicadas. Se preservan los significados actuales de códigos `GC-*` y se usan
+  códigos libres documentados para casos nuevos.
+- Orden por dependencias: Task 13 precede a Task 8; Tasks 4 → 6 → 17 permanecen
+  secuenciales. El resto conserva el orden cuando no exista dependencia.
+
 ---
 
 ## File structure
