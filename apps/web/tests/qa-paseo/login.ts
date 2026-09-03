@@ -21,7 +21,7 @@ export async function loginQa(page: Page): Promise<void> {
   const pass = password()
   if (!user || !pass) throw new Error('E2E_ADMIN_EMAIL/PASSWORD (o ASESOR) requeridos')
 
-  await page.goto('/#/login')
+  await page.goto('#/login')
   await expect(page.locator('[data-spec="W-01"]')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('button', { name: /entrar al tablero/i })).toHaveCount(0)
 

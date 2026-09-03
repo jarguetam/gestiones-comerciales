@@ -36,7 +36,8 @@ export function rutasParaModo(modo: ModoPaseo): RutaPaseo[] {
   return modo === 'public' ? [...RUTAS_PUBLICAS] : [...RUTAS_AUTH]
 }
 
+/** Hash relativo (sin `/` inicial) para no romper baseURL en subpath (GitHub Pages). */
 export function hashUrl(path: string): string {
-  if (path === '/') return '/#/'
-  return `/#${path}`
+  if (path === '/') return '#/'
+  return `#${path}`
 }
