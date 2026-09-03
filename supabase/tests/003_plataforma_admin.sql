@@ -23,7 +23,7 @@ select tests.set_claims(
 
 select throws_ok(
   $$select public.admin_modulo_activar('11111111-1111-1111-1111-111111111111', 'creditos', true)$$,
-  'GC-AUTH-010: requiere usuario de plataforma',
+  'GC-AUTH-001: requiere rol de plataforma',
   'admin de tenant de negocio tampoco puede activar módulos (eso es de plataforma)'
 );
 

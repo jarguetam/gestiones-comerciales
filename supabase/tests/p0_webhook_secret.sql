@@ -307,7 +307,7 @@ select throws_ok(
        set configuracion = configuracion
                            || '{"webhook_secret":"bypass-admin"}'::jsonb
      where id = '44444444-0000-0000-0000-000000000005'$$,
-  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'GC-AUTH-001: requiere rol de plataforma',
   'el guard rechaza bypass por configuracion de admin tenant'
 );
 
@@ -319,7 +319,7 @@ select throws_ok(
        set configuracion = configuracion
                            || '{"webhook_secret":"bypass-service-role"}'::jsonb
      where id = '44444444-0000-0000-0000-000000000005'$$,
-  'GC-AUTH-001: requiere superadmin activo de plataforma',
+  'GC-AUTH-001: requiere rol de plataforma',
   'service_role sin marca de backfill no puede capturar por configuracion'
 );
 reset role;
@@ -611,14 +611,14 @@ set local role authenticated;
 
 select throws_ok(
   $$select public.admin_webhook_rotar_secret('11111111-1111-1111-1111-111111111111')$$,
-  'GC-AUTH-001: requiere superadmin activo de plataforma',
-  'superadmin inactivo no puede rotar'
+  'GC-AUTH-010: requiere usuario de plataforma',
+  'superadmin inactivo no puede rotar (activo=false → GC-AUTH-010)'
 );
 
 select throws_ok(
   $$select public.admin_webhook_secret_estado('11111111-1111-1111-1111-111111111111')$$,
-  'GC-AUTH-001: requiere superadmin activo de plataforma',
-  'superadmin inactivo no puede consultar estado'
+  'GC-AUTH-010: requiere usuario de plataforma',
+  'superadmin inactivo no puede consultar estado (activo=false → GC-AUTH-010)'
 );
 
 reset role;
@@ -694,11 +694,10 @@ select is(
   'admin_webhook_rotar_secret conserva RETURNS text'
 );
 
-select unlike(
+select ok(
   pg_get_functiondef(
     'public.integracion_recibir(uuid,text,text,jsonb,text,text,text)'::regprocedure
-  ),
-  'configuracion',
+  ) NOT LIKE '%configuracion%',
   'CONTRACT deja integracion_recibir sin fallback a tenant.configuracion'
 );
 

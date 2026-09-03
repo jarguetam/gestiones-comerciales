@@ -3,7 +3,9 @@ begin;
 select plan(3);
 
 insert into auth.users (id, email)
-values ('00000000-0000-0000-0000-000000000201'::uuid, 'admin-rastreo@test.local')
+values
+  ('00000000-0000-0000-0000-000000000201'::uuid, 'admin-rastreo@test.local'),
+  ('00000000-0000-0000-0000-000000000202'::uuid, 'gerente-rastreo@test.local')
 on conflict do nothing;
 
 insert into public.tenant (id, codigo, nombre, rubro, activo)
