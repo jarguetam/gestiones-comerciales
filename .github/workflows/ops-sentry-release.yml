@@ -1,0 +1,36 @@
+name: Sentry releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Nombre de release (web@abc1234)
+        required: true
+      project:
+        description: SENTRY_PROJECT
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Crear release Sentry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: sentry-cli
+        run: npm i -g @sentry/cli@2
+      - name: Crear / finalizar release
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ inputs.project }}
+        run: bash scripts/ops/sentry-release.sh "${{ inputs.release }}"

@@ -34,7 +34,7 @@
                        │        │                                     │
                        │  Edge Functions ── efectos externos          │
                        │   ├─ push-notifications (FCM)                │
-                       │   ├─ emailer (Resend/SMTP)                   │
+                       │   ├─ SMTP Auth (invitaciones; emailer fuera de v1) │
                        │   ├─ pdf-cotizacion / pdf-solicitud          │
                        │   ├─ importer (CSV/Excel catálogos y datos)  │
                        │   ├─ rastreo-ingesta (batch GPS)             │
@@ -169,11 +169,11 @@ Las tablas del núcleo y módulos se publican vía PostgREST con los siguientes 
 | Función | Trigger | Contrato |
 |---|---|---|
 | `push-notifications` | HTTP (cliente) o notify-jobs | `{tenant_id, usuario_ids[], titulo, cuerpo, datos}` → encola FCM por dispositivo activo; degrada a notificación in-app (`notificacion`). |
-| `emailer` | HTTP interno | `{tenant_id, destinatarios[], asunto, html}` → Resend/SMTP. |
+| `emailer` | fuera de v1 | Invitaciones y recupero usan SMTP de Supabase Auth. No hay función `emailer`. |
 | `pdf-solicitud` | RPC trigger (after insert firma) | Genera PDF (plantilla por tenant desde `tenant.branding`) y sube a Storage; actualiza `pdf_ruta`. |
 | `importer` | HTTP (admin) | CSV o JSON `{tipo, tenant_id, filas[]}` de personas/cuentas/catálogos → RPC `admin_importar_*` → `{insertados, actualizados, errores[]}`. Excel `.xlsx` se rechaza (`GC-IMP-002`). |
 | `rastreo-ingesta` | HTTP (app móvil) | Array de puntos GPS `{lat,lng,precision,velocidad,bateria,capturado_en}`; valida ventana `config_rastreo` y precision_max_m; inserta lote. |
-| `notify-jobs` | `pg_cron` vía `pg_net` | Ejecuta jobs genéricos (§7) por tenant activo; orquesta `push-notifications`/`emailer`. |
+| `notify-jobs` | `pg_cron` vía `pg_net` | Ejecuta jobs genéricos (§7) por tenant activo; orquesta `push-notifications`. El `emailer` genérico queda fuera de v1. |
 | `webhook-tenant` | HTTP (sistemas del rubro) | Webhook firmado HMAC-SHA256 (`X-GC-Signature` sobre el body crudo); encola `integracion_evento` y procesa `persona.upsert` / `cuenta.snapshot` / `catalogo.upsert`. |
 | `auth-guard` | HTTP | Rate limiting y bloqueo de intentos de login. |
 | `pdf-cotizacion` | alias de `pdf-solicitud` | Compatibilidad naming por tenant financiero. |
@@ -224,7 +224,7 @@ Orquestación:
 
 1. `pg_cron` dispara SQL → selecciona tenants activos con el módulo correspondiente.
 2. SQL arma payload `{tenant_id, job}` y llama `net.http_post('notify-jobs')` (pg_net) con header de autorización firmado (secret compartido en Vault).
-3. `notify-jobs` ejecuta la lógica del job (consultas agregadas + `push-notifications`/`emailer`).
+3. `notify-jobs` ejecuta la lógica del job (consultas agregadas + `push-notifications`). El `emailer` genérico queda fuera de v1.
 
 **Jobs genéricos:** `recordatorio_agenda`, `recordatorio_rastreo`, `cierre_visitas`, `resumen_diario`, `asesores_inactivos`, `recordatorio_kilometraje`, `recordatorio_depositos`, `todo commit de snapshot_cuentas` (módulo creditos).
 

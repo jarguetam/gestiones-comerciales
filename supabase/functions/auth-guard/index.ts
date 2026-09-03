@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 import {
   type AuthGuardDeps,
   handleAuthGuard,
@@ -16,7 +17,8 @@ function serviceClient() {
   );
 }
 
-Deno.serve((req) => {
+serveEdge("auth-guard", (req) => {
+  const _ctx = readRequestContext(req);
   const authClient = createClient(url, anon);
   const deps: AuthGuardDeps = {
     signIn: async ({ email, password }) => {

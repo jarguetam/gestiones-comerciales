@@ -9,6 +9,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 import {
   importar,
   type ImporterDeps,
@@ -30,7 +31,8 @@ type ImporterRpcClient = {
   }>;
 };
 
-Deno.serve(async (req) => {
+serveEdge("importer", async (req) => {
+  const _ctx = readRequestContext(req);
   const preflight = handleOptions(req);
   if (preflight) return preflight;
 

@@ -2,7 +2,7 @@
  * M-10 Ajustes: perfil, estado de rastreo (solo lectura), cambio de contraseña y cierre de sesión.
  */
 import React, { useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Constants from 'expo-constants'
 import { supabase, type Perfil } from '../lib/supabase'
 import { RastreoEstado } from '../components/RastreoEstado'
@@ -90,6 +90,11 @@ export default function AjustesScreen({
         {onAbrirCola ? (
           <Boton etiqueta="Cola de sincronización" variante="secondary" onPress={onAbrirCola} />
         ) : null}
+        <Boton
+          etiqueta="Privacidad"
+          variante="secondary"
+          onPress={() => void Linking.openURL('https://jarguetam.github.io/gestiones-comerciales/privacidad.html')}
+        />
         <Boton etiqueta="Salir" variante="ghost" onPress={() => void handleLogout()} />
       </View>
     </ScrollView>

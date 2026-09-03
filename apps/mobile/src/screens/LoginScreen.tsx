@@ -5,6 +5,7 @@
 import React, { useState } from 'react'
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -139,6 +140,11 @@ export default function LoginScreen({ onLogin, onRecuperar }: Props) {
             {onRecuperar ? (
               <Boton etiqueta="Olvidé mi contraseña" variante="ghost" onPress={onRecuperar} />
             ) : null}
+            <Boton
+              etiqueta="Privacidad"
+              variante="ghost"
+              onPress={() => void Linking.openURL('https://jarguetam.github.io/gestiones-comerciales/privacidad.html')}
+            />
           </>
         ) : (
           <>

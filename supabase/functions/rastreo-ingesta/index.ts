@@ -13,6 +13,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 
 // Guatemala no tiene DST: offset fijo UTC-6 para interpretar "hoy/hora" del tenant
 const GT_OFFSET_MS = -6 * 60 * 60_000;
@@ -42,7 +43,8 @@ function normalizar(p: Record<string, unknown>): Punto | null {
   };
 }
 
-Deno.serve(async (req) => {
+serveEdge("rastreo-ingesta", async (req) => {
+  const _ctx = readRequestContext(req);
   const pre = handleOptions(req);
   if (pre) return pre;
   if (req.method !== "POST") {

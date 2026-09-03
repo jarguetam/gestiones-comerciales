@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { assertSmtpOrThrow, authUrlsFor, requiredSmtpVars } from './configure-supabase-project.ts'
+import { assertSmtpEnabled, assertSmtpOrThrow, authUrlsFor, requiredSmtpVars } from './configure-supabase-project.ts'
 
 test('SMTP ausente es GC-OPS-008', () => {
   assert.deepEqual(requiredSmtpVars({}), [
@@ -11,6 +11,11 @@ test('SMTP ausente es GC-OPS-008', () => {
     'SMTP_ADMIN_EMAIL',
   ])
   assert.throws(() => assertSmtpOrThrow({}), /GC-OPS-008/)
+})
+
+test('assertSmtpEnabled exige smtp.enabled', () => {
+  assert.throws(() => assertSmtpEnabled({ smtp: { enabled: false } }), /GC-OPS-008/)
+  assert.doesNotThrow(() => assertSmtpEnabled({ smtp: { enabled: true } }))
 })
 
 test('staging usa Vite local; prod exige Pages URL', () => {

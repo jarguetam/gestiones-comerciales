@@ -11,8 +11,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleOptions, json } from "../_shared/cors.ts";
 import { registrarInvocacion } from "../_shared/invocacion.ts";
+import { readRequestContext, serveEdge } from "../_shared/request_context.ts";
 
-Deno.serve(async (req) => {
+serveEdge("webhook-tenant", async (req) => {
+  const _ctx = readRequestContext(req);
   const pre = handleOptions(req);
   if (pre) return pre;
   if (req.method !== "POST") {

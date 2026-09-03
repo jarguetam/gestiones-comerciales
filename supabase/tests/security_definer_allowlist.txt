@@ -62,4 +62,6 @@ public.visita_checkin
 public.visita_completar
 public.visita_corregir
 public.visita_crear
+public.compactar_auditoria_anual
+public.purgar_rastreo_ubicacion
 public.visita_revisar

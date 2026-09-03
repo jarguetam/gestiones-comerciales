@@ -69,5 +69,21 @@ node --experimental-strip-types --test scripts/ops/*.test.ts
 
 - [x] Gate 3 — Runtime web y backoffice (sin demo). PR #42 mergeado.
 - [x] Gate 4 — Android interno (EAS, rastreo, sin demo). PR #43 mergeado.
-- [ ] Gate 5 — Observabilidad, privacidad y operación. PR #44 abierto (mergeable, CI verde).
-- [ ] Gate 6 — Go-live (restore drill, promoción prod). Sin PR aún.
+
+## Gate 5 — Observabilidad y operación
+
+- [x] `request_id` en las 8 Edge Functions.
+- [x] Releases Sentry en Pages (`web@` / `backoffice@`); workflow `ops-sentry-release.yml`.
+- [x] Probes cada 15 min (`ops-health.yml`) + runbook de incidentes.
+- [x] Rotación HMAC script + runbook (staging primero).
+- [x] PITR assert 7d + dump semanal staging.
+- [x] `auth_evento_stats` sobre `auth_evento`.
+- [x] Purga GPS 180d + compactación anual de auditoría.
+- [x] Política de privacidad + SMTP Auth (sin `emailer`).
+- [x] `SECURITY.md`, `CODEOWNERS`, Dependabot.
+- [ ] PITR verificado en el proyecto real (`enable-pitr.ts` con token).
+- [ ] Probe cron verde en production.
+
+## Gate 6 — Go-live
+
+- [ ] Restore drill y promoción a prod. Sin PR aún.
