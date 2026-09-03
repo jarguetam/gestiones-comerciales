@@ -13,7 +13,7 @@ on conflict do nothing;
 insert into public.usuario (id, tenant_id, nombre, rol, activo)
 values
   ('00000000-0000-0000-0000-000000000201'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'Admin', 'admin', true),
-  ('00000000-0000-0000-0000-000000000202'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'Asesor', 'asesor', true)
+  ('00000000-0000-0000-0000-000000000202'::uuid, '00000000-0000-0000-0000-000000000301'::uuid, 'Gerente', 'gerente', true)
 on conflict do nothing;
 
 insert into public.config_rastreo (tenant_id, dia_semana, hora_inicio, hora_fin, intervalo_min, precision_max_m)
@@ -27,7 +27,7 @@ where not exists (
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
-  '{"sub":"00000000-0000-0000-0000-000000000202","role":"authenticated","tenant_id":"00000000-0000-0000-0000-000000000301","rol":"asesor"}',
+  '{"sub":"00000000-0000-0000-0000-000000000202","role":"authenticated","tenant_id":"00000000-0000-0000-0000-000000000301","rol":"gerente"}',
   true
 );
 
@@ -40,7 +40,7 @@ select is(
     returning 1
   ),
   null,
-  'asesor no puede actualizar config_rastreo'
+  'gerente no puede actualizar config_rastreo'
 );
 
 select set_config(

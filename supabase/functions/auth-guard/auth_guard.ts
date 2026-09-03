@@ -70,8 +70,9 @@ export async function hashEmail(email: string): Promise<string> {
     "SHA-256",
     new TextEncoder().encode(normalized),
   );
-  return Array.from(new Uint8Array(digest), (b) =>
-    b.toString(16).padStart(2, "0")
+  return Array.from(
+    new Uint8Array(digest),
+    (b) => b.toString(16).padStart(2, "0"),
   ).join("");
 }
 
@@ -204,7 +205,8 @@ export async function handleAuthGuard(
 
   await deps.recordEvent({ ip, emailHash, outcome: "ok", requestId });
 
-  const { data: aal, error: aalError } = await deps.getAuthenticatorAssuranceLevel();
+  const { data: aal, error: aalError } = await deps
+    .getAuthenticatorAssuranceLevel();
   if (aalError) {
     deps.log({
       requestId,

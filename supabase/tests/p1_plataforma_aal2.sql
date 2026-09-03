@@ -23,6 +23,7 @@ values (
 )
 on conflict do nothing;
 
+-- test 1: empresa sin fila plataforma
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -32,14 +33,18 @@ select set_config(
 
 select throws_ok(
   $$ select public.require_plataforma_aal2() $$,
-  'GC-AUTH-010',
+  'GC-AUTH-010: requiere usuario de plataforma',
   'usuario empresa sin fila plataforma recibe GC-AUTH-010'
 );
 
+-- volver a postgres para INSERT
+reset role;
 insert into public.usuario_plataforma (id, email, nombre, es_superadmin, activo)
 values ('00000000-0000-0000-0000-000000000401'::uuid, 'plat-aal2@test.local', 'Plat', true, true)
 on conflict do nothing;
 
+-- test 2: plataforma con AAL1
+set local role authenticated;
 select set_config(
   'request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-000000000401","role":"authenticated","plataforma":true,"superadmin":true,"aal":"aal1"}',
@@ -48,9 +53,10 @@ select set_config(
 
 select throws_ok(
   $$ select public.require_plataforma_aal2() $$,
-  'GC-AUTH-011',
+  'GC-AUTH-011: requiere autenticación de dos factores (AAL2)',
   'plataforma con AAL1 recibe GC-AUTH-011'
 );
 
+reset role;
 select * from finish();
 rollback;

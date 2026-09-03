@@ -174,8 +174,8 @@ select set_config('role', 'authenticated', true);
 
 select throws_ok(
   $$select public.admin_departamento_guardar(null, 'Lectura No Puede')$$,
-  'GC-AUTH-010: requiere usuario de plataforma',
-  'plataforma con rol lectura no escribe catálogos globales'
+  'GC-AUTH-011: requiere autenticación de dos factores (AAL2)',
+  'plataforma con rol lectura sin AAL2 no escribe catálogos globales'
 );
 
 select tests.reset_claims();

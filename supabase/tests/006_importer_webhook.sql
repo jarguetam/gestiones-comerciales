@@ -14,31 +14,7 @@ select plan(13);
 -- Fixture autónomo: Auth antes de perfiles por FK.
 create schema if not exists tests;
 
-create or replace function tests.set_claims(
-  p_tenant uuid,
-  p_rol text,
-  p_uid uuid
-)
-returns void
-language sql
-as $$
-  select set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'tenant_id', p_tenant::text,
-      'rol', p_rol,
-      'sub', p_uid::text
-    )::text,
-    true
-  );
-$$;
-
-create or replace function tests.reset_claims()
-returns void
-language sql
-as $$
-  select set_config('request.jwt.claims', '', true);
-$$;
+-- set_claims y reset_claims ya están en 000_setup_tests.sql
 
 insert into auth.users (id, email)
 values

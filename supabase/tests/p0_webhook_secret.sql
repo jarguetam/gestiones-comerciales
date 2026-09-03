@@ -369,7 +369,8 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000004'
+  'dddddddd-0000-0000-0000-000000000004',
+  'aal2'
 );
 set local role authenticated;
 
@@ -627,7 +628,8 @@ select tests.reset_claims();
 select tests.set_claims(
   '11111111-1111-1111-1111-111111111111',
   'plataforma',
-  'dddddddd-0000-0000-0000-000000000004'
+  'dddddddd-0000-0000-0000-000000000004',
+  'aal2'
 );
 set local role authenticated;
 
