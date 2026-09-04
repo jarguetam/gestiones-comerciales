@@ -19,6 +19,10 @@ test('SECURITY.md, CODEOWNERS y Dependabot existen', () => {
   assert.match(dep, /package-ecosystem:\s*npm/)
   assert.match(dep, /package-ecosystem:\s*github-actions/)
   assert.match(dep, /interval:\s*weekly/)
+  assert.match(dep, /npm-patches:[\s\S]*update-types:[\s\S]*- patch/)
+  assert.doesNotMatch(dep, /npm-patches:[\s\S]*- minor/)
+  assert.match(dep, /react-native[\s\S]*semver-minor/)
+  assert.match(dep, /@sentry\/react-native[\s\S]*semver-major/)
 })
 
 test('runbooks de Gate 5 existen', () => {
