@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.sha }}
 
@@ -59,7 +59,7 @@ jobs:
             echo "service_role ausente en este job; db push no lo requiere."
           fi
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
 
