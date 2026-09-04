@@ -6,6 +6,7 @@ import {
   rankingSupervisores,
   porcentajeCompletadas,
   demoFilasDashboard,
+  specIdsDashboard,
   type FilaDashboard,
 } from '../src/features/dashboard/dashboard.ts'
 
@@ -66,4 +67,12 @@ test('rankingSupervisores ordena por completadas del equipo', () => {
   assert.ok(ranking.length >= 2)
   assert.ok(ranking[0].completadas >= ranking[1].completadas)
   assert.ok(ranking.every((r) => r.rol === 'supervisor'))
+})
+
+test('specIdsDashboard siempre expone W-02; W-02b solo en drill (H2)', () => {
+  assert.deepEqual(specIdsDashboard('asesor'), { pagina: 'W-02', drill: null })
+  assert.deepEqual(specIdsDashboard('supervisor'), { pagina: 'W-02', drill: null })
+  assert.deepEqual(specIdsDashboard('admin'), { pagina: 'W-02', drill: 'W-02b' })
+  assert.deepEqual(specIdsDashboard('gerente'), { pagina: 'W-02', drill: 'W-02b' })
+  assert.deepEqual(specIdsDashboard(undefined), { pagina: 'W-02', drill: null })
 })

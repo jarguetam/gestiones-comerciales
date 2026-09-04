@@ -24,7 +24,10 @@ import { mostrarAuditoria } from '../lib/claims'
 import { RequireRol } from '../components/RequireRol'
 
 function RequiereAdmin({ children }: { children: ReactNode }) {
-  const { rol } = useAuth()
+  const { rol, loading } = useAuth()
+  if (loading) {
+    return <p className="text-sm text-muted">Cargando…</p>
+  }
   if (!mostrarAuditoria(rol)) {
     return (
       <div className="max-w-lg rounded-2xl border border-line bg-surface p-6" data-spec="W-12">

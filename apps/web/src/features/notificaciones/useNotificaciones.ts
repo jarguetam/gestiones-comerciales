@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { QK } from '../../lib/queryClient'
 import { contarNoLeidas, marcarLeida, type ItemNotificacion } from './notificaciones'
 import { fetchNotificaciones, persistirLeida } from './notificacionesApi'
+import { suscribirInboxNotificacion } from './inboxRealtime'
 
 export function useNotificaciones(live: boolean) {
   const qc = useQueryClient()
@@ -15,15 +16,9 @@ export function useNotificaciones(live: boolean) {
 
   useEffect(() => {
     if (!live) return
-    const ch = supabase
-      .channel('inbox-notificacion')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notificacion' }, () => {
-        void qc.invalidateQueries({ queryKey: QK.notificaciones })
-      })
-      .subscribe()
-    return () => {
-      void supabase.removeChannel(ch)
-    }
+    return suscribirInboxNotificacion(supabase, () => {
+      void qc.invalidateQueries({ queryKey: QK.notificaciones })
+    })
   }, [live, qc])
 
   const leer = useMutation({
