@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { Recolector, formatearReporteMd, severidadAxe } from './hallazgos.ts'
 import { credencialesAuthDisponibles, loginQa } from './login.ts'
 import { observarPagina } from './observadores.ts'
-import { RUTAS_AUTH, RUTAS_PUBLICAS, hashUrl, type RutaPaseo } from './rutas.ts'
+import { RUTAS_AUTH, RUTAS_PUBLICAS, hashUrl, selectorSpecs, type RutaPaseo } from './rutas.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPORT_DIR = join(__dirname, '../../test-results')
@@ -40,7 +40,7 @@ async function assertNoBlank(page: Page, ruta: string, rec: Recolector) {
 }
 
 async function assertSpec(page: Page, ruta: RutaPaseo, rec: Recolector) {
-  if (!ruta.spec) {
+  if (!ruta.specs?.length) {
     if (ruta.path === '/recuperar') {
       const ok = await page
         .getByRole('heading', { name: /recuperar contraseña/i })
@@ -52,13 +52,14 @@ async function assertSpec(page: Page, ruta: RutaPaseo, rec: Recolector) {
     }
     return
   }
-  const n = await page.locator(`[data-spec="${ruta.spec}"]`).count()
+  const sel = selectorSpecs(ruta.specs)
+  const n = await page.locator(sel).count()
   if (n === 0) {
     rec.add({
       tipo: 'data-spec',
       severidad: 'high',
       ruta: ruta.path,
-      mensaje: `falta data-spec=${ruta.spec}`,
+      mensaje: `falta data-spec=${ruta.specs.join('|')}`,
     })
   }
 }
@@ -89,13 +90,21 @@ async function smokeControles(page: Page, ruta: string, rec: Recolector) {
   }
 }
 
+async function esperarCargaAuth(page: Page, ruta: RutaPaseo) {
+  // Shell puede mostrar "Cargando…" / Suspense del mapa lazy.
+  await page.getByText(/^Cargando/).waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {})
+  if (ruta.specs?.length) {
+    await page.locator(selectorSpecs(ruta.specs)).first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
+  }
+}
+
 async function visitar(page: Page, ruta: RutaPaseo, rec: Recolector, expectLoginRedirect: boolean) {
   const detach = observarPagina(page, ruta.path, rec)
   try {
     await page.goto(hashUrl(ruta.path), { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(400)
 
     if (expectLoginRedirect) {
+      await page.locator('[data-spec="W-01"]').waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
       const onLogin = await page.locator('[data-spec="W-01"]').isVisible().catch(() => false)
       if (!onLogin) {
         rec.add({
@@ -109,6 +118,8 @@ async function visitar(page: Page, ruta: RutaPaseo, rec: Recolector, expectLogin
       }
       return
     }
+
+    await esperarCargaAuth(page, ruta)
 
     const stuckLogin = await page.locator('[data-spec="W-01"]').isVisible().catch(() => false)
     if (stuckLogin && ruta.modo === 'auth') {
@@ -190,6 +201,7 @@ test.describe('qa-paseo auth', () => {
 
   test('login y paseo de pantallas', async ({ page }) => {
     test.skip(!credencialesAuthDisponibles(), 'credenciales requeridas')
+    test.setTimeout(180_000)
     await loginQa(page)
 
     for (const ruta of RUTAS_AUTH) {

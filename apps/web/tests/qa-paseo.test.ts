@@ -1,22 +1,27 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { RUTAS_AUTH, RUTAS_PUBLICAS, rutasParaModo } from './qa-paseo/rutas.ts'
+import { RUTAS_AUTH, RUTAS_PUBLICAS, rutasParaModo, selectorSpecs, specPrincipal } from './qa-paseo/rutas.ts'
 import { Recolector, formatearReporteMd, type Hallazgo } from './qa-paseo/hallazgos.ts'
 
 test('catálogo público incluye login y recuperar', () => {
   const paths = RUTAS_PUBLICAS.map((r) => r.path)
   assert.ok(paths.includes('/login'))
   assert.ok(paths.includes('/recuperar'))
-  assert.equal(RUTAS_PUBLICAS.find((r) => r.path === '/login')?.spec, 'W-01')
+  assert.equal(specPrincipal(RUTAS_PUBLICAS.find((r) => r.path === '/login')!), 'W-01')
 })
 
 test('catálogo auth cubre pantallas admin W-02..W-15', () => {
-  const specs = new Set(RUTAS_AUTH.map((r) => r.spec).filter(Boolean))
+  const specs = new Set(RUTAS_AUTH.flatMap((r) => r.specs ?? []))
   for (const id of ['W-02', 'W-03', 'W-04', 'W-05', 'W-06', 'W-07', 'W-08', 'W-09', 'W-10', 'W-11', 'W-12', 'W-13', 'W-14', 'W-15']) {
     assert.ok(specs.has(id), `falta spec ${id}`)
   }
   assert.ok(RUTAS_AUTH.some((r) => r.path === '/'))
+  assert.deepEqual(RUTAS_AUTH.find((r) => r.path === '/')?.specs, ['W-02', 'W-02b'])
   assert.ok(RUTAS_AUTH.some((r) => r.path === '/usuarios'))
+})
+
+test('selectorSpecs une alternativas', () => {
+  assert.equal(selectorSpecs(['W-02', 'W-02b']), '[data-spec="W-02"], [data-spec="W-02b"]')
 })
 
 test('rutasParaModo filtra public vs auth', () => {

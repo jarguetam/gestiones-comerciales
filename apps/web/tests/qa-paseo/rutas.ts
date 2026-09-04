@@ -4,32 +4,40 @@ export type ModoPaseo = 'public' | 'auth'
 
 export type RutaPaseo = {
   path: string
-  /** data-spec esperado tras cargar (null = solo heading/contenido). */
-  spec: string | null
+  /**
+   * data-spec(s) aceptados tras cargar (null = solo heading/contenido).
+   * Varios ids: p.ej. dashboard admin usa W-02b (drill).
+   */
+  specs: string[] | null
   modo: ModoPaseo
   titulo: string
 }
 
+/** Compat: primer spec (tests/catálogo). */
+export function specPrincipal(ruta: RutaPaseo): string | null {
+  return ruta.specs?.[0] ?? null
+}
+
 export const RUTAS_PUBLICAS: RutaPaseo[] = [
-  { path: '/login', spec: 'W-01', modo: 'public', titulo: 'Login' },
-  { path: '/recuperar', spec: null, modo: 'public', titulo: 'Recuperar contraseña' },
+  { path: '/login', specs: ['W-01'], modo: 'public', titulo: 'Login' },
+  { path: '/recuperar', specs: null, modo: 'public', titulo: 'Recuperar contraseña' },
 ]
 
 export const RUTAS_AUTH: RutaPaseo[] = [
-  { path: '/', spec: 'W-02', modo: 'auth', titulo: 'Dashboard' },
-  { path: '/visitas', spec: 'W-03', modo: 'auth', titulo: 'Visitas' },
-  { path: '/personas', spec: 'W-04', modo: 'auth', titulo: 'Personas' },
-  { path: '/crm', spec: 'W-15', modo: 'auth', titulo: 'CRM' },
-  { path: '/formularios', spec: 'W-05', modo: 'auth', titulo: 'Formularios' },
-  { path: '/mapa', spec: 'W-14', modo: 'auth', titulo: 'Mapa' },
-  { path: '/solicitudes', spec: 'W-06', modo: 'auth', titulo: 'Solicitudes' },
-  { path: '/depositos', spec: 'W-07', modo: 'auth', titulo: 'Depósitos' },
-  { path: '/cuentas', spec: 'W-08', modo: 'auth', titulo: 'Cuentas' },
-  { path: '/kilometraje', spec: 'W-09', modo: 'auth', titulo: 'Kilometraje' },
-  { path: '/notificaciones', spec: 'W-13', modo: 'auth', titulo: 'Notificaciones' },
-  { path: '/auditoria', spec: 'W-12', modo: 'auth', titulo: 'Auditoría' },
-  { path: '/configuracion', spec: 'W-10', modo: 'auth', titulo: 'Configuración' },
-  { path: '/usuarios', spec: 'W-11', modo: 'auth', titulo: 'Usuarios' },
+  { path: '/', specs: ['W-02', 'W-02b'], modo: 'auth', titulo: 'Dashboard' },
+  { path: '/visitas', specs: ['W-03'], modo: 'auth', titulo: 'Visitas' },
+  { path: '/personas', specs: ['W-04'], modo: 'auth', titulo: 'Personas' },
+  { path: '/crm', specs: ['W-15'], modo: 'auth', titulo: 'CRM' },
+  { path: '/formularios', specs: ['W-05'], modo: 'auth', titulo: 'Formularios' },
+  { path: '/mapa', specs: ['W-14'], modo: 'auth', titulo: 'Mapa' },
+  { path: '/solicitudes', specs: ['W-06'], modo: 'auth', titulo: 'Solicitudes' },
+  { path: '/depositos', specs: ['W-07'], modo: 'auth', titulo: 'Depósitos' },
+  { path: '/cuentas', specs: ['W-08'], modo: 'auth', titulo: 'Cuentas' },
+  { path: '/kilometraje', specs: ['W-09'], modo: 'auth', titulo: 'Kilometraje' },
+  { path: '/notificaciones', specs: ['W-13'], modo: 'auth', titulo: 'Notificaciones' },
+  { path: '/auditoria', specs: ['W-12'], modo: 'auth', titulo: 'Auditoría' },
+  { path: '/configuracion', specs: ['W-10'], modo: 'auth', titulo: 'Configuración' },
+  { path: '/usuarios', specs: ['W-11'], modo: 'auth', titulo: 'Usuarios' },
 ]
 
 export function rutasParaModo(modo: ModoPaseo): RutaPaseo[] {
@@ -40,4 +48,8 @@ export function rutasParaModo(modo: ModoPaseo): RutaPaseo[] {
 export function hashUrl(path: string): string {
   if (path === '/') return '#/'
   return `#${path}`
+}
+
+export function selectorSpecs(specs: string[]): string {
+  return specs.map((s) => `[data-spec="${s}"]`).join(', ')
 }
