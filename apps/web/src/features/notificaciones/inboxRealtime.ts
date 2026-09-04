@@ -4,28 +4,17 @@
  * AppShell y NotificacionesPage montan useNotificaciones a la vez.
  */
 
-export type CanalInboxLike = {
-  on: (
-    type: 'postgres_changes',
-    filter: { event: string; schema: string; table: string },
-    callback: () => void,
-  ) => CanalInboxLike
-  subscribe: () => unknown
-}
-
-export type ClienteInboxLike = {
-  channel: (name: string) => CanalInboxLike
-  removeChannel: (ch: CanalInboxLike) => Promise<unknown> | unknown
-}
-
 export type GestorCanalInbox = {
-  attach: (client: ClienteInboxLike, onChange: () => void) => () => void
+  // Cliente tipado laxo: overloads de RealtimeChannel no caben en un stub.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attach: (client: any, onChange: () => void) => () => void
 }
 
 const CHANNEL_NAME = 'inbox-notificacion'
 
 export function crearGestorCanalInbox(): GestorCanalInbox {
-  let channel: CanalInboxLike | null = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let channel: any = null
   let refs = 0
   const listeners = new Set<() => void>()
 
