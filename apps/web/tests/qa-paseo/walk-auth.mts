@@ -20,7 +20,7 @@ function absHash(path: string): string {
   return `${baseURL}/${hashUrl(path)}`
 }
 
-async function waitMfa(timeoutMs = 180_000): Promise<string> {
+async function waitMfa(timeoutMs = 900_000): Promise<string> {
   if (existsSync(MFA_FILE)) unlinkSync(MFA_FILE)
   delete process.env.E2E_MFA_CODE
   const start = Date.now()
