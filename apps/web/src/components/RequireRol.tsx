@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
-import { decidirAccesoRuta } from '../lib/claims'
+import { decisionGuardRol } from '../lib/claims'
 import { mensajeCatalogo } from '../lib/erroresUi'
 import { useToast } from './ui/Toast'
 
@@ -9,7 +9,7 @@ export function RequireRol({ children }: { children: ReactNode }) {
   const { rol, loading } = useAuth()
   const location = useLocation()
   const { push } = useToast()
-  const decision = decidirAccesoRuta({ loading, path: location.pathname, rol })
+  const decision = decisionGuardRol(loading, location.pathname, rol)
 
   useEffect(() => {
     if (decision !== 'deny') return

@@ -130,3 +130,8 @@ export function demoFilasDashboard(): FilaDashboard[] {
 export function puedeDrillDown(rol: string | undefined): boolean {
   return rol === 'admin' || rol === 'gerente'
 }
+
+/** W-02 es la pantalla; W-02b es el drill gerencial, no reemplaza el spec de página (H2). */
+export function specIdsDashboard(rol: string | undefined): { pagina: 'W-02'; drill: 'W-02b' | null } {
+  return { pagina: 'W-02', drill: puedeDrillDown(rol) ? 'W-02b' : null }
+}

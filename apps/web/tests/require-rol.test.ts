@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canAccess } from '../src/lib/claims.ts'
-import { decidirAccesoRuta } from '../src/lib/claims.ts'
+import { canAccess, decisionGuardRol } from '../src/lib/claims.ts'
 
 test('canAccess: /configuracion solo admin (W-10)', () => {
   assert.equal(canAccess('/configuracion', 'admin'), true)
@@ -27,10 +26,18 @@ test('canAccess: /auditoria solo admin; resto abierto', () => {
   assert.equal(canAccess('/mapa', 'supervisor'), true)
 })
 
-test('decidirAccesoRuta espera loading antes de denegar (H3/H5–H7)', () => {
-  assert.equal(decidirAccesoRuta({ loading: true, path: '/mapa', rol: undefined }), 'loading')
-  assert.equal(decidirAccesoRuta({ loading: true, path: '/mapa', rol: 'admin' }), 'loading')
-  assert.equal(decidirAccesoRuta({ loading: false, path: '/mapa', rol: 'admin' }), 'allow')
-  assert.equal(decidirAccesoRuta({ loading: false, path: '/mapa', rol: undefined }), 'deny')
-  assert.equal(decidirAccesoRuta({ loading: false, path: '/configuracion', rol: 'asesor' }), 'deny')
+test('decisionGuardRol espera mientras loading (H3/H5/H6/H7)', () => {
+  assert.equal(decisionGuardRol(true, '/mapa', undefined), 'loading')
+  assert.equal(decisionGuardRol(true, '/configuracion', 'admin'), 'loading')
+  assert.equal(decisionGuardRol(true, '/usuarios', 'admin'), 'loading')
+  assert.equal(decisionGuardRol(true, '/auditoria', 'admin'), 'loading')
+})
+
+test('decisionGuardRol no deniega al admin hasta hidratar el rol', () => {
+  assert.equal(decisionGuardRol(false, '/mapa', 'admin'), 'allow')
+  assert.equal(decisionGuardRol(false, '/configuracion', 'admin'), 'allow')
+  assert.equal(decisionGuardRol(false, '/usuarios', 'admin'), 'allow')
+  assert.equal(decisionGuardRol(false, '/auditoria', 'admin'), 'allow')
+  assert.equal(decisionGuardRol(false, '/mapa', 'asesor'), 'deny')
+  assert.equal(decisionGuardRol(false, '/configuracion', undefined), 'deny')
 })

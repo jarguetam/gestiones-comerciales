@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import App from './app/App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastProvider } from './components/ui/Toast'
+import { AuthProvider } from './features/auth/useAuth'
 import { crearQueryClient } from './lib/queryClient'
 import { environmentFromVite, requireBuildEnv } from './lib/env'
 import { bootSentry } from './lib/sentry'
@@ -26,9 +27,11 @@ function Root() {
     <ErrorBoundary>
       <QueryClientProvider client={client}>
         <ToastProvider>
-          <HashRouter>
-            <App />
-          </HashRouter>
+          <AuthProvider>
+            <HashRouter>
+              <App />
+            </HashRouter>
+          </AuthProvider>
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

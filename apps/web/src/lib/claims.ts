@@ -85,17 +85,14 @@ export function canAccess(path: string, rol: string | undefined): boolean {
   return true
 }
 
-export type DecisionAccesoRuta = 'loading' | 'allow' | 'deny'
+/** Evita denegar rutas gated mientras useAuth aún hidrata (H3/H5/H6/H7). */
+export type DecisionGuardRol = 'loading' | 'allow' | 'deny'
 
-/**
- * useAuth no es Context: cada mount arranca con rol undefined.
- * No denegar hasta loading=false (evita bounce a / en W-10/11/12/14).
- */
-export function decidirAccesoRuta(opts: {
-  loading: boolean
-  path: string
-  rol: string | undefined
-}): DecisionAccesoRuta {
-  if (opts.loading) return 'loading'
-  return canAccess(opts.path, opts.rol) ? 'allow' : 'deny'
+export function decisionGuardRol(
+  loading: boolean,
+  path: string,
+  rol: string | undefined,
+): DecisionGuardRol {
+  if (loading) return 'loading'
+  return canAccess(path, rol) ? 'allow' : 'deny'
 }

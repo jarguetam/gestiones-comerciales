@@ -1,66 +1,57 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
-import { crearGestorCanalInbox } from '../src/features/notificaciones/inboxRealtime.ts'
+import test from 'node:test'
+import {
+  nombreCanalInbox,
+  suscribirInboxNotificacion,
+} from '../src/features/notificaciones/inboxRealtime.ts'
 
-test('segundo attach no vuelve a llamar on ni subscribe', () => {
-  let onCalls = 0
-  let subscribeCalls = 0
-  let removeCalls = 0
-  const channel = {
-    on() {
-      onCalls += 1
-      return channel
-    },
-    subscribe() {
-      subscribeCalls += 1
-      return channel
-    },
-  }
-  const client = {
-    channel() {
-      return channel
-    },
-    removeChannel() {
-      removeCalls += 1
-      return Promise.resolve('ok')
-    },
-  }
-
-  const gestor = crearGestorCanalInbox()
-  const d1 = gestor.attach(client as never, () => {})
-  const d2 = gestor.attach(client as never, () => {})
-  assert.equal(onCalls, 1)
-  assert.equal(subscribeCalls, 1)
-
-  d1()
-  assert.equal(removeCalls, 0)
-  d2()
-  assert.equal(removeCalls, 1)
+test('nombreCanalInbox es único por instancia (H1)', () => {
+  const a = nombreCanalInbox('a')
+  const b = nombreCanalInbox('b')
+  assert.notEqual(a, b)
+  assert.match(a, /^inbox-notificacion:/)
+  assert.match(b, /^inbox-notificacion:/)
 })
 
-test('re-attach tras detach total vuelve a suscribir', () => {
-  let subscribeCalls = 0
-  const channel = {
-    on() {
-      return channel
-    },
-    subscribe() {
-      subscribeCalls += 1
-      return channel
-    },
+test('dos suscripciones no reutilizan el canal ya subscribed', () => {
+  const subscribed = new Set<string>()
+  const onsAfterSubscribe: string[] = []
+
+  function crearCliente() {
+    return {
+      channel(nombre: string) {
+        const ch = {
+          name: nombre,
+          subscribed: false,
+          on() {
+            if (this.subscribed || subscribed.has(nombre)) {
+              onsAfterSubscribe.push(nombre)
+              throw new Error(
+                `cannot add postgres_changes callbacks for realtime:${nombre} after subscribe()`,
+              )
+            }
+            return this
+          },
+          subscribe() {
+            this.subscribed = true
+            subscribed.add(nombre)
+            return this
+          },
+        }
+        if (subscribed.has(nombre)) {
+          ch.subscribed = true
+        }
+        return ch
+      },
+      removeChannel() {},
+    }
   }
-  const client = {
-    channel() {
-      return channel
-    },
-    removeChannel() {
-      return Promise.resolve('ok')
-    },
-  }
-  const gestor = crearGestorCanalInbox()
-  const d1 = gestor.attach(client as never, () => {})
-  d1()
-  const d2 = gestor.attach(client as never, () => {})
-  d2()
-  assert.equal(subscribeCalls, 2)
+
+  const client = crearCliente()
+  const off1 = suscribirInboxNotificacion(client, () => {})
+  const off2 = suscribirInboxNotificacion(client, () => {})
+  assert.equal(onsAfterSubscribe.length, 0)
+  assert.equal(subscribed.size, 2)
+  off1()
+  off2()
 })

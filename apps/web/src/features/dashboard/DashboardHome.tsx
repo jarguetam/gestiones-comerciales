@@ -8,6 +8,7 @@ import {
   kpisDeFilas,
   puedeDrillDown,
   rankingSupervisores,
+  specIdsDashboard,
   type FilaDashboard,
 } from './dashboard'
 import { Button, PageHeader, PAGE, Select, KpiSkeleton } from '../../components/ui'
@@ -73,6 +74,7 @@ export function DashboardHome() {
   }, [live, rol, modulos])
 
   const drill = puedeDrillDown(rol)
+  const specs = specIdsDashboard(rol)
   const visibles = useMemo(
     () => filasDelEquipo(filas, drill && supervisorId ? supervisorId : null),
     [filas, drill, supervisorId],
@@ -86,25 +88,27 @@ export function DashboardHome() {
   return (
     <div className={PAGE}>
       <PageHeader
-        spec={drill ? 'W-02b' : 'W-02'}
+        spec={specs.pagina}
         title={`Tablero de ${tenantNombre}`}
         description="KPIs del día con alcance por rol. El drill-down refiltra visitas y ranking de equipos."
         actions={
-          drill && supervisores.length > 0 ? (
-            <Select
-              id="filtro-supervisor"
-              label="Equipo"
-              aria-label="Filtrar por supervisor"
-              value={supervisorId}
-              onChange={(e) => setSupervisorId(e.target.value)}
-            >
-              <option value="">Todos</option>
-              {supervisores.map((s) => (
-                <option key={s.usuario_id} value={s.usuario_id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </Select>
+          specs.drill && supervisores.length > 0 ? (
+            <div data-spec={specs.drill}>
+              <Select
+                id="filtro-supervisor"
+                label="Equipo"
+                aria-label="Filtrar por supervisor"
+                value={supervisorId}
+                onChange={(e) => setSupervisorId(e.target.value)}
+              >
+                <option value="">Todos</option>
+                {supervisores.map((s) => (
+                  <option key={s.usuario_id} value={s.usuario_id}>
+                    {s.nombre}
+                  </option>
+                ))}
+              </Select>
+            </div>
           ) : undefined
         }
       />
