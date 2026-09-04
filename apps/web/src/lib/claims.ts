@@ -84,3 +84,18 @@ export function canAccess(path: string, rol: string | undefined): boolean {
   if (path.startsWith('/mapa')) return mostrarMapa(rol)
   return true
 }
+
+export type DecisionAccesoRuta = 'loading' | 'allow' | 'deny'
+
+/**
+ * useAuth no es Context: cada mount arranca con rol undefined.
+ * No denegar hasta loading=false (evita bounce a / en W-10/11/12/14).
+ */
+export function decidirAccesoRuta(opts: {
+  loading: boolean
+  path: string
+  rol: string | undefined
+}): DecisionAccesoRuta {
+  if (opts.loading) return 'loading'
+  return canAccess(opts.path, opts.rol) ? 'allow' : 'deny'
+}

@@ -119,12 +119,12 @@ export function UsuariosPage() {
           <h3 className="md:col-span-2 font-medium">Invitar usuario</h3>
           <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={fieldClass} />
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className={fieldClass} />
-          <select value={rol} onChange={(e) => setRol(e.target.value as Rol)} className={fieldClass}>
+          <select aria-label="Rol del invitado" value={rol} onChange={(e) => setRol(e.target.value as Rol)} className={fieldClass}>
             {ROLES.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
-          <select value={jefeId} onChange={(e) => setJefeId(e.target.value)} className={fieldClass}>
+          <select aria-label="Jefe del invitado" value={jefeId} onChange={(e) => setJefeId(e.target.value)} className={fieldClass}>
             <option value="">Sin jefe</option>
             {usuarios.map((u) => (
               <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
@@ -155,6 +155,7 @@ export function UsuariosPage() {
               <Td>
                 {puedeEditar ? (
                   <select
+                    aria-label={`Rol de ${u.nombre}`}
                     value={u.rol}
                     onChange={(e) => void gestionar(u.id, 'cambiar_rol', { rol: e.target.value })}
                     className="rounded border border-line bg-surface px-1 py-0.5 text-xs capitalize"
