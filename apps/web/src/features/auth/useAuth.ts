@@ -1,4 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { claimsDeUsuario } from '../../lib/claims'
 import { BACKEND_CONFIGURADO, supabase } from '../../lib/supabase'
@@ -13,7 +22,16 @@ async function perfilDesdeDb(rol?: string, tenantId?: string): Promise<{ rol?: s
   return { rol: rolDb, tenantId: tenantDb }
 }
 
-export function useAuth() {
+export type AuthValue = {
+  session: Session | null
+  loading: boolean
+  rol: string | undefined
+  tenantId: string | undefined
+}
+
+const AuthContext = createContext<AuthValue | null>(null)
+
+function useAuthState(): AuthValue {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [perfilDb, setPerfilDb] = useState<{ rol?: string; tenantId?: string }>({})
@@ -78,10 +96,24 @@ export function useAuth() {
   }, [])
 
   const claims = claimsDeUsuario(session?.user, session?.access_token)
-  return {
-    session,
-    loading,
-    rol: claims.rol ?? perfilDb.rol,
-    tenantId: claims.tenantId ?? perfilDb.tenantId,
-  }
+  return useMemo(
+    () => ({
+      session,
+      loading,
+      rol: claims.rol ?? perfilDb.rol,
+      tenantId: claims.tenantId ?? perfilDb.tenantId,
+    }),
+    [session, loading, claims.rol, claims.tenantId, perfilDb.rol, perfilDb.tenantId],
+  )
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const value = useAuthState()
+  return createElement(AuthContext.Provider, { value }, children)
+}
+
+export function useAuth(): AuthValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth requiere AuthProvider')
+  return ctx
 }

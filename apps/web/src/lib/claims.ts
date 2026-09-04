@@ -84,3 +84,15 @@ export function canAccess(path: string, rol: string | undefined): boolean {
   if (path.startsWith('/mapa')) return mostrarMapa(rol)
   return true
 }
+
+/** Evita denegar rutas gated mientras useAuth aún hidrata (H3/H5/H6/H7). */
+export type DecisionGuardRol = 'loading' | 'allow' | 'deny'
+
+export function decisionGuardRol(
+  loading: boolean,
+  path: string,
+  rol: string | undefined,
+): DecisionGuardRol {
+  if (loading) return 'loading'
+  return canAccess(path, rol) ? 'allow' : 'deny'
+}
