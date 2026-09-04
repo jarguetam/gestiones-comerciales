@@ -20,6 +20,7 @@
 - **Done:** artefactos en el PR
 
 ## 4. Pasada agente Pages
-- [ ] Login admin + MFA (código del usuario)
-- [ ] Recorrer pantallas y listar errores
-- **Done:** pendiente MFA del usuario
+- [x] Login admin + MFA (código del usuario)
+- [x] Recorrer pantallas y listar errores
+- [x] Persistir hallazgos en `hallazgos.md` para follow-up
+- **Done:** 7 hallazgos high documentados; H1 bug realtime confirmado
