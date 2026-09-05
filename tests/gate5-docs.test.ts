@@ -21,7 +21,8 @@ test('SECURITY.md, CODEOWNERS y Dependabot existen', () => {
   assert.match(dep, /interval:\s*weekly/)
   assert.match(dep, /npm-patches:[\s\S]*update-types:[\s\S]*- patch/)
   assert.doesNotMatch(dep, /npm-patches:[\s\S]*- minor/)
-  assert.match(dep, /react-native[\s\S]*semver-minor/)
+  assert.match(dep, /dependency-name:\s*react-native\s*$/m)
+  assert.match(dep, /dependency-name:\s*typescript/)
   assert.match(dep, /@sentry\/react-native[\s\S]*semver-major/)
 })
 
