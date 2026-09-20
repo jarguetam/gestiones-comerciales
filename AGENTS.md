@@ -85,7 +85,7 @@ No aplica a bugfix, refactor ni copy/estilo.
 - `supabase gen types --linked` exige login/`SUPABASE_ACCESS_TOKEN`. No está en CI; no bloquea UI. No inventar el schema a mano si se pueden regenerar tipos.
 - Nunca `.env` versionado ni `service_role` en el cliente (job security + gitleaks).
 - Kit propio, no shadcn (el README miente). No reintroducir Playfair/serif, canvas `#F3EEE4`, pasteles de evento, header púrpura, `PhoneMockup`. Tests: `apps/web/tests/tokens.test.ts`.
-- Dependabot: no subir `react-native` / Expo minor / TypeScript major (rompe Expo 51 y lint). Ver `.github/dependabot.yml`.
+- Dependabot: actualizar `react-native` / Expo y TypeScript móvil como conjunto compatible (actualmente SDK 54); mantener el tooling web separado. Ver `.github/dependabot.yml`.
 - `pnpm-workspace.yaml` lista `packages/*` vacío: no crear un package «compartido» para el kit.
 - pgTAP y `supabase start` necesitan Docker + CLI. Deno para Edge.
 

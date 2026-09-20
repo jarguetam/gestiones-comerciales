@@ -11,7 +11,6 @@ import {
   Alert,
   FlatList,
   Linking,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import { supabase, type Perfil } from '../lib/supabase'
 import { BadgeEstado, Cargando, Vacio } from '../components/ui'
 import { useTheme } from '../theme'

@@ -79,9 +79,13 @@
         "expo-image-picker",
         {
           "cameraPermission": "La cámara se usa para fotografiar boletas de depósito.",
+          "microphonePermission": false,
           "photosPermission": "La galería se usa para adjuntar la foto de una boleta."
         }
       ],
+      "expo-asset",
+      "expo-font",
+      "expo-sqlite",
       "expo-secure-store",
       "expo-task-manager"
     ],

@@ -6,7 +6,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import { cargarCatalogosCampo, type CatalogoActividad, type CatalogosCampo } from '../lib/catalogosCampo'
 import { persistirVisitaCampo } from '../lib/supabase'
 import { fechaLocalHoy, type BorradorVisita } from '../lib/visita'

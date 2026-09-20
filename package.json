@@ -20,6 +20,17 @@
     "test:contracts": "node --experimental-strip-types --test tests/*.test.ts scripts/ci/*.test.ts scripts/ops/*.test.ts"
   },
   "pnpm": {
+    "packageExtensions": {
+      "react-native-safe-area-context@5": {
+        "peerDependencies": { "@types/react": "*" }
+      },
+      "react-router@6": {
+        "peerDependencies": { "@types/react": "*" }
+      },
+      "react-router-dom@6": {
+        "peerDependencies": { "@types/react": "*" }
+      }
+    },
     "overrides": {
       "tar@<7.5.19": "7.5.22",
       "postcss@<8.5.26": "8.5.26"

@@ -24,8 +24,8 @@ Vinculado en `app.json` con owner/slug y UUID
 `eas project:info` autenticado. No hay build EAS ni instalación Play verificados.
 No publicar con keystore debug.
 
-La app sigue en Expo 51/RN 0.74. La migración compatible con API 36 y la
-verificación de bibliotecas de 16 KB son una entrega separada. El workflow
+La app usa Expo 54/RN 0.81. La migración y la verificación de bibliotecas de
+16 KB se registran en `openspec/changes/upgrade-android-sdk54`. El workflow
 `detox-android.yml` actual solo comprueba archivos; no constituye un E2E ejecutado.
 
 ## Secrets (GitHub environment `eas-android` + EAS)
@@ -90,4 +90,7 @@ Checklist de progreso: `openspec/changes/prepare-android-pilot/tasks.md`.
 
 ## Expo Doctor
 
-`npx expo-doctor` en `apps/mobile` debe salir 17/17. `typescript` está en `expo.install.exclude` (monorepo 5.5). High de audit en `@expo/cli` / Metro: `docs/ops/expo-audit-exceptions.md`.
+`npx expo-doctor` en `apps/mobile` debe completar todos sus controles (18/18
+en la validación de SDK 54). TypeScript móvil usa 5.9 y ya no se excluye del
+control de dependencias. Las excepciones históricas de SDK 51 en
+`docs/ops/expo-audit-exceptions.md` no acreditan el estado del SDK actual.
