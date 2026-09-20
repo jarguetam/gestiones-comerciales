@@ -1,6 +1,7 @@
 import type { ItemCola } from './cola'
 
 const TIPOS = new Set([
+  'visita',
   'visita_checkin',
   'visita_completar',
   'formulario_enviar',
