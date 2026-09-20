@@ -14,6 +14,11 @@ Este APK está firmado con el keystore de debug (no Play Store). Solo incluye AB
 
 ## Desarrollo
 
+El backend de desarrollo es Supabase **local**. El `.env.example` usa
+`http://10.0.2.2:54321` para Android Emulator; en un teléfono físico usar la IPv4
+LAN del equipo. Copiar la clave pública de `supabase status`, no la de producción.
+Con `EXPO_PUBLIC_ENVIRONMENT=local`, una URL pública falla con `GC-CORE-001`.
+
 ```bash
 cp apps/mobile/.env.example apps/mobile/.env
 # Completá EXPO_PUBLIC_SUPABASE_ANON_KEY
@@ -33,9 +38,15 @@ eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<anon key>"
 eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xcoeipsnykceorcvjwve.supabase.co"
 ```
 
-4. Preview interna (APK): `eas build --profile preview --platform android`
+4. Preview interna (APK, **backend productivo**): `eas build --profile preview --platform android`
 5. Producción Android: `eas build --profile production --platform android` (AAB). iOS queda fuera de Gate 4.
 6. Store: `eas submit --platform android --profile production` (Play Internal Testing; requiere cuenta Google Play).
+
+Estos son pasos operativos pendientes, no evidencia de publicación. El propietario
+todavía no tiene cuenta Expo; no dar por válido el UUID de `app.json` hasta verificar
+su proyecto. Los perfiles preview/production seleccionan variables EAS `production`
+y requieren DSN. Ver `docs/runbooks/android-internal.md` para el estado del piloto
+y la actualización Android necesaria antes de generar el AAB.
 
 ## Qué ya cubre el código
 

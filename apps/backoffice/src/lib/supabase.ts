@@ -1,11 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { apiFetch } from './api.ts'
 import { credencialesPublicasValidas } from './supabaseEnv.ts'
+import { environmentFromVite } from './env.ts'
 
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-export const BACKEND_CONFIGURADO = credencialesPublicasValidas(SUPABASE_URL, supabaseAnonKey)
+export const BACKEND_CONFIGURADO = credencialesPublicasValidas(SUPABASE_URL, supabaseAnonKey, environmentFromVite(import.meta.env.VITE_ENVIRONMENT))
 
 /**
  * Cliente de Supabase. Stub solo si no hay URL+anon reales.
