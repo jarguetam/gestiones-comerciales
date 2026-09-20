@@ -30,7 +30,7 @@ Sin URL/anon key reales la app no arranca (`GC-CORE-001`). No hay modo demo.
 ## Build de producción (EAS)
 
 1. Instalá EAS CLI: `pnpm add -g eas-cli` y `eas login`.
-2. `extra.eas.projectId` ya está en `app.json`. Confirmalo con `eas init` en la org Expo (reemplazá el UUID si Expo asigna otro).
+2. Desde `apps/mobile`, verificá con `eas project:info` el proyecto ya vinculado: `@jarguetams-team/gestiones-comerciales-3uncfxmscvb2on8csmb7`.
 3. Secretos (nunca en git):
 
 ```bash
@@ -43,8 +43,8 @@ eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xcoeipsnykceo
 6. Store: `eas submit --platform android --profile production` (Play Internal Testing; requiere cuenta Google Play).
 
 Estos son pasos operativos pendientes, no evidencia de publicación. El propietario
-ya creó el proyecto Expo en `jarguetams-team`; falta verificar su UUID y vincularlo
-en `app.json`. Los perfiles preview/production seleccionan variables EAS `production`
+ya creó el proyecto Expo en `jarguetams-team`; su UUID y acceso están verificados
+y vinculados en `app.json`. Los perfiles preview/production seleccionan variables EAS `production`
 y requieren DSN. Ver `docs/runbooks/android-internal.md` para el estado del piloto
 y la actualización Android necesaria antes de generar el AAB.
 
@@ -62,7 +62,7 @@ y la actualización Android necesaria antes de generar el AAB.
 
 | Ítem | Por qué bloquea el store |
 |---|---|
-| `eas init` + projectId | EAS no firma sin proyecto |
+| Credenciales de firma EAS | Proyecto vinculado; firma Android aún pendiente |
 | Apple Developer + bundle `com.gc.mobile` | IPA / TestFlight |
 | Google Play Console + SHA-1 en Firebase | AAB / FCM |
 | Política de privacidad URL | Requisito de ubicación en background |

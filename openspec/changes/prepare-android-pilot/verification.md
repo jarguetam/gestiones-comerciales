@@ -46,9 +46,8 @@ Esto verifica migraciones en CI; el backend local y el dispositivo siguen pendie
   `open //./pipe/docker_engine: The system cannot find the file specified.`
   No se hicieron migraciones ni cambios a SQL/Edge en esta entrega.
 - No se ejecutó un login real ni el recorrido móvil/web contra Supabase.
-- El propietario creó el proyecto Expo en `jarguetams-team` después de esta primera
-  entrega. El UUID EAS del repo todavía no se validó contra ese proyecto.
-  No se solicitó build cloud, firma, submit ni publicación en Play.
+- Proyecto EAS vinculado y verificado (ver abajo). No se solicitó build cloud,
+  firma, submit ni publicación en Play.
 - No se ejecutó un build nativo ni Detox: Expo 51/API objetivo, compatibilidad
   de 16 KB y permisos siguen pendientes del siguiente change.
 - Producción: no se cambiaron secretos, módulos, datos, workflows remotos ni
@@ -57,3 +56,13 @@ Esto verifica migraciones en CI; el backend local y el dispositivo siguen pendie
 
 La cuenta personal Play es posterior al 13-11-2023: el usuario lo confirmó.
 La prueba cerrada 12 testers/14 días sigue pendiente; prueba interna no la sustituye.
+
+## Vinculación Expo — 2026-09-20
+- Sesión EAS CLI iniciada mediante el flujo oficial de navegador.
+- Dashboard y `eas project:info` coinciden en
+  `@jarguetams-team/gestiones-comerciales-3uncfxmscvb2on8csmb7`, UUID
+  `f38df0fe-a2df-464e-95c0-98695be71198`.
+- `app.json`: owner, slug y projectId actualizados. Paquete Android `com.gc.mobile` conservado.
+- `expo config --type public --json` resuelve esa misma identidad con `app.config.ts`.
+- Unitarios móviles: 77/77 pasan. Typecheck móvil y `git diff --check`: OK.
+- No se crearon proyectos duplicados, builds ni credenciales de firma.

@@ -19,8 +19,9 @@ Los perfiles preview/production seleccionan explícitamente variables EAS
 
 El propietario creó el proyecto Expo el 2026-09-20:
 [jarguetams-team / gestiones-comerciales-3uncfxmscvb2on8csmb7](https://expo.dev/accounts/jarguetams-team/projects/gestiones-comerciales-3uncfxmscvb2on8csmb7).
-Falta verificar su UUID y el acceso autenticado antes de sustituir el identificador
-de `app.json`. No hay build EAS ni instalación Play verificados.
+Vinculado en `app.json` con owner/slug y UUID
+`f38df0fe-a2df-464e-95c0-98695be71198`, verificado en el dashboard y con
+`eas project:info` autenticado. No hay build EAS ni instalación Play verificados.
 No publicar con keystore debug.
 
 La app sigue en Expo 51/RN 0.74. La migración compatible con API 36 y la
@@ -36,7 +37,8 @@ verificación de bibliotecas de 16 KB son una entrega separada. El workflow
 - `SENTRY_AUTH_TOKEN` (source maps)
 - `GOOGLE_SERVICE_ACCOUNT_KEY` (submit Play Internal)
 
-`extra.eas.projectId` vive en `apps/mobile/app.json`. Confirmalo con `eas init` si Expo asigna otro UUID.
+`extra.eas.projectId` vive en `apps/mobile/app.json`. Desde `apps/mobile`,
+`eas project:info` debe resolver al proyecto anterior. No crear otro proyecto.
 
 Las variables de un step de GitHub no sustituyen la configuración del builder
 remoto. Configurar URL, clave pública, DSN y credenciales de source maps en el

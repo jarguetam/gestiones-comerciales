@@ -9,7 +9,8 @@
 - [x] Documentar resultados y limitaciones en `verification.md`; cambio separado del upgrade Android.
 
 ## 2. Compatibilidad Android (siguiente change)
-- [ ] Verificar cuenta/proyecto EAS y paquete existente en Play antes de crear recursos.
+- [x] Verificar cuenta/proyecto EAS y vincular owner, slug y UUID del proyecto creado por el propietario.
+- [ ] Verificar paquete existente en Play antes de crear recursos de firma/publicación.
 - [ ] Proponer y ejecutar migración incremental Expo/RN; alinear Sentry y módulos nativos.
 - [ ] Expo Doctor, typecheck, unitarios, bundle y build Android; API 36 y librerías de 16 KB verificadas.
 - [ ] Probar permisos, notificaciones, recuperación y SQLite en dispositivo real.

@@ -42,7 +42,7 @@ en el track público, crear un staging remoto o copiar datos reales a local.
 | Pregunta | Default / efecto si no hay respuesta |
 |---|---|
 | ¿La cuenta personal se creó después del 13-11-2023? | Confirmado por el usuario: sí. Se requiere prueba cerrada 12 testers/14 días antes de solicitar acceso a producción. |
-| ¿Existe proyecto Expo/EAS accesible? | El usuario creó `jarguetams-team/gestiones-comerciales-3uncfxmscvb2on8csmb7`. Falta verificar su UUID y acceso autenticado. No crear otro ni solicitar un build hasta vincular este proyecto. |
+| ¿Existe proyecto Expo/EAS accesible? | Verificado y vinculado `jarguetams-team/gestiones-comerciales-3uncfxmscvb2on8csmb7`, UUID `f38df0fe-a2df-464e-95c0-98695be71198`. No crear otro proyecto. El build espera la compatibilidad Android y configuración operativa. |
 | ¿Qué empresa será el piloto? | No crear ni modificar tenants remotos. Probar primero con datos sintéticos locales. |
 | ¿Solicitudes es indispensable en el piloto? | Excluirlo del tenant piloto mediante módulos existentes; no ocultarlo globalmente a clientes actuales. |
 
