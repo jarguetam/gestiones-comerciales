@@ -43,8 +43,8 @@ eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xcoeipsnykceo
 6. Store: `eas submit --platform android --profile production` (Play Internal Testing; requiere cuenta Google Play).
 
 Estos son pasos operativos pendientes, no evidencia de publicación. El propietario
-todavía no tiene cuenta Expo; no dar por válido el UUID de `app.json` hasta verificar
-su proyecto. Los perfiles preview/production seleccionan variables EAS `production`
+ya creó el proyecto Expo en `jarguetams-team`; falta verificar su UUID y vincularlo
+en `app.json`. Los perfiles preview/production seleccionan variables EAS `production`
 y requieren DSN. Ver `docs/runbooks/android-internal.md` para el estado del piloto
 y la actualización Android necesaria antes de generar el AAB.
 

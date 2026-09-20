@@ -17,10 +17,11 @@ Los perfiles preview/production seleccionan explícitamente variables EAS
 
 ## Estado de la preparación
 
-Todavía no hay cuenta Expo del propietario (confirmado el 2026-09-20), ni build
-EAS/instalación Play verificados. El UUID en `app.json` no acredita un proyecto
-accesible. Crear cuenta en https://expo.dev/signup y luego verificar acceso con
-EAS antes de vincular o sustituir ese identificador. No publicar con keystore debug.
+El propietario creó el proyecto Expo el 2026-09-20:
+[jarguetams-team / gestiones-comerciales-3uncfxmscvb2on8csmb7](https://expo.dev/accounts/jarguetams-team/projects/gestiones-comerciales-3uncfxmscvb2on8csmb7).
+Falta verificar su UUID y el acceso autenticado antes de sustituir el identificador
+de `app.json`. No hay build EAS ni instalación Play verificados.
+No publicar con keystore debug.
 
 La app sigue en Expo 51/RN 0.74. La migración compatible con API 36 y la
 verificación de bibliotecas de 16 KB son una entrega separada. El workflow

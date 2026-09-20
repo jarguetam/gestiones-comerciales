@@ -35,12 +35,19 @@ al WSL sin distribución funcional (`execvpe /bin/bash failed 2`). Se corrigió
 solo el PATH del proceso para usar Git Bash y los 87 pasaron; no se alteraron
 los tests ni la configuración global del equipo.
 
+## CI remoto
+El PR #71, commit `634d59f`, pasó contratos, lint, seguridad OWASP, CodeQL,
+allowlist SECURITY DEFINER, SQL/Edge/builds y pgTAP (blank + replay).
+El job EAS Preview se omitió al no tener la etiqueta `android-preview`.
+Esto verifica migraciones en CI; el backend local y el dispositivo siguen pendientes.
+
 ## No ejecutado / pendiente
 - Backend local/pgTAP: Docker no estaba iniciado. `docker info` devolvió
   `open //./pipe/docker_engine: The system cannot find the file specified.`
   No se hicieron migraciones ni cambios a SQL/Edge en esta entrega.
 - No se ejecutó un login real ni el recorrido móvil/web contra Supabase.
-- No hay cuenta Expo del propietario. El UUID EAS del repo no se validó.
+- El propietario creó el proyecto Expo en `jarguetams-team` después de esta primera
+  entrega. El UUID EAS del repo todavía no se validó contra ese proyecto.
   No se solicitó build cloud, firma, submit ni publicación en Play.
 - No se ejecutó un build nativo ni Detox: Expo 51/API objetivo, compatibilidad
   de 16 KB y permisos siguen pendientes del siguiente change.
