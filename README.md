@@ -98,12 +98,18 @@ La anon key es pública (va al bundle). Nunca commitees `service_role`.
 git clone https://github.com/jarguetam/gestiones-comerciales.git
 cd gestiones-comerciales
 
-# CLI de Supabase + aplicar migraciones F0
-npx supabase login
-npx supabase link --project-ref xcoeipsnykceorcvjwve
-npx supabase db push            # aplica supabase/migrations/*
-npx supabase db reset           # local: migraciones + seeds
+# Desarrollo local (Docker iniciado)
+npx supabase start
+npx supabase status             # copiar solo clave pública local a los clientes
+# Reset deliberado de la base LOCAL: borra datos locales y reaplica migraciones/seeds
+npx supabase db reset --local
 ```
+
+El proyecto remoto actual es **producción**. Web/backoffice usan
+`http://127.0.0.1:54321`; Android Emulator usa `http://10.0.2.2:54321`.
+Copiar los `.env.example` de cada app y configurar las claves públicas locales.
+Guía: [`environments.md`](docs/runbooks/environments.md).
+El piloto Android se prepara en [`prepare-android-pilot`](openspec/changes/prepare-android-pilot/proposal.md).
 
 ### Estructura del repo
 
@@ -121,5 +127,5 @@ apps/               → web / mobile / backoffice (scaffold en F1)
 ## Próximos pasos
 
 1. **Gate 6:** `pnpm ops:golive` debe imprimir `ready: true`. Runbook: `docs/runbooks/golive.md`.
-2. **Staging + SMTP + PITR** reales (environments GitHub). Restore drill: `scripts/ops/restore-staging-dryrun.sh`.
+2. **Local + producción**: staging remoto optativo (`ENABLE_STAGING=true` solo con proyecto aislado). Verificar SMTP, respaldo y restore reales; el gate productivo sigue pendiente.
 3. **Play Internal** es opcional; si no hay consola, GO condicional web-only. iOS fuera.

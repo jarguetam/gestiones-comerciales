@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Gestiones Comerciales",
-    "slug": "gestiones-comerciales",
+    "slug": "gestiones-comerciales-3uncfxmscvb2on8csmb7",
+    "owner": "jarguetams-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "gc",
@@ -89,7 +90,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "4f8a1c2e-7b93-4d61-a8e0-9c3f5b2d1e70"
+        "projectId": "f38df0fe-a2df-464e-95c0-98695be71198"
       }
     }
   }

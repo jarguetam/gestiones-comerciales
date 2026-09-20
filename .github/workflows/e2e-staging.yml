@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   e2e:
+    if: ${{ vars.ENABLE_STAGING == 'true' }}
     name: Playwright contra Vite + Supabase staging
     runs-on: ubuntu-latest
     environment: staging

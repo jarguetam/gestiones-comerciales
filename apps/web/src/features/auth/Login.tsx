@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BACKEND_CONFIGURADO, SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase'
 import { varsFaltantesSupabase } from '../../lib/supabaseEnv'
+import { environmentFromVite } from '../../lib/env'
 import { nombreComercial, varsDeBranding } from '../../lib/branding'
 import { brandingPreLogin } from '../../lib/brandingPreLogin'
 import { BrandMark } from '../../components/ui/BrandMark'
@@ -39,7 +40,7 @@ export function Login() {
   const faltantes = varsFaltantesSupabase(SUPABASE_URL, SUPABASE_ANON_KEY, {
     url: 'VITE_SUPABASE_URL',
     key: 'VITE_SUPABASE_ANON_KEY',
-  })
+  }, environmentFromVite(import.meta.env.VITE_ENVIRONMENT))
 
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault()

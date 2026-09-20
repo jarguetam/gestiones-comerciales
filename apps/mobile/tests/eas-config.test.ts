@@ -7,7 +7,7 @@ const appJson = JSON.parse(readFileSync(new URL('../app.json', import.meta.url),
 }
 const gitignore = readFileSync(new URL('../../../.gitignore', import.meta.url), 'utf8')
 const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8')) as {
-  build?: Record<string, { ios?: unknown; android?: { buildType?: string } }>
+  build?: Record<string, { ios?: unknown; android?: { buildType?: string }; environment?: string; env?: Record<string, string> }>
   submit?: Record<string, { ios?: unknown }>
 }
 
@@ -32,4 +32,13 @@ test('eas.json no define profiles ni submit iOS', () => {
 test('preview es APK y production es AAB', () => {
   assert.equal(eas.build?.preview?.android?.buildType, 'apk')
   assert.equal(eas.build?.production?.android?.buildType, 'app-bundle')
+})
+
+test('EAS identifica el backend real: development local, preview y AAB production', () => {
+  assert.equal(eas.build?.development?.environment, 'development')
+  assert.equal(eas.build?.development?.env?.EXPO_PUBLIC_ENVIRONMENT, 'local')
+  for (const name of ['preview', 'production']) {
+    assert.equal(eas.build?.[name]?.environment, 'production', name)
+    assert.equal(eas.build?.[name]?.env?.EXPO_PUBLIC_ENVIRONMENT, 'production', name)
+  }
 })

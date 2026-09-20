@@ -150,7 +150,7 @@ jobs:
 
       - name: Build apps (web + backoffice)
         env:
-          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_ANON_KEY: tu_anon_key_aqui_placeholder
           VITE_SENTRY_DSN: https://public@o0.ingest.sentry.io/0
           VITE_RELEASE: ci
@@ -169,7 +169,7 @@ jobs:
         run: pnpm --filter @gc/web test:e2e
         env:
           CI: true
-          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_ANON_KEY: tu_anon_key_aqui_placeholder
           VITE_SENTRY_DSN: https://public@o0.ingest.sentry.io/0
           VITE_RELEASE: ci
@@ -179,7 +179,7 @@ jobs:
         run: pnpm --filter @gc/backoffice test:e2e
         env:
           CI: true
-          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_ANON_KEY: tu_anon_key_aqui_placeholder
           VITE_SENTRY_DSN: https://public@o0.ingest.sentry.io/0
           VITE_RELEASE: ci
