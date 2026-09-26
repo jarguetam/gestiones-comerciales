@@ -42,10 +42,14 @@ aviso antes de solicitar los permisos de ubicación del sistema.
 - Gráfico de funciones: [borrador de 1024 × 500 px](assets/play-feature-graphic-draft.png),
   PNG RGB de 24 bits sin alfa. Usa el azul y las funciones reales del núcleo;
   revisar antes de cargarlo a Play.
-- Capturas reales: pendientes; Play exige al menos dos y deben representar la
-  versión instalada y sus funciones reales. La captura de acceso del build (4)
-  es evidencia de arranque, no una captura final de la ficha: excede la relación
-  de aspecto máxima, tiene canal alfa y no muestra una función principal. Ver
+- Capturas reales: [borrador de acceso de 1080 × 1920 px](assets/play-phone-login-1080x1920-draft.png),
+  PNG RGB de 24 bits tomado del build (4) en un emulador Android 15 de 16 KB.
+  El archivo conserva los píxeles de la captura original; solo se quitó el
+  canal alfa, que era opaco. Faltan capturas de agenda, visitas y formularios
+  con una cuenta piloto. Play exige al menos dos imágenes que representen la
+  experiencia y las funciones reales. La [captura de arranque](assets/android-15-16kb-login-code4.png)
+  permanece como evidencia técnica; excede la relación de aspecto máxima.
+  Ver
   [requisitos de recursos](https://support.google.com/googleplay/android-developer/answer/9866151?hl=es).
 
 ## Declaraciones pendientes de Play Console
