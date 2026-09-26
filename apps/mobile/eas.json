@@ -28,6 +28,14 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://xcoeipsnykceorcvjwve.supabase.co",
         "EXPO_PUBLIC_ENVIRONMENT": "production"
       }
+    },
+    "verify-aab": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://xcoeipsnykceorcvjwve.supabase.co",
+        "EXPO_PUBLIC_ENVIRONMENT": "production",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
     }
   },
   "submit": {
