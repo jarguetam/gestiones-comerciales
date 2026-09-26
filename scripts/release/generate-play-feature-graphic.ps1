@@ -37,13 +37,13 @@ try {
     [System.Drawing.Point]::new(690, 300),
     [System.Drawing.Point]::new(790, 325),
     [System.Drawing.Point]::new(832, 190),
-    [System.Drawing.Point]::new(944, 124)
+    [System.Drawing.Point]::new(902, 124)
   )
   $graphics.DrawLines($routePen, $route)
 
   $nodeBrush = [System.Drawing.SolidBrush]::new($white)
   $nodeCenterBrush = [System.Drawing.SolidBrush]::new($blue)
-  foreach ($node in @(@(628, 378), @(790, 325), @(944, 124))) {
+  foreach ($node in @(@(628, 378), @(790, 325), @(902, 124))) {
     $graphics.FillEllipse($nodeBrush, $node[0] - 19, $node[1] - 19, 38, 38)
     $graphics.FillEllipse($nodeCenterBrush, $node[0] - 8, $node[1] - 8, 16, 16)
   }
@@ -52,9 +52,9 @@ try {
   $detailFont = [System.Drawing.Font]::new('Segoe UI', 26, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
   $whiteBrush = [System.Drawing.SolidBrush]::new($white)
   $paleBrush = [System.Drawing.SolidBrush]::new($pale)
-  $graphics.DrawString('Gestiones', $nameFont, $whiteBrush, 72, 145)
-  $graphics.DrawString('Comerciales', $nameFont, $whiteBrush, 72, 213)
-  $graphics.DrawString('Agenda · Visitas · Formularios', $detailFont, $paleBrush, 78, 335)
+  $graphics.DrawString('Gestiones', $nameFont, $whiteBrush, 112, 145)
+  $graphics.DrawString('Comerciales', $nameFont, $whiteBrush, 112, 213)
+  $graphics.DrawString('Agenda · Visitas · Formularios', $detailFont, $paleBrush, 118, 335)
 
   $directory = Split-Path -Parent $Output
   if ($directory) { New-Item -ItemType Directory -Force -Path $directory | Out-Null }
