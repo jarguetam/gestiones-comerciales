@@ -7,9 +7,9 @@
     "orientation": "portrait",
     "scheme": "gc",
     "userInterfaceStyle": "light",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-gc.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-gc.png",
       "resizeMode": "contain",
       "backgroundColor": "#1D4ED8"
     },
@@ -36,7 +36,7 @@
       "versionCode": 1,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon-gc.png",
         "backgroundColor": "#1D4ED8"
       },
       "permissions": [
