@@ -26,7 +26,9 @@ describe ubicación y retención GPS, pero no identifica un contacto de privacid
 del publicador, ni explica con suficiente detalle los demás datos, proveedores,
 seguridad y borrado. La [política de Google](https://support.google.com/googleplay/android-developer/answer/10144311?hl=en-GB)
 exige que la información de Play, la política y el comportamiento de la app
-coincidan. Completar y publicar la política antes de presentar la prueba cerrada.
+coincidan. El [texto de trabajo](privacy-policy-draft-es.md) reúne lo comprobado
+y marca las decisiones pendientes. Completar y publicar la política antes de
+presentar la prueba cerrada.
 
 Pendientes para cerrar la declaración:
 
