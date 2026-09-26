@@ -15,6 +15,7 @@ import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import * as ImagePicker from 'expo-image-picker'
 import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
+import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
 import { Boton, Campo, Card, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
@@ -73,19 +74,24 @@ export default function DepositosScreen({ perfil }: Props) {
       Alert.alert('Monto inválido')
       return
     }
-    await encolarYSync(
-      {
-        tipo: 'deposito',
-        payload: { monto: n, referencia: ref.trim() || (fotoUri ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
-        clienteKey: `deposito:${n}:${Date.now()}`,
-      },
-      ejecutarMutacion(supabase),
-    )
-    setMostrar(false)
-    setMonto('')
-    setRef('')
-    setFotoUri(null)
-    await cargar()
+    try {
+      await encolarYSync(
+        {
+          tipo: 'deposito',
+          payload: { monto: n, referencia: ref.trim() || (fotoUri ? 'boleta' : null), asesorId: perfil.id, tenantId: perfil.tenantId },
+          clienteKey: `deposito:${n}:${Date.now()}`,
+        },
+        ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
+      )
+      setMostrar(false)
+      setMonto('')
+      setRef('')
+      setFotoUri(null)
+      await cargar()
+    } catch (error) {
+      Alert.alert('No se pudo guardar', error instanceof Error ? error.message : 'Error de almacenamiento (GC-CORE-001)')
+    }
   }
 
   return (

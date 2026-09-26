@@ -18,6 +18,7 @@ import * as Location from 'expo-location'
 import { supabase, type Perfil } from '../lib/supabase'
 import type { Visita } from '../lib/tipos'
 import { encolarYSync } from '../lib/colaStore'
+import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
 import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
 import { fechaLocalHoy } from '../lib/visita'
@@ -123,6 +124,7 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
           clienteKey: `visita_checkin:${visita.id}`,
         },
         ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
       )
       setCheckins((prev) => new Set(prev).add(visita.id))
       setMensaje(avisoGeocerca(visita, pos.lat, pos.lng) ?? `Check-in en ${visita.persona_nombre}`)
@@ -146,6 +148,7 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
           clienteKey: `visita_completar:${visita.id}`,
         },
         ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
       )
       setVisitas((prev) => prev.map((v) => (v.id === visita.id ? { ...v, estado: 'completada' } : v)))
       setMensaje(`Visita completada · ${visita.persona_nombre}`)

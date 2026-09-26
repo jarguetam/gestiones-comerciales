@@ -36,6 +36,7 @@ import { useCola } from './lib/useCola'
 import { contarNoLeidas } from './lib/notificaciones'
 import { configurarPersistencia, hidratarDesdePersistencia, sincronizarAhora } from './lib/colaStore'
 import { abrirPersistenciaCola } from './lib/abrirCola'
+import { claveParticionCola } from './lib/colaParticion'
 import { ejecutarMutacion } from './lib/sync'
 import { esRecuperarPassword, parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
@@ -48,7 +49,7 @@ import {
   suscribirRastreoAuth,
 } from './services/rastreoServicio'
 import { ThemeProvider, useTheme } from './theme'
-import { Cargando, Icono, Marca, type IconoName } from './components/ui'
+import { Boton, Cargando, Icono, Marca, Vacio, type IconoName } from './components/ui'
 
 type Tab =
   | 'agenda'
@@ -77,14 +78,32 @@ export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [listo, setListo] = useState(false)
   const [recuperar, setRecuperar] = useState(false)
+  const [colaLista, setColaLista] = useState<string | null>(null)
+  const [errorCola, setErrorCola] = useState<string | null>(null)
+  const [intentoCola, setIntentoCola] = useState(0)
+  const claveCola = perfil ? claveParticionCola(perfil.tenantId, perfil.id) : null
 
   useEffect(() => {
+    let cancelada = false
+    configurarPersistencia(null)
+    setColaLista(null)
+    setErrorCola(null)
+    if (!claveCola) return
     void (async () => {
       const persist = await abrirPersistenciaCola()
-      configurarPersistencia(persist)
+      if (cancelada) return
+      configurarPersistencia({
+        load: () => persist.load(claveCola),
+        save: (items) => persist.save(claveCola, items),
+        clear: () => persist.clear(claveCola),
+      }, claveCola)
       await hidratarDesdePersistencia()
-    })()
-  }, [])
+      if (!cancelada) setColaLista(claveCola)
+    })().catch((error: unknown) => {
+      if (!cancelada) setErrorCola(error instanceof Error ? error.message : 'No se pudo abrir la cola local')
+    })
+    return () => { cancelada = true; configurarPersistencia(null) }
+  }, [claveCola, intentoCola])
 
   useEffect(() => {
     function aplicar(url: string | null) {
@@ -98,6 +117,8 @@ export default function App() {
   useEffect(() => {
     return suscribirSesion(supabase, async (estado, event) => {
       if (event === 'SIGNED_OUT' || !estado.session) {
+        configurarPersistencia(null)
+        setColaLista(null)
         if (event === 'SIGNED_OUT') setPerfil(null)
         setListo(true)
         return
@@ -112,20 +133,34 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!perfil) return
+    if (!perfil || colaLista !== claveCola || errorCola) return
+    let vigente = true
+    const sync = () => {
+      void sincronizarAhora(ejecutarMutacion(supabase), Date.now(), claveCola ?? undefined).catch((error: unknown) => {
+        if (vigente) setErrorCola(error instanceof Error ? error.message : 'No se pudo guardar la cola local')
+      })
+    }
     const t = setInterval(() => {
-      void sincronizarAhora(ejecutarMutacion(supabase))
+      sync()
     }, 30_000)
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        void sincronizarAhora(ejecutarMutacion(supabase))
+        sync()
       }
     })
     return () => {
+      vigente = false
       clearInterval(t)
       sub.remove()
     }
-  }, [perfil])
+  }, [perfil, colaLista, claveCola, errorCola])
+
+  async function salirConErrorCola() {
+    // Si el disco no abre, cerrar la sesión local conserva la cola de su dueño.
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
+    if (error) setErrorCola(error.message)
+    else setPerfil(null)
+  }
 
   return (
     <SafeAreaProvider>
@@ -142,6 +177,14 @@ export default function App() {
               )}
               <ExpoStatusBar style="dark" />
             </View>
+          ) : errorCola ? (
+            <View style={{ flex: 1, padding: 24, justifyContent: 'center', gap: 16 }}>
+              <Vacio titulo="No se pudo preparar el almacenamiento" descripcion={`${errorCola} (GC-CORE-001)`} />
+              <Boton etiqueta="Reintentar" onPress={() => setIntentoCola((n) => n + 1)} />
+              <Boton etiqueta="Salir" variante="secondary" onPress={() => void salirConErrorCola()} />
+            </View>
+          ) : colaLista !== claveCola ? (
+            <Cargando etiqueta="Cargando datos locales…" />
           ) : (
             <Shell perfil={perfil} onLogout={() => setPerfil(null)} />
           )}
@@ -336,7 +379,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
                 }}
               />
             )}
-            {tab === 'sync' && <SyncScreen colorPrimario={t.primary} />}
+            {tab === 'sync' && <SyncScreen colorPrimario={t.primary} perfil={perfil} />}
           </>
         )}
       </View>
