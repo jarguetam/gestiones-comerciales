@@ -1,7 +1,11 @@
 # Android 1.0.0 (3) — verificación técnica
 
-Artefacto de diagnóstico, no candidato para Play. El perfil `verify-aab` usa
-producción pero omite la subida de mapas de Sentry mientras falta el token de CI.
+Artefacto de diagnóstico instalable para pruebas internas. El perfil
+`verify-aab` usa producción pero omite la subida de mapas de Sentry mientras
+falta el token de CI. Los mapas se suben a Sentry, fuera del AAB; su ausencia
+afecta la lectura de fallos. La decisión de usar este
+artefacto en prueba cerrada depende de los demás requisitos de Play y del
+tenant piloto.
 
 | Dato | Evidencia |
 |---|---|
@@ -50,4 +54,5 @@ no una prueba de permisos de usuarios autenticados ni de los RPC. La Edge
 `rastreo-ingesta` respondió HTTP 401 sin credenciales.
 
 Pendiente: probar login, permisos, SQLite y sincronización con tenant piloto;
-compilar el AAB candidato con subida de mapas de Sentry y enviarlo a Play.
+decidir la subida de mapas de Sentry para el candidato de producción y enviar
+el AAB a Play cuando estén listas las declaraciones y la cuenta de revisión.
