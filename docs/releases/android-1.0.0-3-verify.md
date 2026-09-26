@@ -41,5 +41,13 @@ proceso seguía activo y una captura mostró la pantalla de acceso. El logcat
 consultado no mostró excepciones fatales. [Captura de la prueba](assets/android-15-16kb-login.png).
 Esto verifica instalación y arranque en 16 KB, pero no los flujos con sesión.
 
+El endpoint Auth del Supabase productivo respondió HTTP 200 con la clave pública
+configurada en EAS. Consultas `HEAD` con `Prefer: count=exact` y rol `anon`
+devolvieron `*/0` para `tenant`, `tenant_modulo`, `usuario`, `persona`,
+`visita` y `rastreo_ubicacion`: las tablas son accesibles y ninguna fila quedó
+visible al rol anónimo en esas consultas. Es una comprobación limitada de RLS,
+no una prueba de permisos de usuarios autenticados ni de los RPC. La Edge
+`rastreo-ingesta` respondió HTTP 401 sin credenciales.
+
 Pendiente: probar login, permisos, SQLite y sincronización con tenant piloto;
 compilar el AAB candidato con subida de mapas de Sentry y enviarlo a Play.
