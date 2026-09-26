@@ -3,7 +3,7 @@
 -- Autónomo: crea y revierte sus propios fixtures.
 -- ============================================================
 begin;
-select plan(27);
+select plan(36);
 
 -- La frontera primaria es el privilegio de columna; futuras columnas no
 -- heredan UPDATE porque authenticated no conserva el privilegio de tabla.
@@ -612,6 +612,99 @@ select is(
   ),
   'completada',
   'visita_completar cambió el estado'
+);
+
+select lives_ok(
+  $$select public.visita_completar(
+      (select id from public.visita where comentario = 'Cierre canónico'),
+      'Cierre canónico', 14.6300000, -90.5100000
+    )$$,
+  'repetir el mismo cierre offline devuelve la visita completada'
+);
+
+reset role;
+select is(
+  (select count(*) from public.auditoria
+    where tabla = 'visita' and cambios ->> 'estado' = 'completada'
+      and registro_id = (select id::text from public.visita where comentario = 'Cierre canónico')),
+  1::bigint,
+  'el replay no duplica la auditoría del cierre'
+);
+
+select set_config('request.jwt.claims', json_build_object(
+  'tenant_id', '77777777-0000-0000-0000-000000000001',
+  'rol', 'asesor',
+  'sub', '77777777-0000-0000-0000-000000000003'
+)::text, true);
+set local role authenticated;
+select throws_ok(
+  $$select public.visita_completar(
+      (select id from public.visita where comentario = 'Cierre canónico'),
+      'Cierre canónico', 14.6400000, -90.5100000
+    )$$,
+  'P0001', null,
+  'un cierre distinto no se confunde con un replay'
+);
+
+reset role;
+select set_config('request.jwt.claims', json_build_object(
+  'tenant_id', '77777777-0000-0000-0000-000000000001',
+  'rol', 'supervisor',
+  'sub', '77777777-0000-0000-0000-000000000002'
+)::text, true);
+set local role authenticated;
+select throws_ok(
+  $$select public.visita_completar(
+      (select id from public.visita where comentario = 'Cierre canónico'),
+      'Cierre canónico', 14.6300000, -90.5100000
+    )$$,
+  'P0001', null,
+  'un supervisor no puede repetir el cierre del asesor'
+);
+select lives_ok(
+  $$select public.visita_revisar(
+      (select id from public.visita where comentario = 'Cierre canónico'),
+      true, null
+    )$$,
+  'el supervisor aprueba la visita completada'
+);
+select is(
+  (select estado from public.visita where comentario = 'Cierre canónico'),
+  'aprobada',
+  'la revisión cambia la visita a aprobada'
+);
+
+reset role;
+select set_config('request.jwt.claims', json_build_object(
+  'tenant_id', '77777777-0000-0000-0000-000000000001',
+  'rol', 'asesor',
+  'sub', '77777777-0000-0000-0000-000000000003'
+)::text, true);
+set local role authenticated;
+select lives_ok(
+  $$select public.visita_completar(
+      (select id from public.visita where comentario = 'Cierre canónico'),
+      'Cierre canónico', 14.6300000, -90.5100000
+    )$$,
+  'el replay tardío no revierte la aprobación'
+);
+select is(
+  (select estado from public.visita where comentario = 'Cierre canónico'),
+  'aprobada',
+  'el replay conserva el estado revisado'
+);
+
+reset role;
+select set_config('test.visita_replay_id',
+  (select id::text from public.visita where comentario = 'Cierre canónico'), true);
+select set_config('request.jwt.claims', '', true);
+set local role anon;
+select throws_ok(
+  $$select public.visita_completar(
+      current_setting('test.visita_replay_id')::bigint, null, null, null
+    )$$,
+  'P0001', 'solo el dueño puede completar la visita',
+  'sin sesión no puede usar el RPC SECURITY DEFINER'
 );
 
 reset role;
