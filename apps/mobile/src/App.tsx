@@ -3,8 +3,9 @@
  * Tabs de operación + inbox/cola/salir desde el header. Theming desde tenant.branding.
  * Producción: cola persistente (SQLite), push FCM, rastreo de jornada y deep links.
  */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
+  Alert,
   AppState,
   Linking,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import * as Location from 'expo-location'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { ModalSeguro as Modal } from './components/ui/ModalSeguro'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
@@ -41,12 +43,17 @@ import { ejecutarMutacion } from './lib/sync'
 import { esRecuperarPassword, parseDeepLink } from './lib/deepLink'
 import { registrarDispositivo } from './lib/dispositivo'
 import { tokenPushNativo } from './lib/push'
-import { resolveCampoAccess, type CampoAccess } from './services/permisosCampo'
+import {
+  resolveCampoAccess,
+  solicitarPermisosCampo,
+  TEXTO_PERMISO_UBICACION,
+  TEXTO_PERMISO_VISITA,
+  type CampoAccess,
+} from './services/permisosCampo'
 import {
   detenerRastreo,
   iniciarRastreo,
   leerConfigRastreo,
-  suscribirRastreoAuth,
 } from './services/rastreoServicio'
 import { ThemeProvider, useTheme } from './theme'
 import { Boton, Cargando, Icono, Marca, Vacio, type IconoName } from './components/ui'
@@ -201,9 +208,40 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const [noLeidas, setNoLeidas] = useState(0)
   const [campo, setCampo] = useState<CampoAccess | null>(null)
   const [intervaloRastreoMin, setIntervaloRastreoMin] = useState<number | null>(null)
+  const [rastreoBloqueado, setRastreoBloqueado] = useState(false)
+  const avisoUbicacionMostrado = useRef(false)
+  const refrescarCampoRef = useRef<(() => Promise<void>) | null>(null)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
   const campoBloqueado = campo === 'blocked_location'
+
+  async function mostrarAvisoUbicacion() {
+    const config = await leerConfigRastreo(supabase)
+    if (config) avisoUbicacionMostrado.current = true
+    Alert.alert(
+      'Uso de tu ubicación',
+      config ? TEXTO_PERMISO_UBICACION : TEXTO_PERMISO_VISITA,
+      [
+        { text: 'Ahora no', style: 'cancel' },
+        {
+          text: 'Continuar',
+          onPress: () => {
+            void (async () => {
+              try {
+                await solicitarPermisosCampo(
+                  () => Location.requestForegroundPermissionsAsync(),
+                  config ? () => Location.requestBackgroundPermissionsAsync() : undefined,
+                )
+                await refrescarCampoRef.current?.()
+              } catch (error) {
+                Alert.alert('No se pudo solicitar ubicación', error instanceof Error ? error.message : 'Intentá de nuevo.')
+              }
+            })()
+          },
+        },
+      ],
+    )
+  }
 
   useEffect(() => {
     let cancel = false
@@ -225,21 +263,41 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       if (!vivo) return
       setCampo(acceso)
       if (acceso === 'ok') {
-        await iniciarRastreo(supabase)
         const cfg = await leerConfigRastreo(supabase)
-        if (vivo) setIntervaloRastreoMin(cfg?.intervalo_min ?? null)
+        if (!vivo) return
+        setIntervaloRastreoMin(cfg?.intervalo_min ?? null)
+        if (!cfg) {
+          setRastreoBloqueado(false)
+          await detenerRastreo(supabase)
+          return
+        }
+        const permisoFondo = await Location.getBackgroundPermissionsAsync()
+        if (!vivo) return
+        if (permisoFondo.status === 'granted') {
+          const resultado = await iniciarRastreo(supabase)
+          if (vivo) setRastreoBloqueado(resultado !== 'ok')
+        } else {
+          setRastreoBloqueado(true)
+          await detenerRastreo(supabase)
+          if (vivo && !avisoUbicacionMostrado.current) {
+            avisoUbicacionMostrado.current = true
+            void mostrarAvisoUbicacion()
+          }
+        }
       } else {
+        setRastreoBloqueado(true)
+        setIntervaloRastreoMin(null)
         await detenerRastreo(supabase)
       }
     }
+    refrescarCampoRef.current = refrescarCampo
     void refrescarCampo()
-    const unsubAuth = suscribirRastreoAuth(supabase)
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') void refrescarCampo()
     })
     return () => {
       vivo = false
-      unsubAuth()
+      refrescarCampoRef.current = null
       sub.remove()
       void detenerRastreo(supabase)
     }
@@ -352,7 +410,10 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         {campo == null ? (
           <Cargando etiqueta="Comprobando ubicación…" />
         ) : campoBloqueado ? (
-          <CampoBloqueadoScreen onLogout={() => void handleLogout()} />
+          <CampoBloqueadoScreen
+            onSolicitarUbicacion={() => void mostrarAvisoUbicacion()}
+            onLogout={() => void handleLogout()}
+          />
         ) : (
           <>
             {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
@@ -364,8 +425,9 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
             {tab === 'ajustes' && (
               <AjustesScreen
                 perfil={perfil}
-                rastreoBloqueado={false}
+                rastreoBloqueado={rastreoBloqueado}
                 intervaloRastreoMin={intervaloRastreoMin}
+                onSolicitarUbicacion={() => void mostrarAvisoUbicacion()}
                 onLogout={() => void handleLogout()}
                 onAbrirCola={() => setTab('sync')}
               />
