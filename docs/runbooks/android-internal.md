@@ -8,8 +8,12 @@ App de campo (`@gc/mobile`) en Play Internal Testing. iOS fuera de alcance.
 |---|---|---|
 | `preview` | APK | producción (`EXPO_PUBLIC_ENVIRONMENT=production`) |
 | `production` | AAB | producción |
+| `verify-aab` | AAB de diagnóstico, sin mapas de Sentry | producción |
 
 No commitear APK/AAB. `*.apk` / `*.aab` están en `.gitignore`.
+`verify-aab` permite comprobar la compilación nativa mientras se configura
+`SENTRY_AUTH_TOKEN`; no subir ese artefacto a Play. La entrega usa `production`
+con mapas de Sentry y el token guardado en EAS.
 
 Desde el 2026-09-20, desarrollo es local y el piloto remoto usa producción.
 Los perfiles preview/production seleccionan explícitamente variables EAS
