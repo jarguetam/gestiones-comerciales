@@ -36,14 +36,16 @@ aviso antes de solicitar los permisos de ubicación del sistema.
 - Política de privacidad: <https://jarguetam.github.io/gestiones-comerciales/privacidad.html> (HTTP 200 verificado el 2026-09-26).
 - Correo público de soporte: pendiente de definición del propietario.
 - Ícono de Play: [borrador GC de 512 × 512 px](assets/play-icon-gc-draft.png),
-  PNG de 32 bits con canal alfa y 6.8 KB. Coincide con el monograma del login,
-  pero no se ha elegido ni sustituye el ícono del AAB actual.
+  PNG de 32 bits con canal alfa y 6.8 KB. Coincide con el monograma del login
+  y con los recursos de [Android 1.0.0 (4)](android-1.0.0-4-verify.md);
+  revisar el borrador antes de cargarlo a Play.
 - Gráfico de funciones: [borrador de 1024 × 500 px](assets/play-feature-graphic-draft.png),
   PNG RGB de 24 bits sin alfa. Usa el azul y las funciones reales del núcleo;
-  revisar antes de cargarlo a Play. El ícono actual del binario es una cruz
-  blanca sobre azul y aún requiere una decisión de marca.
+  revisar antes de cargarlo a Play.
 - Capturas reales: pendientes; Play exige al menos dos y deben representar la
-  versión instalada y sus funciones reales. Ver
+  versión instalada y sus funciones reales. La captura de acceso del build (4)
+  es evidencia de arranque, no una captura final de la ficha: excede la relación
+  de aspecto máxima, tiene canal alfa y no muestra una función principal. Ver
   [requisitos de recursos](https://support.google.com/googleplay/android-developer/answer/9866151?hl=es).
 
 ## Declaraciones pendientes de Play Console
