@@ -35,9 +35,10 @@ aviso antes de solicitar los permisos de ubicación del sistema.
 - Precio propuesto: gratuita.
 - Política de privacidad: <https://jarguetam.github.io/gestiones-comerciales/privacidad.html> (HTTP 200 verificado el 2026-09-26).
 - Correo público de soporte: pendiente de definición del propietario.
-- Gráfico de funciones: pendiente; Play exige 1024 × 500 px en JPEG o PNG de
-  24 bits sin alfa. El ícono actual del binario es una cruz blanca sobre azul;
-  confirmar si representa la marca antes de preparar el gráfico.
+- Gráfico de funciones: [borrador de 1024 × 500 px](assets/play-feature-graphic-draft.png),
+  PNG RGB de 24 bits sin alfa. Usa el azul y las funciones reales del núcleo;
+  revisar antes de cargarlo a Play. El ícono actual del binario es una cruz
+  blanca sobre azul y aún requiere una decisión de marca.
 - Capturas reales: pendientes; Play exige al menos dos y deben representar la
   versión instalada y sus funciones reales. Ver
   [requisitos de recursos](https://support.google.com/googleplay/android-developer/answer/9866151?hl=es).
