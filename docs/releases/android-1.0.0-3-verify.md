@@ -30,9 +30,16 @@ Esta prueba confirma únicamente el arranque sin sesión.
 
 Se instaló también en un emulador Android 16 con página de 16 KB, pero el
 sistema operativo reinició repetidamente sus servicios gráficos antes de poder
-comprobar el uso de la app. La prueba de ejecución de 16 KB queda inconclusa;
-la validación estática de alineación indicada arriba sí pasó.
+comprobar el uso de la app en esa imagen. La validación estática de alineación
+indicada arriba sí pasó.
+
+Una segunda prueba, el 2026-09-26, usó una imagen limpia de Android 15
+(API 35) de 16 KB (`google_apis_playstore_ps16k/x86_64`). `getconf PAGESIZE`
+devolvió `16384`, `adb install --no-streaming` terminó en `Success` y
+`com.gc.mobile/.MainActivity` quedó en primer plano. Tras 25 segundos, el
+proceso seguía activo y una captura mostró la pantalla de acceso. El logcat
+consultado no mostró excepciones fatales. [Captura de la prueba](assets/android-15-16kb-login.png).
+Esto verifica instalación y arranque en 16 KB, pero no los flujos con sesión.
 
 Pendiente: probar login, permisos, SQLite y sincronización con tenant piloto;
-repetir la prueba de 16 KB en un dispositivo o emulador estable; compilar el
-AAB candidato con subida de mapas de Sentry y enviarlo a Play.
+compilar el AAB candidato con subida de mapas de Sentry y enviarlo a Play.
