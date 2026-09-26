@@ -26,7 +26,7 @@ El propietario creó el proyecto Expo el 2026-09-20:
 Vinculado en `app.json` con owner/slug y UUID
 `f38df0fe-a2df-464e-95c0-98695be71198`, verificado en el dashboard y con
 `eas project:info` autenticado. El AAB firmado de diagnóstico
-[`1.0.0 (5)`](../releases/android-1.0.0-5-verify.md) pasó verificación de
+[`1.0.0 (6)`](../releases/android-1.0.0-6-verify.md) pasó verificación de
 firma, alineación de 16 KB y arranque sin sesión en emulador. Todavía no hay
 instalación desde Play ni build `production` con mapas de Sentry verificados.
 No publicar con keystore debug.
