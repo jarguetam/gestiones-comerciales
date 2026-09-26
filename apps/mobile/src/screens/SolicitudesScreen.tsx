@@ -6,13 +6,13 @@ import React, { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   FlatList,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import { supabase, type Perfil } from '../lib/supabase'
 import { Boton, Campo, Card, FirmaPad, Vacio } from '../components/ui'
 import { useTheme } from '../theme'

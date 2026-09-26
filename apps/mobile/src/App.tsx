@@ -7,15 +7,13 @@ import React, { useEffect, useState } from 'react'
 import {
   AppState,
   Linking,
-  Modal,
-  Platform,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { ModalSeguro as Modal } from './components/ui/ModalSeguro'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import LoginScreen from './screens/LoginScreen'
 import RecuperarPasswordScreen from './screens/RecuperarPasswordScreen'
@@ -130,22 +128,26 @@ export default function App() {
   }, [perfil])
 
   return (
-    <ThemeProvider branding={perfil?.branding}>
-      {!listo ? (
-        <Cargando etiqueta="Cargando sesión…" />
-      ) : !perfil ? (
-        <View style={{ flex: 1 }}>
-          {recuperar ? (
-            <RecuperarPasswordScreen onVolver={() => setRecuperar(false)} />
+    <SafeAreaProvider>
+      <ThemeProvider branding={perfil?.branding}>
+        <SafeAreaView style={styles.safe}>
+          {!listo ? (
+            <Cargando etiqueta="Cargando sesión…" />
+          ) : !perfil ? (
+            <View style={{ flex: 1 }}>
+              {recuperar ? (
+                <RecuperarPasswordScreen onVolver={() => setRecuperar(false)} />
+              ) : (
+                <LoginScreen onLogin={setPerfil} onRecuperar={() => setRecuperar(true)} />
+              )}
+              <ExpoStatusBar style="dark" />
+            </View>
           ) : (
-            <LoginScreen onLogin={setPerfil} onRecuperar={() => setRecuperar(true)} />
+            <Shell perfil={perfil} onLogout={() => setPerfil(null)} />
           )}
-          <ExpoStatusBar style="dark" />
-        </View>
-      ) : (
-        <Shell perfil={perfil} onLogout={() => setPerfil(null)} />
-      )}
-    </ThemeProvider>
+        </SafeAreaView>
+      </ThemeProvider>
+    </SafeAreaProvider>
   )
 }
 
@@ -245,8 +247,8 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const masActivo = extras.some((e) => e.id === tab)
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: t.canvas }]}>
-      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.line, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 8) : 8 }]}>
+    <View style={[styles.safe, { backgroundColor: t.canvas }]}>
+      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.line, paddingTop: 8 }]}>
         <Marca nombre={marca} logoUrl={perfil.branding.logo_url} compact />
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitulo, { color: t.ink }]}>{TITULOS[tab]}</Text>
@@ -414,7 +416,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
         </TouchableOpacity>
       </Modal>
       <ExpoStatusBar style="dark" />
-    </SafeAreaView>
+    </View>
   )
 }
 
