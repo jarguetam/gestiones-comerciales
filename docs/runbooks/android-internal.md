@@ -72,7 +72,8 @@ No poner credenciales ni claves de firma en documentos o mensajes del PR.
 ## AAB Internal
 
 1. Tag `android-*` o `workflow_dispatch` → `eas-internal.yml`.
-2. `eas build --platform android --profile production` + `eas submit --platform android --latest`.
+2. `eas build --platform android --profile production --auto-submit --wait`;
+   EAS Submit recibe ese build, sin seleccionar otro `--latest` concurrente.
 3. Track: Internal Testing. No hay `eas submit --platform ios`.
 
 ## Checklist manual
