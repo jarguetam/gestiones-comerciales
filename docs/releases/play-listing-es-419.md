@@ -47,8 +47,9 @@ aviso antes de solicitar los permisos de ubicación del sistema.
   activación y notificación. Ver
   [requisitos de Google](https://support.google.com/googleplay/android-developer/answer/13392821?hl=en).
 - Data safety: completar a partir del binario final, SDK de Sentry, Supabase,
-  notificaciones, fotos y operaciones efectivas. No declarar que la app no
-  recopila datos. Ver
+  notificaciones y operaciones efectivas. El
+  [borrador de auditoría](play-data-safety-audit.md) registra los datos observados
+  y las dudas pendientes. No declarar que la app no recopila datos. Ver
   [guía de Google](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en).
 - Acceso del revisor: cuenta de prueba persistente del tenant piloto, con datos
   sintéticos y sin un TOTP que caduque. Cargar las credenciales únicamente en
