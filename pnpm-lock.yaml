@@ -142,6 +142,9 @@ importers:
         specifier: ~5.6.0
         version: 5.6.2(@types/react@19.1.17)(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
     devDependencies:
+      '@sentry/cli':
+        specifier: 2.55.0
+        version: 2.55.0
       '@types/react':
         specifier: ~19.1.10
         version: 19.1.17
