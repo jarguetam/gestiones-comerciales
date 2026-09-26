@@ -42,3 +42,14 @@ test('logoutCleanup borra sesión y solo la cola de ese usuario', async () => {
   assert.equal(await store.load(a), null)
   assert.equal((await store.load(b))?.[0].id, 'd2')
 })
+
+test('logout espera la limpieza durable antes de emitir SIGNED_OUT', async () => {
+  const orden: string[] = []
+  await logoutCleanup({
+    userId: 'a', tenantId: 't',
+    clearCola: async () => { await Promise.resolve(); orden.push('cola') },
+    deleteSession: async () => { orden.push('sesion') },
+    invalidateFcm: async () => { orden.push('fcm') },
+  })
+  assert.deepEqual(orden, ['cola', 'sesion', 'fcm'])
+})

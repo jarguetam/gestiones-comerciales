@@ -4,18 +4,20 @@
  */
 import React, { useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { supabase } from '../lib/supabase'
+import { supabase, type Perfil } from '../lib/supabase'
 import { useCola } from '../lib/useCola'
 import { sincronizarAhora } from '../lib/colaStore'
+import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
 import { Card, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 
 interface Props {
   colorPrimario: string
+  perfil: Perfil
 }
 
-export default function SyncScreen({ colorPrimario }: Props) {
+export default function SyncScreen({ colorPrimario, perfil }: Props) {
   const t = useTheme()
   const primario = colorPrimario || t.primary
   const { items, resumen } = useCola()
@@ -26,7 +28,7 @@ export default function SyncScreen({ colorPrimario }: Props) {
     setSyncing(true)
     setAviso(null)
     try {
-      const next = await sincronizarAhora(ejecutarMutacion(supabase))
+      const next = await sincronizarAhora(ejecutarMutacion(supabase), Date.now(), claveParticionCola(perfil.tenantId, perfil.id))
       const r = next.filter((i) => i.estado === 'enviado').length
       setAviso(`Sincronizado. Enviados en cola: ${r}.`)
     } catch (e) {

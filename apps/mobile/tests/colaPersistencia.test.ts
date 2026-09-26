@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { demoCola, type ItemCola } from '../src/lib/cola.ts'
+import { demoCola, encolar, type ItemCola } from '../src/lib/cola.ts'
 import {
   COLA_DDL,
   deserializarCola,
@@ -60,4 +60,16 @@ test('cola SQLite guarda y recarga la cola tras init', async () => {
   const loaded = await loadColaSqlite(db)
   assert.equal(loaded?.length, 2)
   assert.equal(loaded?.[0].clienteKey, items[0].clienteKey)
+})
+
+test('una visita nueva pendiente sobrevive guardar y reabrir SQLite', async () => {
+  const db = new MemoriaSqlite()
+  await initColaSqlite(db)
+  const items = encolar([], {
+    tipo: 'visita',
+    payload: { personaNombre: 'Cliente local', fecha: '2026-09-20' },
+    clienteKey: 'visita-offline-1',
+  })
+  await saveColaSqlite(db, items)
+  assert.deepEqual(await loadColaSqlite(db), items)
 })
