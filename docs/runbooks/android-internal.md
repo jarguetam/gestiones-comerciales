@@ -25,7 +25,10 @@ El propietario creó el proyecto Expo el 2026-09-20:
 [jarguetams-team / gestiones-comerciales-3uncfxmscvb2on8csmb7](https://expo.dev/accounts/jarguetams-team/projects/gestiones-comerciales-3uncfxmscvb2on8csmb7).
 Vinculado en `app.json` con owner/slug y UUID
 `f38df0fe-a2df-464e-95c0-98695be71198`, verificado en el dashboard y con
-`eas project:info` autenticado. No hay build EAS ni instalación Play verificados.
+`eas project:info` autenticado. El AAB firmado de diagnóstico
+[`1.0.0 (4)`](../releases/android-1.0.0-4-verify.md) pasó verificación de
+firma, alineación de 16 KB y arranque sin sesión en emulador. Todavía no hay
+instalación desde Play ni build `production` con mapas de Sentry verificados.
 No publicar con keystore debug.
 
 La app usa Expo 54/RN 0.81. La migración y la verificación de bibliotecas de
