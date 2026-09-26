@@ -35,7 +35,12 @@ aviso antes de solicitar los permisos de ubicación del sistema.
 - Precio propuesto: gratuita.
 - Política de privacidad: <https://jarguetam.github.io/gestiones-comerciales/privacidad.html> (HTTP 200 verificado el 2026-09-26).
 - Correo público de soporte: pendiente de definición del propietario.
-- Capturas reales y gráfico de funciones: pendientes; deben corresponder a la versión instalada.
+- Gráfico de funciones: pendiente; Play exige 1024 × 500 px en JPEG o PNG de
+  24 bits sin alfa. El ícono actual del binario es una cruz blanca sobre azul;
+  confirmar si representa la marca antes de preparar el gráfico.
+- Capturas reales: pendientes; Play exige al menos dos y deben representar la
+  versión instalada y sus funciones reales. Ver
+  [requisitos de recursos](https://support.google.com/googleplay/android-developer/answer/9866151?hl=es).
 
 ## Declaraciones pendientes de Play Console
 
