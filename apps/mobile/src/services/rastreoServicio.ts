@@ -20,9 +20,6 @@ const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v
 
 export const TAREA_RASTREO = 'gc-rastreo-campo'
 
-export const TEXTO_PERMISO_UBICACION =
-  'Durante tu jornada la app registra la ubicación para el check-in de visitas y el rastreo que configuró tu empresa.'
-
 export const TEXTO_NOTIFICACION_RUTA = 'Gestiones Comerciales está registrando la ruta'
 
 let cola: PuntoGps[] = []
@@ -124,12 +121,11 @@ export async function detenerRastreo(cliente?: SupabaseClient): Promise<void> {
 }
 
 export async function iniciarRastreo(cliente: SupabaseClient): Promise<'ok' | 'permiso' | 'sin-config'> {
-  const { status } = await Location.requestForegroundPermissionsAsync()
-  if (status !== 'granted') return 'permiso'
-  await Location.requestBackgroundPermissionsAsync().catch(() => undefined)
-
   const config = await leerConfigRastreo(cliente)
   if (!config) return 'sin-config'
+  const primerPlano = await Location.getForegroundPermissionsAsync()
+  const segundoPlano = await Location.getBackgroundPermissionsAsync()
+  if (primerPlano.status !== 'granted' || segundoPlano.status !== 'granted') return 'permiso'
 
   clienteRef = cliente
   configRef = config
@@ -149,22 +145,4 @@ export async function iniciarRastreo(cliente: SupabaseClient): Promise<'ok' | 'p
   }
   activo = true
   return 'ok'
-}
-
-export function suscribirRastreoAuth(cliente: SupabaseClient): () => void {
-  const { data } = cliente.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') {
-      void detenerRastreo(cliente)
-    }
-    if (event === 'SIGNED_IN') {
-      void resolveYArrancar(cliente)
-    }
-  })
-  return () => data.subscription.unsubscribe()
-}
-
-async function resolveYArrancar(cliente: SupabaseClient) {
-  const { resolveCampoAccess } = await import('./permisosCampo')
-  const acceso = await resolveCampoAccess()
-  if (acceso === 'ok') await iniciarRastreo(cliente)
 }

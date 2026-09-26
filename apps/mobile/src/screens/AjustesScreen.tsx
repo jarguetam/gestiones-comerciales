@@ -13,6 +13,7 @@ interface Props {
   perfil: Perfil
   rastreoBloqueado?: boolean
   intervaloRastreoMin?: number | null
+  onSolicitarUbicacion?: () => void
   onLogout: () => void
   onAbrirCola?: () => void
 }
@@ -21,6 +22,7 @@ export default function AjustesScreen({
   perfil,
   rastreoBloqueado = false,
   intervaloRastreoMin,
+  onSolicitarUbicacion,
   onLogout,
   onAbrirCola,
 }: Props) {
@@ -67,6 +69,9 @@ export default function AjustesScreen({
 
       <Card>
         <RastreoEstado bloqueado={rastreoBloqueado} intervaloMin={intervaloRastreoMin} />
+        {rastreoBloqueado && onSolicitarUbicacion ? (
+          <Boton etiqueta="Conceder ubicación en segundo plano" onPress={onSolicitarUbicacion} />
+        ) : null}
       </Card>
 
       <Card>

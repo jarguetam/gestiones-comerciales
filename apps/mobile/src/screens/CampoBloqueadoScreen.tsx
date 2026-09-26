@@ -8,10 +8,11 @@ import { Boton } from '../components/ui'
 import { useTheme } from '../theme'
 
 interface Props {
+  onSolicitarUbicacion: () => void
   onLogout: () => void
 }
 
-export default function CampoBloqueadoScreen({ onLogout }: Props) {
+export default function CampoBloqueadoScreen({ onSolicitarUbicacion, onLogout }: Props) {
   const t = useTheme()
 
   return (
@@ -21,6 +22,7 @@ export default function CampoBloqueadoScreen({ onLogout }: Props) {
         Sin permiso de ubicación no se puede usar la agenda, el check-in ni la sincronización.
         Activá Ubicación en los ajustes del teléfono.
       </Text>
+      <Boton etiqueta="Conceder ubicación" onPress={onSolicitarUbicacion} />
       <Boton etiqueta="Abrir ajustes" onPress={() => void Linking.openSettings()} />
       <Boton etiqueta="Cerrar sesión" variante="ghost" onPress={onLogout} />
     </View>
