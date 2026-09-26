@@ -35,6 +35,9 @@ aviso antes de solicitar los permisos de ubicación del sistema.
 - Precio propuesto: gratuita.
 - Política de privacidad: <https://jarguetam.github.io/gestiones-comerciales/privacidad.html> (HTTP 200 verificado el 2026-09-26).
 - Correo público de soporte: pendiente de definición del propietario.
+- Ícono de Play: [borrador GC de 512 × 512 px](assets/play-icon-gc-draft.png),
+  PNG de 32 bits con canal alfa y 6.8 KB. Coincide con el monograma del login,
+  pero no se ha elegido ni sustituye el ícono del AAB actual.
 - Gráfico de funciones: [borrador de 1024 × 500 px](assets/play-feature-graphic-draft.png),
   PNG RGB de 24 bits sin alfa. Usa el azul y las funciones reales del núcleo;
   revisar antes de cargarlo a Play. El ícono actual del binario es una cruz
