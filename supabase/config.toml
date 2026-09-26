@@ -25,7 +25,7 @@ enable_refresh_token_rotation = true
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
 
