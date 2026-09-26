@@ -1,9 +1,10 @@
 /**
  * Sentry React Native. Sin DSN en test/dev no crashea.
  * El build de producción (EXPO_PUBLIC_ENVIRONMENT=production) exige DSN (GC-CORE-001).
- * No enviar PII: email, tokens, documento, lat/lng.
+ * La exclusión de PII depende también del contenido de los eventos automáticos.
  */
 declare const process: { env: Record<string, string | undefined> }
+type SentrySdk = Pick<typeof import('@sentry/react-native'), 'init'>
 
 export function resolverInitSentry(env: Record<string, string | undefined> = process.env) {
   const dsn = env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? ''
@@ -20,25 +21,22 @@ export function resolverInitSentry(env: Record<string, string | undefined> = pro
 
 export async function initSentryMobile(
   env: Record<string, string | undefined> = process.env,
+  loadSentry: () => Promise<SentrySdk> = () => import('@sentry/react-native'),
 ): Promise<{ enabled: boolean }> {
   const cfg = resolverInitSentry(env)
   if (!cfg.enabled) return { enabled: false }
-  try {
-    const Sentry = await import('@sentry/react-native')
-    Sentry.init({
-      dsn: cfg.dsn,
-      enabled: true,
-      sendDefaultPii: false,
-      beforeSend(event) {
-        if (event.user) {
-          delete event.user.email
-          delete event.user.ip_address
-        }
-        return event
-      },
-    })
-  } catch {
-    /* Paquete nativo ausente en unit test / preview web. */
-  }
+  const Sentry = await loadSentry()
+  Sentry.init({
+    dsn: cfg.dsn,
+    enabled: true,
+    sendDefaultPii: false,
+    beforeSend(event) {
+      if (event.user) {
+        delete event.user.email
+        delete event.user.ip_address
+      }
+      return event
+    },
+  })
   return { enabled: true }
 }

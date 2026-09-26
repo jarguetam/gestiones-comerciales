@@ -4,7 +4,9 @@ import { initSentryMobile } from './src/lib/sentry'
 import App from './src/App'
 
 requireMobileEnv()
-void initSentryMobile()
+void initSentryMobile().catch((error: unknown) => {
+  console.error('No se pudo inicializar Sentry', error)
+})
 
 // registerRootComponent llama a AppRegistry.registerComponent('main', () => App)
 // También asegura que, estando el uso del tipo de entorno en Expo Go, el entorno

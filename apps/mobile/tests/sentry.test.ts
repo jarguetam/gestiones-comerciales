@@ -31,3 +31,17 @@ test('DSN presente habilita Sentry', () => {
   })
   assert.equal(cfg.enabled, true)
 })
+
+test('init no oculta un fallo del SDK nativo de Sentry', async () => {
+  const fallo = new Error('SDK nativo no disponible')
+  await assert.rejects(
+    initSentryMobile(
+      {
+        EXPO_PUBLIC_ENVIRONMENT: 'production',
+        EXPO_PUBLIC_SENTRY_DSN: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+      },
+      async () => { throw fallo },
+    ),
+    (error) => error === fallo,
+  )
+})
