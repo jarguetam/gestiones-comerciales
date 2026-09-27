@@ -27,6 +27,7 @@ class TrackingRequest extends Request {
 type HarnessOptions = {
   aal?: "aal1" | "aal2";
   platformSuperadmin?: boolean;
+  tenantAdminTenantId?: string | null;
   tenantActive?: boolean;
   rpcError?: string;
   cleanupError?: string;
@@ -140,6 +141,10 @@ function harness(options: HarnessOptions = {}): Harness {
         events.push(`authz:platform:${userId}`);
         return options.platformSuperadmin !== false;
       },
+      tenantAdminTenantId: async (userId) => {
+        events.push(`authz:tenant:${userId}`);
+        return options.tenantAdminTenantId ?? null;
+      },
       isTenantActive: async (tenantId) => {
         events.push(`tenant:validate:${tenantId}`);
         return options.tenantActive !== false;
@@ -216,6 +221,7 @@ Deno.test("admin o supervisor de tenant no lee el body ni toca Storage", async (
   assertEquals(state.events, [
     "auth:actor",
     "authz:platform:platform-admin",
+    "authz:tenant:platform-admin",
   ]);
 });
 
@@ -231,7 +237,7 @@ Deno.test("superadmin con AAL1 no lee el body ni toca Storage", async () => {
   });
   assertEquals(request.bodyReads, 0);
   assertEquals(state.uploadedPaths, []);
-  assertEquals(state.events, ["auth:actor"]);
+  assertEquals(state.events, ["auth:actor", "authz:platform:platform-admin"]);
 });
 
 Deno.test("admin o supervisor de tenant no ejecuta Request.json", async () => {
@@ -248,7 +254,87 @@ Deno.test("admin o supervisor de tenant no ejecuta Request.json", async () => {
   assertEquals(state.events, [
     "auth:actor",
     "authz:platform:platform-admin",
+    "authz:tenant:platform-admin",
   ]);
+});
+
+Deno.test("admin del tenant importa personas desde la web", async () => {
+  const state = harness({
+    platformSuperadmin: false,
+    tenantAdminTenantId: "tenant-activo",
+    aal: "aal1",
+  });
+  const request = jsonRequest(undefined, {}, state.events);
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), {
+    tipo: "personas",
+    insertados: 1,
+    actualizados: 0,
+    errores: [],
+    total: 1,
+  });
+  assertEquals(state.events.includes("rpc:admin_importar_personas"), true);
+  assertEquals(state.uploadedPaths, []);
+});
+
+Deno.test("admin de otro tenant no importa personas", async () => {
+  const state = harness({
+    platformSuperadmin: false,
+    tenantAdminTenantId: "tenant-activo",
+  });
+  const request = jsonRequest(
+    {
+      tipo: "personas",
+      tenant_id: "tenant-ajeno",
+      filas: [{ nombre: "Persona Privada", documento: "DOC-1" }],
+    },
+    {},
+    state.events,
+  );
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 403);
+  assertEquals(state.events.includes("rpc:admin_importar_personas"), false);
+  assertEquals(state.uploadedPaths, []);
+});
+
+Deno.test("admin de otro tenant no sube un CSV a Storage", async () => {
+  const state = harness({
+    platformSuperadmin: false,
+    tenantAdminTenantId: "tenant-activo",
+  });
+  const request = multipartRequest({ tenantId: "tenant-ajeno" }, state.events);
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 403);
+  assertEquals(state.uploadedPaths, []);
+  assertEquals(state.events.includes("rpc:admin_importar_personas"), false);
+});
+
+Deno.test("admin del tenant no obtiene acceso a otros tipos de importación", async () => {
+  const state = harness({
+    platformSuperadmin: false,
+    tenantAdminTenantId: "tenant-activo",
+  });
+  const request = jsonRequest(
+    {
+      tipo: "cuentas",
+      tenant_id: "tenant-activo",
+      filas: [{ documento: "DOC-1", codigo_externo: "CUENTA-1" }],
+    },
+    {},
+    state.events,
+  );
+
+  const response = await importar(state.deps, request);
+
+  assertEquals(response.status, 403);
+  assertEquals(state.events.includes("rpc:admin_importar_cuentas"), false);
 });
 
 Deno.test("el bearer se pasa explícitamente a getUser y a la API oficial de AAL", async () => {

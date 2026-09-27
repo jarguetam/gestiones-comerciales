@@ -1,4 +1,5 @@
 import catalogoEs from '../locales/es/errors.json' with { type: 'json' }
+import { mensajeGc } from './persistirHelpers.ts'
 
 const CODIGO = /\b(GC-[A-Z]+-\d{3})\b/
 
@@ -44,4 +45,23 @@ export function formatError(
     code: t.descripcion ?? extraerCodigoGc(t.titulo),
     requestId,
   }
+}
+
+/** Recupera el código de negocio de una respuesta HTTP fallida de Edge. */
+export async function mensajeErrorEdge(err: unknown): Promise<string> {
+  const context = err && typeof err === 'object' && 'context' in err
+    ? (err as { context: unknown }).context
+    : null
+  if (context instanceof Response) {
+    try {
+      const body: unknown = await context.json()
+      const error = body && typeof body === 'object' && 'error' in body
+        ? (body as { error: unknown }).error
+        : null
+      if (typeof error === 'string' && /^GC-[A-Z]+-\d{3}(?::|$)/.test(error)) return error
+    } catch {
+      // La respuesta puede venir del gateway sin JSON; conservar el error HTTP original.
+    }
+  }
+  return mensajeGc(err)
 }

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useDominio } from '../../app/DominioContext'
 import { parseCsv, PLANTILLA_PERSONAS_CSV } from '../../lib/csv'
+import { mensajeErrorEdge } from '../../lib/erroresUi'
 import { supabase } from '../../lib/supabase'
 import { contextoOperacion, mensajeGc } from '../../lib/persistir'
 import type { PersonaItem } from '../calendar/personasData'
@@ -83,7 +84,7 @@ export function PersonasPage() {
       const { data, error: fnError } = await supabase.functions.invoke('importer', {
         body: { tipo: 'personas', tenant_id: tenantId, filas },
       })
-      if (fnError) throw fnError
+      if (fnError) throw new Error(await mensajeErrorEdge(fnError))
       const payload = data as { error?: string; insertados?: number; actualizados?: number; errores?: ReporteImport['errores'] } | null
       if (payload?.error) throw new Error(payload.error)
       setReporte({
@@ -120,6 +121,7 @@ export function PersonasPage() {
           })),
         )
       }
+      if (live) await q.refetch()
     } catch (e) {
       const msg = mensajeGc(e)
       setError(msg)

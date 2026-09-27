@@ -4,7 +4,8 @@
  *
  * POST JSON { tipo, tenant_id, filas[] }
  * POST multipart: file + tipo + tenant_id
- * Auth: JWT verificado. Solo usuario_plataforma.es_superadmin con AAL2.
+ * Auth: JWT verificado. Superadmin de plataforma AAL2 o admin de empresa
+ * para personas de su propio tenant.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
@@ -74,6 +75,21 @@ serveEdge("importer", async (req) => {
         );
       }
       return data !== null;
+    },
+    tenantAdminTenantId: async (userId) => {
+      const { data, error } = await admin
+        .from("usuario")
+        .select("tenant_id")
+        .eq("id", userId)
+        .eq("rol", "admin")
+        .eq("activo", true)
+        .maybeSingle();
+      if (error) {
+        throw new ImporterError(
+          "GC-AUTH-012: no se pudo verificar la autorización",
+        );
+      }
+      return data?.tenant_id ?? null;
     },
     isTenantActive: async (tenantId) => {
       const { data, error } = await admin
