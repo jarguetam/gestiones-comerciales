@@ -1,6 +1,6 @@
-# Runbook — Android Internal Testing (Gate 4)
+# Runbook — Android prueba cerrada (Gate 4)
 
-App de campo (`@gc/mobile`) en Play Internal Testing. iOS fuera de alcance.
+App de campo (`@gc/mobile`) en prueba cerrada de Play. iOS fuera de alcance.
 
 ## Artefactos
 
@@ -78,19 +78,19 @@ No poner credenciales ni claves de firma en documentos o mensajes del PR.
 2. Instalá el APK en emulador API 34 o dispositivo.
 3. Sin URL/anon key el runtime falla con `GC-CORE-001` (no hay demo).
 
-## AAB Internal
+## AAB para prueba cerrada
 
 1. Tag `android-*` o `workflow_dispatch` → `eas-internal.yml`.
 2. `eas build --platform android --profile production --auto-submit --wait`;
    EAS Submit recibe ese build, sin seleccionar otro `--latest` concurrente.
-3. Track: Internal Testing. No hay `eas submit --platform ios`.
+3. Track: `alpha` (prueba cerrada). No hay `eas submit --platform ios`.
 
 ## Checklist manual
 
 1. APK preview apunta a producción → usar únicamente cuentas del tenant piloto.
 2. Denegar ubicación → pantalla «Ubicación requerida»; logout ok; agenda/check-in/sync no interactivos.
 3. Conceder ubicación → agenda usable; Ajustes muestra «Activo · cada N min» **sin** switch.
-4. AAB Internal (`eas submit`) o dry-run si Play aún no está configurado (Gate 0).
+4. AAB en prueba cerrada (`eas submit`) solo después de completar la ficha y las declaraciones de Play.
 5. `gc://recuperar` abre recuperación de contraseña (sobrevive kill).
 6. Logout limpia sesión SecureStore y la partición de cola `${tenantId}:${userId}`.
 

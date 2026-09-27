@@ -1,4 +1,4 @@
-name: EAS Play Internal
+name: EAS Play Closed Testing
 
 on:
   workflow_dispatch:
@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  internal:
-    name: Production AAB + submit Android
+  closed:
+    name: Production AAB + prueba cerrada
     runs-on: ubuntu-latest
     environment: eas-android
     defaults:
@@ -41,5 +41,5 @@ jobs:
       - name: Instalar dependencias
         working-directory: .
         run: pnpm install --frozen-lockfile
-      - name: EAS production AAB + Play Internal
+      - name: EAS production AAB + Play Closed Testing
         run: eas build --platform android --profile production --auto-submit --wait --non-interactive

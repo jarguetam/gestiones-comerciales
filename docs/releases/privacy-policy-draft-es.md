@@ -1,7 +1,7 @@
 # Política de privacidad para Play — texto de trabajo
 
-**No publicar todavía.** Faltan la identidad y el contacto del publicador,
-la validación del borrado/retención en el Supabase productivo y la revisión de
+**No publicar todavía.** Faltan la validación del borrado/retención en el
+Supabase productivo y la revisión de
 los proveedores. El texto de abajo está preparado para sustituir la página
 actual una vez confirmados esos puntos. Google exige que la política identifique
 al desarrollador y un contacto, explique datos, terceros, seguridad, conservación
@@ -13,8 +13,8 @@ y eliminación, y coincida con la sección Seguridad de los datos de Play.
 ### Política de privacidad de Gestiones Comerciales
 
 **Responsable y contacto.** Gestiones Comerciales es publicada por
-`[NOMBRE DEL PUBLICADOR EN PLAY]`. Para consultas sobre privacidad o solicitudes
-relativas a tus datos, escribí a `[CORREO DE PRIVACIDAD]`. Tu empresa administra
+Josue Emilio Argueta Medina. Para consultas sobre privacidad o solicitudes
+relativas a tus datos, escribí a emilio94josue@gmail.com. Tu empresa administra
 tu cuenta de trabajo y también puede atender solicitudes mediante su
 administrador.
 
@@ -58,7 +58,7 @@ riesgo de acceso no autorizado, pero no garantizan seguridad absoluta.
 se purgan mediante una tarea semanal en la base productiva.
 `[DEFINIR PLAZOS O CRITERIOS PARA CUENTAS, VISITAS, FORMULARIOS, CLIENTES,
 AUDITORÍA Y DIAGNÓSTICOS]`. Para solicitar acceso, corrección o eliminación,
-contactá a `[CORREO DE PRIVACIDAD]` o al administrador de tu empresa. Antes
+contactá a emilio94josue@gmail.com o al administrador de tu empresa. Antes
 de publicar, confirmar el procedimiento efectivo de eliminación y las
 excepciones de conservación aplicables.
 
@@ -74,8 +74,7 @@ y la ficha de Google Play. Fecha de vigencia: `[FECHA DE PUBLICACIÓN]`.
 - `purgar-rastreo-180d` se verificó activo en producción el 2026-09-26:
   tres ejecuciones registradas y exitosas, la última el 2026-09-20 04:15 UTC.
   Volver a comprobarlo antes de publicar la política.
-- Acordar identidad del publicador, correo y proceso de solicitudes, con la
-  empresa responsable de cada tenant.
+- Confirmar el proceso de solicitudes con la empresa responsable de cada tenant.
 - Revisar el tratamiento real de Sentry, FCM y Supabase y su reflejo en
   Seguridad de los datos.
 - Confirmar qué módulos opcionales estarán activos; no presentar como

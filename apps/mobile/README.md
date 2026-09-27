@@ -44,5 +44,5 @@ terminados. Ver [auditoría de datos para Play](../../docs/releases/play-data-sa
 
 La ficha, privacidad, declaraciones de ubicación y acceso del revisor están
 preparados como borradores en [`docs/releases`](../../docs/releases/).
-Faltan datos del publicador y verificación del backend productivo antes de
-presentarlos a Google.
+Faltan la revisión de privacidad y la verificación del backend productivo antes
+de presentarlos a Google.
