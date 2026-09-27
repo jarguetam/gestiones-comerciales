@@ -10,6 +10,7 @@ import {
   type WebhookSecretStatus,
 } from './webhook'
 import { MODULOS, PLANES, RUBROS, nombreRubro, type Plan } from './wizard'
+import { jefeParaInvitacion } from './invitacion'
 import {
   Alert,
   Badge,
@@ -100,6 +101,7 @@ export function EmpresaDetalle() {
   const [email, setEmail] = useState('')
   const [nombre, setNombre] = useState('')
   const [rol, setRol] = useState('asesor')
+  const [jefeId, setJefeId] = useState('')
   const [password, setPassword] = useState('')
   const [webhookSecretRevelado, setWebhookSecretRevelado] = useState<WebhookSecretRevelado | null>(null)
   const [webhookStatus, setWebhookStatus] = useState<WebhookSecretStatus | null>(null)
@@ -171,6 +173,8 @@ export function EmpresaDetalle() {
 
   useEffect(() => {
     tenantIdActualRef.current = id
+    setJefeId('')
+    setUsuarios([])
     setWebhookSecretRevelado((actual) =>
       actualizarWebhookSecretRevelado(actual, { tipo: 'tenant_cambiado' }),
     )
@@ -333,25 +337,28 @@ export function EmpresaDetalle() {
       return
     }
     try {
+      const jefe_id = jefeParaInvitacion(rol, jefeId, usuarios)
       if (!live) {
         setUsuarios((prev) => [
           ...prev,
-          { id: `u${Date.now()}`, nombre: nombre || email, rol, activo: true, jefe_id: null, zona_id: null, email },
+          { id: `u${Date.now()}`, nombre: nombre || email, rol, activo: true, jefe_id, zona_id: null, email },
         ])
         setEmail('')
         setNombre('')
+        setJefeId('')
         setPassword('')
         setAviso('Usuario agregado (demo)')
         return
       }
       const { data, error } = await supabase.functions.invoke('invitar-usuario', {
-        body: { tenant_id: tenant.id, email: email.trim(), nombre: nombre.trim() || email.trim(), rol, password },
+        body: { tenant_id: tenant.id, email: email.trim(), nombre: nombre.trim() || email.trim(), rol, password, jefe_id },
       })
       if (error) throw error
       const payload = data as { error?: string } | null
       if (payload?.error) throw new Error(payload.error)
       setEmail('')
       setNombre('')
+      setJefeId('')
       setPassword('')
       setAviso('Usuario invitado')
       await cargar()
@@ -370,6 +377,7 @@ export function EmpresaDetalle() {
   }
 
   const moduloActivo = (codigo: string) => modulos.find((m) => m.codigo === codigo)?.activo ?? false
+  const supervisores = usuarios.filter((u) => u.rol === 'supervisor' && u.activo)
   const webhookSecret =
     webhookSecretRevelado?.tenantId === tenant.id
       ? webhookSecretRevelado.secret
@@ -560,14 +568,27 @@ export function EmpresaDetalle() {
             <h3 className="font-medium md:col-span-2">Invitar usuario</h3>
             <Input id="inv-email" label="Email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
             <Input id="inv-nombre" label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
-            <Select id="inv-rol" label="Rol" value={rol} onChange={(e) => setRol(e.target.value)}>
+            <Select id="inv-rol" label="Rol" value={rol} onChange={(e) => { setRol(e.target.value); setJefeId('') }}>
               {['admin', 'gerente', 'supervisor', 'asesor'].map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </Select>
+            {rol === 'asesor' && (
+              <Select
+                id="inv-jefe"
+                label="Supervisor"
+                required
+                value={jefeId}
+                onChange={(e) => setJefeId(e.target.value)}
+                hint={supervisores.length === 0 ? 'Primero invita a un supervisor para asignar al asesor.' : undefined}
+              >
+                <option value="">Selecciona un supervisor</option>
+                {supervisores.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+              </Select>
+            )}
             <Input id="inv-pass" label="Contraseña inicial" required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial" />
             <div className="md:col-span-2">
-              <Button type="submit">Invitar</Button>
+              <Button type="submit" disabled={rol === 'asesor' && supervisores.length === 0}>Invitar</Button>
             </div>
           </form>
 
