@@ -31,6 +31,15 @@ firma, alineación de 16 KB y arranque sin sesión en emulador. Todavía no hay
 instalación desde Play ni build `production` con mapas de Sentry verificados.
 No publicar con keystore debug.
 
+Consulta de solo lectura al Supabase productivo el 2026-09-26: hay 3 tenants
+activos y 4 usuarios activos, todos con rol `admin`; no hay asesores,
+supervisores ni plantillas de formulario activas. Los catálogos básicos de
+visitas tienen datos. Falta crear la jerarquía y una cuenta de asesor para
+probar el recorrido móvil, además de una plantilla para el formulario. La
+migración de reintento de `visita_completar` está en el
+[PR #79](https://github.com/jarguetam/gestiones-comerciales/pull/79) y aún no
+figura entre las migraciones aplicadas en producción.
+
 La app usa Expo 54/RN 0.81. La migración y la verificación de bibliotecas de
 16 KB se registran en `openspec/changes/upgrade-android-sdk54`. El workflow
 `detox-android.yml` actual solo comprueba archivos; no constituye un E2E ejecutado.
