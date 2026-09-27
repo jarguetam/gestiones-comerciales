@@ -35,21 +35,32 @@ La app usa Expo 54/RN 0.81. La migración y la verificación de bibliotecas de
 16 KB se registran en `openspec/changes/upgrade-android-sdk54`. El workflow
 `detox-android.yml` actual solo comprueba archivos; no constituye un E2E ejecutado.
 
-## Secrets (GitHub environment `eas-android` + EAS)
+## Credenciales y entornos
 
-- `EXPO_TOKEN`
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- `EXPO_PUBLIC_SENTRY_DSN` (obligatorio en production)
-- `SENTRY_AUTH_TOKEN` (source maps)
-- `GOOGLE_SERVICE_ACCOUNT_KEY` (submit Play Internal)
+- GitHub environment `eas-android`: `EXPO_TOKEN` para autenticar EAS CLI en
+  los workflows. Crear el entorno y el token de Expo antes de ejecutarlos.
+- EAS environment `production`: `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
+  `EXPO_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT` y
+  `SENTRY_AUTH_TOKEN` como secreto para subir mapas de Sentry. URL y etiqueta
+  de producción están en los perfiles de `eas.json`.
+- Credenciales Android del proyecto EAS: cargar una Google Service Account Key
+  con acceso a Play Console para `eas submit`. `GOOGLE_SERVICE_ACCOUNT_KEY`
+  como variable de GitHub no es el mecanismo documentado de EAS Submit.
+
+El 2026-09-26, `eas-android` no existía y no se encontró `EXPO_TOKEN` entre los
+secrets del repositorio ni del environment `production`. `SENTRY_AUTH_TOKEN`
+sí existía en el environment de GitHub
+`production`, pero faltaba en EAS `production`; un secret del runner no se
+transfiere automáticamente al builder remoto. Tampoco se verificó la clave de
+servicio de Play en EAS. Los workflows de Android no están listos para correr.
 
 `extra.eas.projectId` vive en `apps/mobile/app.json`. Desde `apps/mobile`,
 `eas project:info` debe resolver al proyecto anterior. No crear otro proyecto.
 
 Las variables de un step de GitHub no sustituyen la configuración del builder
-remoto. Configurar URL, clave pública, DSN y credenciales de source maps en el
-entorno EAS correspondiente. Ver la [documentación EAS](https://docs.expo.dev/eas/environment-variables/).
+remoto. Configurar clave pública, DSN y credenciales de source maps en el
+entorno EAS correspondiente. Ver la [documentación EAS](https://docs.expo.dev/eas/environment-variables/faq/)
+y la [guía de EAS Submit](https://docs.expo.dev/submit/android/).
 No poner credenciales ni claves de firma en documentos o mensajes del PR.
 
 ## Preview APK
@@ -61,7 +72,8 @@ No poner credenciales ni claves de firma en documentos o mensajes del PR.
 ## AAB Internal
 
 1. Tag `android-*` o `workflow_dispatch` → `eas-internal.yml`.
-2. `eas build --platform android --profile production` + `eas submit --platform android --latest`.
+2. `eas build --platform android --profile production --auto-submit --wait`;
+   EAS Submit recibe ese build, sin seleccionar otro `--latest` concurrente.
 3. Track: Internal Testing. No hay `eas submit --platform ios`.
 
 ## Checklist manual
