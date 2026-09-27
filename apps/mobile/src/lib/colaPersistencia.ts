@@ -1,6 +1,7 @@
 import type { ItemCola } from './cola'
 
 const TIPOS = new Set([
+  'visita',
   'visita_checkin',
   'visita_completar',
   'formulario_enviar',
@@ -40,6 +41,19 @@ export function deserializarCola(json: string): ItemCola[] {
   }
 }
 
+export function deserializarColaEstricto(json: string): ItemCola[] {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    throw new Error('Cola local corrupta (GC-CORE-001)')
+  }
+  if (!Array.isArray(parsed) || !parsed.every(esItem)) {
+    throw new Error('Cola local corrupta (GC-CORE-001)')
+  }
+  return parsed
+}
+
 export const COLA_DDL = `
 create table if not exists cola_estado (
   id integer primary key check (id = 1),
@@ -55,6 +69,7 @@ export interface SqliteRunner {
 export interface ColaPersist {
   load(): Promise<ItemCola[] | null>
   save(items: ItemCola[]): Promise<void>
+  clear?(): Promise<void>
 }
 
 export async function initColaSqlite(db: SqliteRunner): Promise<void> {

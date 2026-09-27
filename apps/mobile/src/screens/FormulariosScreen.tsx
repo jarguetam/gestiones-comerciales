@@ -20,6 +20,7 @@ import {
 } from '../lib/formulario'
 import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
+import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
 import { Boton, Card } from '../components/ui'
 import { useTheme } from '../theme'
@@ -104,9 +105,12 @@ export default function FormulariosScreen({ perfil }: Props) {
           clienteKey: `formulario:${plantilla.id}:${Date.now()}`,
         },
         ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
       )
       Alert.alert('Encolado', `Score ${score ?? '—'}%. Revisá la cola de sincronización.`)
       setValores({})
+    } catch (error) {
+      Alert.alert('No se pudo guardar', error instanceof Error ? error.message : 'Error de almacenamiento (GC-CORE-001)')
     } finally {
       setEnviando(false)
     }

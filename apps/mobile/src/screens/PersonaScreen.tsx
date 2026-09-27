@@ -15,6 +15,7 @@ import {
 } from 'react-native'
 import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
+import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
 import type { Persona } from '../lib/tipos'
 import { Cargando, Vacio } from '../components/ui'
@@ -30,7 +31,7 @@ const CATEGORIAS = [
   'farmacia',
 ] as const
 
-export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
+export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
   const t = useTheme()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -105,6 +106,7 @@ export default function PersonaScreen({ perfil }: { perfil?: Perfil }) {
           clienteKey: `persona:${documento.trim() || nombre.trim()}:${Date.now()}`,
         },
         ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
       )
       setNombre('')
       setDocumento('')
