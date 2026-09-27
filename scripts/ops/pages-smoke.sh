@@ -3,26 +3,13 @@
 set -euo pipefail
 
 URL="${1:-${PAGES_PROD_URL:-https://jarguetam.github.io/gestiones-comerciales/}}"
-
-if [ -n "${SMOKE_HTML_FILE:-}" ]; then
-  html="$(cat "$SMOKE_HTML_FILE")"
+export PLAYWRIGHT_BASE_URL="$URL"
+export PLAYWRIGHT_NO_SERVER=1
+export E2E_SUITE=production
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm --filter @gc/web exec playwright test tests/production-smoke.spec.ts --reporter=line
 else
-  html="$(curl -fsSL "$URL")"
-fi
-
-if ! printf '%s' "$html" | grep -q 'Ingresar'; then
-  echo "GC-OPS-009: login form no visible (falta Ingresar) en $URL" >&2
-  exit 1
-fi
-
-if printf '%s' "$html" | grep -q 'Entrar al tablero'; then
-  echo "GC-OPS-009: HTML contiene Entrar al tablero" >&2
-  exit 1
-fi
-
-if printf '%s' "$html" | grep -q 'Backend conectado'; then
-  echo "GC-OPS-009: HTML contiene copy de demo (Backend conectado)" >&2
-  exit 1
+  pnpm.cmd --filter @gc/web exec playwright test tests/production-smoke.spec.ts --reporter=line
 fi
 
 EDGE_URL="${SMOKE_EDGE_URL:-${VITE_SUPABASE_URL:-}}"

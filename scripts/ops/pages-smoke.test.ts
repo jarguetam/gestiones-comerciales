@@ -26,10 +26,9 @@ test('auth-guard sin JWT acepta 401 o 400', () => {
   assert.equal(edgeSmokeOk(200), false)
 })
 
-test('pages-smoke.sh delega en curl y anti-demo', () => {
+test('pages-smoke.sh ejecuta el smoke de navegador y Edge', () => {
   const sh = readFileSync('scripts/ops/pages-smoke.sh', 'utf8')
-  assert.match(sh, /Ingresar/)
-  assert.match(sh, /Entrar al tablero/)
+  assert.match(sh, /playwright test tests\/production-smoke\.spec\.ts/)
   assert.match(sh, /auth-guard/)
   const pages = readFileSync('.github/workflows/pages-prod.yml', 'utf8')
   assert.match(pages, /pages-smoke\.sh/)
