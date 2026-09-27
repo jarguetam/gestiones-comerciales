@@ -6,12 +6,12 @@ import React, { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   FlatList,
-  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import * as ImagePicker from 'expo-image-picker'
 import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'

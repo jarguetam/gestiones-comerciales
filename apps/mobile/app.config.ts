@@ -11,7 +11,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       '@sentry/react-native/expo',
       {
-        organization: process.env.SENTRY_ORG ?? 'gestiones-comerciales',
+        organization: process.env.SENTRY_ORG ?? 'gestionescomerciales',
         project: process.env.SENTRY_PROJECT ?? 'mobile',
       },
     ],
