@@ -13,8 +13,8 @@ export type GolivePreflightInput = {
   gate0InventoryPath: string
   ciConclusion: 'success' | 'failure' | 'unknown'
   pgtapConclusion: 'success' | 'failure'
-  stagingHealth: 'success' | 'failure'
-  sentryReleaseExists: boolean
+  productionHealth: 'success' | 'failure'
+  sentryConfigured: boolean
   demoStringInWebSrc: boolean
   apkTrackedInGit: boolean
 }
@@ -26,8 +26,8 @@ export async function runGolivePreflight(input: GolivePreflightInput): Promise<{
   const checks: GoliveCheck[] = [
     { id: 'ci', ok: input.ciConclusion === 'success', detail: input.ciConclusion },
     { id: 'pgtap', ok: input.pgtapConclusion === 'success', detail: input.pgtapConclusion },
-    { id: 'staging-health', ok: input.stagingHealth === 'success', detail: input.stagingHealth },
-    { id: 'sentry-release', ok: input.sentryReleaseExists, detail: 'web@sha' },
+    { id: 'production-health', ok: input.productionHealth === 'success', detail: input.productionHealth },
+    { id: 'sentry-config', ok: input.sentryConfigured, detail: 'org + web + backoffice' },
     { id: 'no-demo', ok: !input.demoStringInWebSrc, detail: 'DEMO_MODE' },
     { id: 'no-apk-git', ok: !input.apkTrackedInGit, detail: 'releases/*.apk' },
   ]
@@ -72,57 +72,90 @@ export function evidenceFromDisk(root: string): { demoStringInWebSrc: boolean; a
   return collectLocalEvidence({ webSrcFiles: files, gitTracked })
 }
 
-function envConclusion(
-  name: string,
-  allowed: readonly string[],
-): string | undefined {
-  const raw = process.env[name]?.trim()
-  if (!raw) return undefined
-  return allowed.includes(raw) ? raw : 'unknown'
+export function evaluateHealthEvidence(
+  rows: { conclusion?: string; updatedAt?: string }[],
+  now = Date.now(),
+): 'success' | 'failure' {
+  const latest = rows[0]
+  const age = now - Date.parse(latest?.updatedAt ?? '')
+  return latest?.conclusion === 'success' && age >= 0 && age <= 60 * 60 * 1000
+    ? 'success' : 'failure'
 }
 
-function latestWorkflowConclusion(workflow: string): 'success' | 'failure' | 'unknown' {
+function latestHealthConclusion(): 'success' | 'failure' {
   try {
     const out = execFileSync(
       'gh',
-      ['run', 'list', '--workflow', workflow, '--limit', '1', '--json', 'conclusion'],
+      ['run', 'list', '--workflow', 'Health probes', '--limit', '1', '--json', 'conclusion,updatedAt'],
       { encoding: 'utf8' },
     )
-    const rows = JSON.parse(out) as { conclusion?: string }[]
-    const c = rows[0]?.conclusion
-    if (c === 'success' || c === 'failure') return c
-    return 'unknown'
+    return evaluateHealthEvidence(JSON.parse(out) as { conclusion?: string; updatedAt?: string }[])
   } catch {
-    return 'unknown'
+    return 'failure'
+  }
+}
+
+export function sentryConfigPresent(env: Record<string, string | undefined>): boolean {
+  return ['SENTRY_AUTH_TOKEN', 'SENTRY_ORG', 'SENTRY_PROJECT_WEB', 'SENTRY_PROJECT_BACKOFFICE']
+    .every((name) => Boolean(env[name]?.trim()))
+}
+
+type CiRun = {
+  headSha?: string
+  headBranch?: string
+  event?: string
+  status?: string
+  conclusion?: string
+  databaseId?: number
+}
+
+type CiJob = { name?: string; conclusion?: string }
+
+export function evaluateCiEvidence(
+  runs: CiRun[],
+  candidateSha: string,
+  jobs: CiJob[],
+): { ci: 'success' | 'failure' | 'unknown'; pgtap: 'success' | 'failure'; runId: number | null } {
+  const run = runs.find((row) =>
+    row.headSha === candidateSha && row.headBranch === 'main' &&
+    row.event === 'push' && row.status === 'completed',
+  )
+  if (!run?.databaseId) return { ci: 'unknown', pgtap: 'failure', runId: null }
+  const ci = run.conclusion === 'success' || run.conclusion === 'failure' ? run.conclusion : 'unknown'
+  const pgtap = jobs.some((job) => job.name === 'pgTAP (blank + replay)' && job.conclusion === 'success')
+    ? 'success' : 'failure'
+  return { ci, pgtap, runId: run.databaseId }
+}
+
+function candidateCiEvidence(root: string): { ci: 'success' | 'failure' | 'unknown'; pgtap: 'success' | 'failure' } {
+  try {
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
+    const rows = JSON.parse(execFileSync('gh', [
+      'run', 'list', '--workflow', 'CI', '--branch', 'main', '--event', 'push', '--commit', sha,
+      '--limit', '10', '--json', 'headSha,headBranch,event,status,conclusion,databaseId',
+    ], { cwd: root, encoding: 'utf8' })) as CiRun[]
+    const runId = evaluateCiEvidence(rows, sha, []).runId
+    if (!runId) return { ci: 'unknown', pgtap: 'failure' }
+    const details = JSON.parse(execFileSync('gh', [
+      'run', 'view', String(runId), '--json', 'jobs',
+    ], { cwd: root, encoding: 'utf8' })) as { jobs?: CiJob[] }
+    const { ci, pgtap } = evaluateCiEvidence(rows, sha, details.jobs ?? [])
+    return { ci, pgtap }
+  } catch {
+    return { ci: 'unknown', pgtap: 'failure' }
   }
 }
 
 export async function gatherInput(root: string): Promise<GolivePreflightInput> {
   const local = evidenceFromDisk(root)
-  const ci =
-    (envConclusion('GOLIVE_CI_CONCLUSION', ['success', 'failure', 'unknown']) as
-      | 'success'
-      | 'failure'
-      | 'unknown'
-      | undefined) ?? latestWorkflowConclusion('CI')
-  const pgtap =
-    (envConclusion('GOLIVE_PGTAP_CONCLUSION', ['success', 'failure']) as 'success' | 'failure' | undefined) ??
-    (ci === 'success' ? 'success' : 'failure')
-  const stagingHealth =
-    (envConclusion('GOLIVE_STAGING_HEALTH', ['success', 'failure']) as 'success' | 'failure' | undefined) ??
-    latestWorkflowConclusion('Health probes')
-  const sentry =
-    process.env.GOLIVE_SENTRY_RELEASE === '1' || process.env.GOLIVE_SENTRY_RELEASE === 'true'
-      ? true
-      : process.env.GOLIVE_SENTRY_RELEASE === '0'
-        ? false
-        : Boolean(process.env.SENTRY_AUTH_TOKEN)
+  const { ci, pgtap } = candidateCiEvidence(root)
+  const productionHealth = latestHealthConclusion()
   return {
     gate0InventoryPath: process.env.GOLIVE_INVENTORY_PATH ?? 'docs/ops/inventory-latest.json',
     ciConclusion: ci,
     pgtapConclusion: pgtap,
-    stagingHealth: stagingHealth === 'success' ? 'success' : 'failure',
-    sentryReleaseExists: sentry,
+    productionHealth: productionHealth === 'success' ? 'success' : 'failure',
+    sentryConfigured: sentryConfigPresent(process.env),
     demoStringInWebSrc: local.demoStringInWebSrc,
     apkTrackedInGit: local.apkTrackedInGit,
   }
