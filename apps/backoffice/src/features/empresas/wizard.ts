@@ -82,8 +82,7 @@ export function validarPaso2(w: WizardState): string | null {
   return null
 }
 
-export function validarPaso3(w: WizardState): string | null {
-  if (w.modulos.length === 0) return 'La plataforma incluye el núcleo; podés no elegir módulos extra.'
+export function validarPaso3(_w: WizardState): string | null {
   return null
 }
 

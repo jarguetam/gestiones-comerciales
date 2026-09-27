@@ -3,12 +3,13 @@ param(
 )
 
 Add-Type -AssemblyName System.Drawing
+. (Join-Path $PSScriptRoot '_gc-brand.ps1')
 
 function Save-GcAsset {
   param(
     [int]$Width,
     [int]$Height,
-    [int]$FontSize,
+    [int]$MarkSize,
     [bool]$Transparent,
     [string]$Path
   )
@@ -16,11 +17,7 @@ function Save-GcAsset {
   $bitmap = [System.Drawing.Bitmap]::new($Width, $Height, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
   $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-  $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
   $background = $null
-  $white = $null
-  $font = $null
-
   try {
     if ($Transparent) {
       $graphics.Clear([System.Drawing.Color]::Transparent)
@@ -28,20 +25,16 @@ function Save-GcAsset {
       $background = [System.Drawing.SolidBrush]::new([System.Drawing.ColorTranslator]::FromHtml('#1D4ED8'))
       $graphics.FillRectangle($background, 0, 0, $Width, $Height)
     }
-    $white = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
-    $font = [System.Drawing.Font]::new('Segoe UI', $FontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
-    $text = 'GC'
-    $measured = $graphics.MeasureString($text, $font)
-    $graphics.DrawString($text, $font, $white, ($Width - $measured.Width) / 2, ($Height - $measured.Height) / 2 - 8)
+    Draw-GcMark -Graphics $graphics -X (($Width - $MarkSize) / 2) -Y (($Height - $MarkSize) / 2) -Size $MarkSize -Color ([System.Drawing.Color]::White)
     $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
   } finally {
-    foreach ($item in @($background, $white, $font, $graphics, $bitmap)) {
+    foreach ($item in @($background, $graphics, $bitmap)) {
       if ($item) { $item.Dispose() }
     }
   }
 }
 
 New-Item -ItemType Directory -Force -Path $AssetDir | Out-Null
-Save-GcAsset -Width 1024 -Height 1024 -FontSize 460 -Transparent $false -Path (Join-Path $AssetDir 'icon-gc.png')
-Save-GcAsset -Width 1024 -Height 1024 -FontSize 370 -Transparent $true -Path (Join-Path $AssetDir 'adaptive-icon-gc.png')
-Save-GcAsset -Width 1284 -Height 2778 -FontSize 420 -Transparent $false -Path (Join-Path $AssetDir 'splash-gc.png')
+Save-GcAsset -Width 1024 -Height 1024 -MarkSize 800 -Transparent $false -Path (Join-Path $AssetDir 'icon-gc.png')
+Save-GcAsset -Width 1024 -Height 1024 -MarkSize 650 -Transparent $true -Path (Join-Path $AssetDir 'adaptive-icon-gc.png')
+Save-GcAsset -Width 1284 -Height 2778 -MarkSize 800 -Transparent $false -Path (Join-Path $AssetDir 'splash-gc.png')

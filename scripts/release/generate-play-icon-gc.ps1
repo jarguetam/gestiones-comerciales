@@ -3,29 +3,22 @@ param(
 )
 
 Add-Type -AssemblyName System.Drawing
+. (Join-Path $PSScriptRoot '_gc-brand.ps1')
 
 $size = 512
 $bitmap = [System.Drawing.Bitmap]::new($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-$graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-
+$background = [System.Drawing.SolidBrush]::new([System.Drawing.ColorTranslator]::FromHtml('#1D4ED8'))
 try {
-  $blueBrush = [System.Drawing.SolidBrush]::new([System.Drawing.ColorTranslator]::FromHtml('#1D4ED8'))
-  $whiteBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
-  $font = [System.Drawing.Font]::new('Segoe UI', 230, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
-  $graphics.FillRectangle($blueBrush, 0, 0, $size, $size)
-  $text = 'GC'
-  $measured = $graphics.MeasureString($text, $font)
-  $x = ($size - $measured.Width) / 2
-  $y = ($size - $measured.Height) / 2 - 8
-  $graphics.DrawString($text, $font, $whiteBrush, $x, $y)
+  $graphics.FillRectangle($background, 0, 0, $size, $size)
+  Draw-GcMark -Graphics $graphics -X 56 -Y 56 -Size 400 -Color ([System.Drawing.Color]::White)
 
   $directory = Split-Path -Parent $Output
   if ($directory) { New-Item -ItemType Directory -Force -Path $directory | Out-Null }
   $bitmap.Save($Output, [System.Drawing.Imaging.ImageFormat]::Png)
 } finally {
-  foreach ($item in @($blueBrush, $whiteBrush, $font, $graphics, $bitmap)) {
+  foreach ($item in @($background, $graphics, $bitmap)) {
     if ($item) { $item.Dispose() }
   }
 }
