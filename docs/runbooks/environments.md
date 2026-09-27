@@ -65,6 +65,8 @@ Los valores **no** van al repo. El agente o un admin los carga con `gh secret se
 | `VITE_SUPABASE_ANON_KEY` | staging anon | prod anon |
 | `VITE_SENTRY_DSN` | DSN staging | DSN prod |
 | `SENTRY_AUTH_TOKEN` | org | org |
+| `SENTRY_ORG` | — | org del DSN productivo |
+| `SENTRY_PROJECT_WEB` / `SENTRY_PROJECT_BACKOFFICE` | — | proyectos del DSN productivo |
 | `E2E_ASESOR_PASSWORD` | sintético | — |
 | `E2E_ADMIN_PASSWORD` | sintético | — |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_ADMIN_EMAIL` | staging | prod |
