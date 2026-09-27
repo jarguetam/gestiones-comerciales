@@ -34,6 +34,7 @@ export type ImporterLogEntry = {
 export type ImporterDeps = {
   requireActor: (request: Request) => Promise<ImporterActor>;
   isPlatformSuperadmin: (userId: string) => Promise<boolean>;
+  tenantAdminTenantId: (userId: string) => Promise<string | null>;
   isTenantActive: (tenantId: string) => Promise<boolean>;
   uploadFile: (
     path: string,
@@ -358,12 +359,16 @@ export async function importar(
   let stage: ImporterLogEntry["stage"] = "authorize";
   try {
     const actor = await deps.requireActor(request);
-    if (actor.aal !== "aal2") {
+    const platformSuperadmin = await deps.isPlatformSuperadmin(actor.userId);
+    if (platformSuperadmin && actor.aal !== "aal2") {
       throw new ImporterError(
         "GC-AUTH-014: se requiere autenticación AAL2",
       );
     }
-    if (!await deps.isPlatformSuperadmin(actor.userId)) {
+    const tenantAdminId = platformSuperadmin
+      ? null
+      : await deps.tenantAdminTenantId(actor.userId);
+    if (!platformSuperadmin && !tenantAdminId) {
       throw new ImporterError(
         "GC-AUTH-001: requiere superadmin de plataforma",
       );
@@ -372,6 +377,14 @@ export async function importar(
     stage = "validate";
     const parsed = await parseRequest(request);
     validateImport(parsed);
+    if (
+      !platformSuperadmin &&
+      (parsed.tipo !== "personas" || parsed.tenantId !== tenantAdminId)
+    ) {
+      throw new ImporterError(
+        "GC-AUTH-001: sin permisos para importar en este tenant",
+      );
+    }
     if (!await deps.isTenantActive(parsed.tenantId)) {
       throw new ImporterError(DEFAULT_ERROR_MESSAGE);
     }
