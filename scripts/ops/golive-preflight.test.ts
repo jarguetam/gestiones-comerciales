@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
-import { collectLocalEvidence, runGolivePreflight } from './golive-preflight.ts'
+import { collectLocalEvidence, evaluateCiEvidence, evaluateHealthEvidence, runGolivePreflight, sentryConfigPresent } from './golive-preflight.ts'
 
 const green = {
   gate0InventoryPath: 'docs/ops/inventory-latest.json',
   ciConclusion: 'success' as const,
   pgtapConclusion: 'success' as const,
-  stagingHealth: 'success' as const,
-  sentryReleaseExists: true,
+  productionHealth: 'success' as const,
+  sentryConfigured: true,
   demoStringInWebSrc: false,
   apkTrackedInGit: false,
 }
@@ -24,7 +24,7 @@ test('ready es true solo si todos los checks ok', async () => {
   assert.equal(ok.ready, true)
   assert.deepEqual(
     ok.checks.map((c) => c.id),
-    ['ci', 'pgtap', 'staging-health', 'sentry-release', 'no-demo', 'no-apk-git'],
+    ['ci', 'pgtap', 'production-health', 'sentry-config', 'no-demo', 'no-apk-git'],
   )
   assert.ok(ok.checks.every((c) => c.ok))
 })
@@ -32,6 +32,39 @@ test('ready es true solo si todos los checks ok', async () => {
 test('unknown en CI no es ready', async () => {
   const r = await runGolivePreflight({ ...green, ciConclusion: 'unknown' })
   assert.equal(r.ready, false)
+})
+
+test('CI exige un push exitoso de main para el SHA candidato y pgTAP exitoso', () => {
+  const sha = 'a'.repeat(40)
+  const other = 'b'.repeat(40)
+  const success = { headSha: sha, headBranch: 'main', event: 'push', status: 'completed', conclusion: 'success', databaseId: 10 }
+  assert.deepEqual(evaluateCiEvidence([{ ...success, headSha: other }], sha, []), {
+    ci: 'unknown', pgtap: 'failure', runId: null,
+  })
+  assert.deepEqual(evaluateCiEvidence([{ ...success, event: 'pull_request' }], sha, []), {
+    ci: 'unknown', pgtap: 'failure', runId: null,
+  })
+  assert.deepEqual(evaluateCiEvidence([success], sha, [{ name: 'pgTAP (blank + replay)', conclusion: 'failure' }]), {
+    ci: 'success', pgtap: 'failure', runId: 10,
+  })
+  assert.deepEqual(evaluateCiEvidence([success], sha, [{ name: 'pgTAP (blank + replay)', conclusion: 'success' }]), {
+    ci: 'success', pgtap: 'success', runId: 10,
+  })
+})
+
+test('token Sentry aislado no demuestra que el release se pueda crear', () => {
+  assert.equal(sentryConfigPresent({ SENTRY_AUTH_TOKEN: 'token' }), false)
+  assert.equal(sentryConfigPresent({
+    SENTRY_AUTH_TOKEN: 'token', SENTRY_ORG: 'org',
+    SENTRY_PROJECT_WEB: 'web', SENTRY_PROJECT_BACKOFFICE: 'backoffice',
+  }), true)
+})
+
+test('probes viejos no autorizan promoción', () => {
+  const now = Date.parse('2026-09-27T16:00:00Z')
+  assert.equal(evaluateHealthEvidence([{ conclusion: 'success', updatedAt: '2026-09-27T15:30:00Z' }], now), 'success')
+  assert.equal(evaluateHealthEvidence([{ conclusion: 'success', updatedAt: '2026-09-27T12:00:00Z' }], now), 'failure')
+  assert.equal(evaluateHealthEvidence([{ conclusion: 'failure', updatedAt: '2026-09-27T15:30:00Z' }], now), 'failure')
 })
 
 test('DEMO_MODE o APK en git bloquean', async () => {
