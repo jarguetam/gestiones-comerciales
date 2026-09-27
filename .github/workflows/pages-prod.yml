@@ -42,14 +42,20 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          VITE_RELEASE: ${{ github.sha }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT_WEB: ${{ secrets.SENTRY_PROJECT_WEB }}
+          SENTRY_PROJECT_BACKOFFICE: ${{ secrets.SENTRY_PROJECT_BACKOFFICE }}
           VITE_ENVIRONMENT: production
         run: |
           missing=""
           [ -z "$VITE_SUPABASE_URL" ] && missing="$missing VITE_SUPABASE_URL"
           [ -z "$VITE_SUPABASE_ANON_KEY" ] && missing="$missing VITE_SUPABASE_ANON_KEY"
           [ -z "$VITE_SENTRY_DSN" ] && missing="$missing VITE_SENTRY_DSN"
-          [ -z "$VITE_RELEASE" ] && missing="$missing VITE_RELEASE"
+          [ -z "$SENTRY_AUTH_TOKEN" ] && missing="$missing SENTRY_AUTH_TOKEN"
+          [ -z "$SENTRY_ORG" ] && missing="$missing SENTRY_ORG"
+          [ -z "$SENTRY_PROJECT_WEB" ] && missing="$missing SENTRY_PROJECT_WEB"
+          [ -z "$SENTRY_PROJECT_BACKOFFICE" ] && missing="$missing SENTRY_PROJECT_BACKOFFICE"
           if [ -n "$missing" ]; then
             echo "::error::GC-OPS-008: faltan secretos de production:$missing"
             exit 1
@@ -64,11 +70,10 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          VITE_RELEASE: ${{ github.sha }}
           VITE_ENVIRONMENT: production
         run: |
-          pnpm --filter @gc/web build
-          pnpm --filter @gc/backoffice build
+          VITE_RELEASE="web@${GITHUB_SHA}" pnpm --filter @gc/web build
+          VITE_RELEASE="backoffice@${GITHUB_SHA}" pnpm --filter @gc/backoffice build
 
       - name: Preparar artefactos estáticos
         run: |
@@ -76,6 +81,9 @@ jobs:
           cp -r apps/web/dist/* _site/web/
           cp -r apps/backoffice/dist/* _site/backoffice/
           cp -r apps/web/dist/* _site/
+
+      - name: Instalar Chromium para smoke productivo
+        run: pnpm --filter @gc/web exec playwright install --with-deps chromium
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v6
@@ -89,6 +97,12 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
+      - name: Smoke login (sin demo)
+        env:
+          PAGES_PROD_URL: ${{ steps.deployment.outputs.page_url }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        run: bash scripts/ops/pages-smoke.sh "${PAGES_PROD_URL:-https://jarguetam.github.io/gestiones-comerciales/}"
+
       - name: Sentry release web + backoffice
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -96,17 +110,6 @@ jobs:
           SENTRY_PROJECT_WEB: ${{ secrets.SENTRY_PROJECT_WEB }}
           SENTRY_PROJECT_BACKOFFICE: ${{ secrets.SENTRY_PROJECT_BACKOFFICE }}
         run: |
-          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
-            export SENTRY_DRY_RUN=1
-          else
-            npm i -g @sentry/cli@2
-          fi
-          SHORT="${GITHUB_SHA:0:7}"
-          SENTRY_PROJECT="${SENTRY_PROJECT_WEB:-web}" bash scripts/ops/sentry-release.sh "web@${SHORT}"
-          SENTRY_PROJECT="${SENTRY_PROJECT_BACKOFFICE:-backoffice}" bash scripts/ops/sentry-release.sh "backoffice@${SHORT}"
-
-      - name: Smoke login (sin demo)
-        env:
-          PAGES_PROD_URL: ${{ steps.deployment.outputs.page_url }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-        run: bash scripts/ops/pages-smoke.sh "${PAGES_PROD_URL:-https://jarguetam.github.io/gestiones-comerciales/}"
+          npm i -g @sentry/cli@2
+          SENTRY_PROJECT="$SENTRY_PROJECT_WEB" bash scripts/ops/sentry-release.sh "web@${GITHUB_SHA}"
+          SENTRY_PROJECT="$SENTRY_PROJECT_BACKOFFICE" bash scripts/ops/sentry-release.sh "backoffice@${GITHUB_SHA}"
