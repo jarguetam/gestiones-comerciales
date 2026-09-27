@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gestiones Comerciales">
+  <rect width="512" height="512" fill="#1D4ED8"/>
+  <path d="M363 371 A158 158 0 1 1 363 141" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round"/>
+  <path d="M246 261 H348" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round"/>
+  <path d="M410 261 333 205 333 317Z" fill="#fff"/>
+</svg>
