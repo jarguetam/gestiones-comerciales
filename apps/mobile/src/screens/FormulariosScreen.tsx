@@ -3,6 +3,7 @@
  * Renderer del esquema de formulario_plantilla; score en vivo si calculo = porcentaje_completado.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { randomUUID } from 'expo-crypto'
 import {
   Alert,
   ScrollView,
@@ -18,6 +19,7 @@ import {
   validarRespuestas,
   type CampoEsquema,
 } from '../lib/formulario'
+import { crearAltaFormulario } from '../lib/formularioEnvio'
 import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { claveParticionCola } from '../lib/colaParticion'
@@ -95,15 +97,12 @@ export default function FormulariosScreen({ perfil }: Props) {
     setEnviando(true)
     try {
       await encolarYSync(
-        {
-          tipo: 'formulario_enviar',
-          payload: {
-            plantillaId: Number.isFinite(Number(plantilla.id)) ? Number(plantilla.id) : plantilla.id,
-            respuestas: valores,
-            visitaId: null,
-          },
-          clienteKey: `formulario:${plantilla.id}:${Date.now()}`,
-        },
+        crearAltaFormulario(
+          Number.isFinite(Number(plantilla.id)) ? Number(plantilla.id) : plantilla.id,
+          valores,
+          null,
+          randomUUID,
+        ),
         ejecutarMutacion(supabase),
         claveParticionCola(perfil.tenantId, perfil.id),
       )
