@@ -1,7 +1,8 @@
 # Datos y privacidad para Google Play — borrador de revisión
 
-Basado en el código del candidato Android `1.0.0 (3)`; no es una declaración
-enviada a Play Console. Según la [guía de Google](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en),
+Basado en el código del candidato Android `1.0.0 (4)` (los cambios frente a (3)
+son de marca). No es una declaración enviada a Play Console. Según la
+[guía de Google](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en),
 «recopilar» incluye los datos enviados fuera del dispositivo por la app o sus
 SDK, y la respuesta debe abarcar todo el paquete publicado.
 
