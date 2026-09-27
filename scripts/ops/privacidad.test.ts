@@ -17,6 +17,7 @@ test('login backoffice y móvil enlazan Privacidad', () => {
 test('política de privacidad documenta rastreo 180d', () => {
   const html = readFileSync('apps/web/public/privacidad.html', 'utf8')
   assert.match(html, /180/)
-  assert.match(html, /config_rastreo/)
+  assert.match(html, /administrador de la empresa puede desactivar o acotar el rastreo/i)
+  assert.match(html, /segundo plano/i)
   assert.match(html, /ubicación/i)
 })
