@@ -13,8 +13,11 @@ export interface RastreoEstadoProps {
 
 export function RastreoEstado({ bloqueado, intervaloMin }: RastreoEstadoProps) {
   const t = useTheme()
-  const minutos = Math.max(1, intervaloMin ?? 15)
-  const texto = bloqueado ? 'Bloqueado: activá Ubicación' : `Activo · cada ${minutos} min`
+  const texto = bloqueado
+    ? 'Bloqueado: activá Ubicación en segundo plano'
+    : intervaloMin == null
+      ? 'Sin configuración para hoy'
+      : `Activo · cada ${Math.max(1, intervaloMin)} min`
 
   return (
     <View accessibilityRole="text" accessibilityLabel={`Rastreo de jornada: ${texto}`}>
