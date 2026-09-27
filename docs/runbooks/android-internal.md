@@ -6,10 +6,27 @@ App de campo (`@gc/mobile`) en Play Internal Testing. iOS fuera de alcance.
 
 | Perfil EAS | Salida | Backend |
 |---|---|---|
-| `preview` | APK | staging (`EXPO_PUBLIC_ENVIRONMENT=staging`) |
+| `preview` | APK | producción (`EXPO_PUBLIC_ENVIRONMENT=production`) |
 | `production` | AAB | producción |
 
 No commitear APK/AAB. `*.apk` / `*.aab` están en `.gitignore`.
+
+Desde el 2026-09-20, desarrollo es local y el piloto remoto usa producción.
+Los perfiles preview/production seleccionan explícitamente variables EAS
+`production`; development selecciona `development`. Ver `environments.md`.
+
+## Estado de la preparación
+
+El propietario creó el proyecto Expo el 2026-09-20:
+[jarguetams-team / gestiones-comerciales-3uncfxmscvb2on8csmb7](https://expo.dev/accounts/jarguetams-team/projects/gestiones-comerciales-3uncfxmscvb2on8csmb7).
+Vinculado en `app.json` con owner/slug y UUID
+`f38df0fe-a2df-464e-95c0-98695be71198`, verificado en el dashboard y con
+`eas project:info` autenticado. No hay build EAS ni instalación Play verificados.
+No publicar con keystore debug.
+
+La app sigue en Expo 51/RN 0.74. La migración compatible con API 36 y la
+verificación de bibliotecas de 16 KB son una entrega separada. El workflow
+`detox-android.yml` actual solo comprueba archivos; no constituye un E2E ejecutado.
 
 ## Secrets (GitHub environment `eas-android` + EAS)
 
@@ -20,7 +37,13 @@ No commitear APK/AAB. `*.apk` / `*.aab` están en `.gitignore`.
 - `SENTRY_AUTH_TOKEN` (source maps)
 - `GOOGLE_SERVICE_ACCOUNT_KEY` (submit Play Internal)
 
-`extra.eas.projectId` vive en `apps/mobile/app.json`. Confirmalo con `eas init` si Expo asigna otro UUID.
+`extra.eas.projectId` vive en `apps/mobile/app.json`. Desde `apps/mobile`,
+`eas project:info` debe resolver al proyecto anterior. No crear otro proyecto.
+
+Las variables de un step de GitHub no sustituyen la configuración del builder
+remoto. Configurar URL, clave pública, DSN y credenciales de source maps en el
+entorno EAS correspondiente. Ver la [documentación EAS](https://docs.expo.dev/eas/environment-variables/).
+No poner credenciales ni claves de firma en documentos o mensajes del PR.
 
 ## Preview APK
 
@@ -36,7 +59,7 @@ No commitear APK/AAB. `*.apk` / `*.aab` están en `.gitignore`.
 
 ## Checklist manual
 
-1. APK preview en emulador API 34 → apunta a staging.
+1. APK preview apunta a producción → usar únicamente cuentas del tenant piloto.
 2. Denegar ubicación → pantalla «Ubicación requerida»; logout ok; agenda/check-in/sync no interactivos.
 3. Conceder ubicación → agenda usable; Ajustes muestra «Activo · cada N min» **sin** switch.
 4. AAB Internal (`eas submit`) o dry-run si Play aún no está configurado (Gate 0).
@@ -52,6 +75,18 @@ npx detox test -c android.emu.release
 ```
 
 CI: `.github/workflows/detox-android.yml` es `workflow_dispatch` (el runner no levanta AVD).
+
+## Cuenta Play personal
+
+El propietario confirmó una cuenta creada después del 13-11-2023. Antes de
+solicitar acceso al track público se requiere una **prueba cerrada**, con
+**12 testers inscritos continuamente durante al menos 14 días**. La prueba
+interna no inicia ese requisito y cumplir los días no garantiza aprobación.
+Preparar ficha, Data safety, privacidad, declaración/video de ubicación y
+credenciales de revisión antes de enviar la app.
+
+Fuente: [requisitos para cuentas personales](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en).
+Checklist de progreso: `openspec/changes/prepare-android-pilot/tasks.md`.
 
 ## Expo Doctor
 

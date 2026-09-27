@@ -5,19 +5,23 @@
   },
   "build": {
     "development": {
+      "environment": "development",
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_ENVIRONMENT": "local" }
     },
     "preview": {
+      "environment": "production",
       "distribution": "internal",
       "android": { "buildType": "apk" },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://xcoeipsnykceorcvjwve.supabase.co",
-        "EXPO_PUBLIC_ENVIRONMENT": "staging"
+        "EXPO_PUBLIC_ENVIRONMENT": "production"
       }
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true,
       "android": { "buildType": "app-bundle" },
       "env": {

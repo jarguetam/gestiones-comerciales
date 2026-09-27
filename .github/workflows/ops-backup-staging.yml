@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   dump:
+    if: ${{ vars.ENABLE_STAGING == 'true' }}
     name: Dump semanal staging
     runs-on: ubuntu-latest
     environment: staging
