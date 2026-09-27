@@ -19,6 +19,9 @@ export const PRODUCTION_SECRETS = [
   'VITE_SUPABASE_ANON_KEY',
   'VITE_SENTRY_DSN',
   'SENTRY_AUTH_TOKEN',
+  'SENTRY_ORG',
+  'SENTRY_PROJECT_WEB',
+  'SENTRY_PROJECT_BACKOFFICE',
 ] as const
 
 export type EnvironmentSecrets = 'staging' | 'production'
