@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, EventCategory } from '../types'
-import { CATALOGO_ACTIVIDADES, CATALOGO_HORAS, INITIAL_ATTENDEES } from '../eventsData'
-import { INITIAL_PERSONAS, type PersonaItem } from '../personasData'
+import type { PersonaItem } from '../personasData'
 import type { CatalogoActividad, CatalogoHora } from '../../../lib/catalogos'
 import { errorAltaPersona, mensajeGc } from '../../../lib/persistirHelpers'
 import { Alert, Button, Dialog, Input, Select, Textarea, fieldClass } from '../../../components/ui'
@@ -41,20 +40,20 @@ export function NewEventModal({
   catalogos,
   horas,
 }: NewEventModalProps) {
-  const catalogo = catalogos && catalogos.length > 0 ? catalogos : CATALOGO_ACTIVIDADES
-  const catalogoHoras = horas && horas.length > 0 ? horas : CATALOGO_HORAS
+  const catalogo = catalogos ?? []
+  const catalogoHoras = horas ?? []
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(initialDate)
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:30')
   const [actividadId, setActividadId] = useState<number | ''>('')
   const [subActividadId, setSubActividadId] = useState<number | ''>('')
-  const [horaId, setHoraId] = useState<number>(catalogoHoras[0]?.id ?? 2)
+  const [horaId, setHoraId] = useState<number>(catalogoHoras[0]?.id ?? 0)
   const [location, setLocation] = useState('')
   const [videoCall, setVideoCall] = useState('')
   const [notes, setNotes] = useState('')
   const [reminder, setReminder] = useState('20 mins before')
-  const carteraInicial = cartera ?? INITIAL_PERSONAS
+  const carteraInicial = cartera ?? []
   const [personas, setPersonas] = useState<PersonaItem[]>(carteraInicial)
   const [personaId, setPersonaId] = useState<string>(
     carteraInicial.some((p) => p.nombre === initialPersonaName) ? initialPersonaName : ''
@@ -164,7 +163,6 @@ export function NewEventModal({
       subActividadId: Number(subActividadId),
       actividadHoraId: horaId,
       estado: 'programada',
-      attendees: INITIAL_ATTENDEES.slice(0, 2),
     }
     setGuardando(true)
     setError('')
@@ -182,6 +180,11 @@ export function NewEventModal({
   return (
     <Dialog title="Nueva Visita / Gestión" onClose={onClose} className="max-w-md">
       <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-sm">
+        {catalogo.length === 0 && (
+          <Alert tone="warning" role="status">
+            Tu empresa no tiene catálogo de actividades. Pide al administrador que lo configure.
+          </Alert>
+        )}
         <Select
           id="visita-actividad"
           label="Tipo de Actividad *"

@@ -20,8 +20,18 @@ updates:
       - dependency-name: "@react-native/*"
       - dependency-name: "@react-native-async-storage/async-storage"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Expo SDK 54 fija Sentry RN ~7.2 (#84).
       - dependency-name: "@sentry/react-native"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Móvil exige React 19.1.0 (SDK 54) y web/backoffice suben react + react-dom juntos (#68).
+      - dependency-name: react
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       # TS se alinea por cliente; no actualizarlo fuera de la migración del SDK.
       - dependency-name: typescript
         update-types: ["version-update:semver-major", "version-update:semver-minor"]

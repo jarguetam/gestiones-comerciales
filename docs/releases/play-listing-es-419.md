@@ -31,10 +31,11 @@ aviso antes de solicitar los permisos de ubicación del sistema.
 
 ## Datos de la ficha
 
-- Categoría propuesta: Empresa.
+- Categoría seleccionada en Play Console: Economía (aplicación).
 - Precio propuesto: gratuita.
 - Política de privacidad: <https://jarguetam.github.io/gestiones-comerciales/privacidad.html> (HTTP 200 verificado el 2026-09-26).
-- Correo público de soporte: pendiente de definición del propietario.
+- Publicador: Josue Emilio Argueta Medina (cuenta personal de Play).
+- Correo público de soporte y privacidad: emilio94josue@gmail.com.
 - Ícono de Play: [borrador GC de 512 × 512 px](assets/play-icon-gc-draft.png),
   PNG de 32 bits con canal alfa y 6.8 KB. Coincide con el monograma del login
   y con los recursos de [Android 1.0.0 (4)](android-1.0.0-4-verify.md);

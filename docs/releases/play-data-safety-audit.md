@@ -33,7 +33,8 @@ presentar la prueba cerrada.
 
 Pendientes para cerrar la declaración:
 
-1. Definir publicador, correo público y canal de solicitudes de privacidad.
+1. Publicador y correo público definidos por el propietario; falta publicar el
+   canal de solicitudes de privacidad en la política revisada.
 2. Confirmar los módulos activos del tenant piloto y el comportamiento real de
    la base productiva, incluido el borrado de datos.
 3. Revisar el tráfico real de Sentry/FCM y los términos de sus proveedores;

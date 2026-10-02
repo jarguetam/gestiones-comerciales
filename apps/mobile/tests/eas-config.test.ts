@@ -8,7 +8,7 @@ const appJson = JSON.parse(readFileSync(new URL('../app.json', import.meta.url),
 const gitignore = readFileSync(new URL('../../../.gitignore', import.meta.url), 'utf8')
 const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8')) as {
   build?: Record<string, { ios?: unknown; android?: { buildType?: string }; environment?: string; env?: Record<string, string> }>
-  submit?: Record<string, { ios?: unknown }>
+  submit?: Record<string, { ios?: unknown; android?: { track?: string } }>
 }
 
 test('app.json tiene extra.eas.projectId no vacío', () => {
@@ -32,6 +32,10 @@ test('eas.json no define profiles ni submit iOS', () => {
 test('preview es APK y production es AAB', () => {
   assert.equal(eas.build?.preview?.android?.buildType, 'apk')
   assert.equal(eas.build?.production?.android?.buildType, 'app-bundle')
+})
+
+test('el AAB se envía a prueba cerrada de Play', () => {
+  assert.equal(eas.submit?.production?.android?.track, 'alpha')
 })
 
 test('EAS identifica el backend real: development local, preview y AAB production', () => {

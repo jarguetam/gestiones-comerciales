@@ -1,7 +1,10 @@
 name: Pages producción
 
 on:
-  push:
+  # Solo despliega un SHA con CI verde en main; el dispatch permite redeploy/rollback.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -17,13 +20,20 @@ concurrency:
 jobs:
   deploy:
     name: Desplegar GitHub Pages
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success')
     environment:
       name: production
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - uses: pnpm/action-setup@v6
         with:
@@ -72,8 +82,8 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_ENVIRONMENT: production
         run: |
-          VITE_RELEASE="web@${GITHUB_SHA}" pnpm --filter @gc/web build
-          VITE_RELEASE="backoffice@${GITHUB_SHA}" pnpm --filter @gc/backoffice build
+          VITE_RELEASE="web@${DEPLOY_SHA}" pnpm --filter @gc/web build
+          VITE_RELEASE="backoffice@${DEPLOY_SHA}" pnpm --filter @gc/backoffice build
 
       - name: Preparar artefactos estáticos
         run: |
@@ -111,5 +121,5 @@ jobs:
           SENTRY_PROJECT_BACKOFFICE: ${{ secrets.SENTRY_PROJECT_BACKOFFICE }}
         run: |
           npm i -g @sentry/cli@2
-          SENTRY_PROJECT="$SENTRY_PROJECT_WEB" bash scripts/ops/sentry-release.sh "web@${GITHUB_SHA}"
-          SENTRY_PROJECT="$SENTRY_PROJECT_BACKOFFICE" bash scripts/ops/sentry-release.sh "backoffice@${GITHUB_SHA}"
+          SENTRY_PROJECT="$SENTRY_PROJECT_WEB" bash scripts/ops/sentry-release.sh "web@${DEPLOY_SHA}"
+          SENTRY_PROJECT="$SENTRY_PROJECT_BACKOFFICE" bash scripts/ops/sentry-release.sh "backoffice@${DEPLOY_SHA}"

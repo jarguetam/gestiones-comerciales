@@ -1,0 +1,37 @@
+name: Configurar Auth producción
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Aplicar (sin marcar solo muestra el cambio)
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  auth:
+    name: SMTP + redirects
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.14.0'
+      - name: configure-supabase-project
+        env:
+          CONFIGURE_TARGET: production
+          CONFIGURE_APPLY: ${{ inputs.apply && '1' || '0' }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          PAGES_PROD_URL: ${{ secrets.PAGES_PROD_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_ADMIN_EMAIL: ${{ secrets.SMTP_ADMIN_EMAIL }}
+        run: node --experimental-strip-types scripts/ops/configure-supabase-project.ts

@@ -1,74 +1,48 @@
 # App móvil — Gestiones Comerciales (`@gc/mobile`)
 
-Expo SDK 51 · React Native 0.74 · asesor de campo (offline-first).
+App de campo con Expo SDK 54 y React Native 0.81. Usa el mismo Supabase que
+web y backoffice, con RLS y RPC para las reglas de negocio. No tiene modo demo.
 
-## APK de prueba
+## Entornos
 
-Build local arm64 contra el proyecto Supabase real. Pedirá email y contraseña de un asesor; no hay modo demo.
+- **Desarrollo:** Supabase local. El emulador Android llega al equipo por
+  `http://10.0.2.2:54321`; en un teléfono físico se usa la IPv4 LAN del equipo.
+  Copiar `apps/mobile/.env.example` a un `.env` local y completar únicamente
+  la clave pública de Supabase local. Nunca versionar ese archivo.
+- **Piloto y Play:** Supabase remoto productivo. Los perfiles EAS `preview`,
+  `production` y `verify-aab` seleccionan ese entorno. Sin URL y clave pública
+  válidas, la app falla con `GC-CORE-001`.
 
-1. En el teléfono: Ajustes → Seguridad → permitir instalar apps de fuentes desconocidas.
-2. Copiá el APK al teléfono e instalalo. Paquete: `com.gc.mobile`.
-3. Abrí **Gestiones Comerciales** e ingresá con tu usuario de campo.
+Para iniciar Metro: `pnpm --filter @gc/mobile start`. La guía de variables
+y aislamiento está en [entornos](../../docs/runbooks/environments.md).
 
-Este APK está firmado con el keystore de debug (no Play Store). Solo incluye ABI `arm64-v8a`.
+## Estado de Android
 
-## Desarrollo
+El proyecto EAS ya está vinculado a
+[`@jarguetams-team/gestiones-comerciales-3uncfxmscvb2on8csmb7`](https://expo.dev/accounts/jarguetams-team/projects/gestiones-comerciales-3uncfxmscvb2on8csmb7).
+Existe un [AAB firmado de diagnóstico 1.0.0 (6)](../../docs/releases/android-1.0.0-6-verify.md):
+pasó validación de firma, alineación de 16 KB y arranque sin sesión en Android
+15. El perfil `verify-aab` omite la subida de mapas de Sentry; ese artefacto
+no es la entrega final de Play.
 
-El backend de desarrollo es Supabase **local**. El `.env.example` usa
-`http://10.0.2.2:54321` para Android Emulator; en un teléfono físico usar la IPv4
-LAN del equipo. Copiar la clave pública de `supabase status`, no la de producción.
-Con `EXPO_PUBLIC_ENVIRONMENT=local`, una URL pública falla con `GC-CORE-001`.
+La entrega requiere un build EAS `production` con `SENTRY_AUTH_TOKEN` en el
+entorno EAS, instalación desde Play y pruebas con una cuenta real del tenant
+piloto. La cuenta personal de Play confirmada por el propietario necesita una
+prueba cerrada con 12 testers inscritos continuamente al menos 14 días antes
+de solicitar acceso a producción. Ver
+[runbook de Android](../../docs/runbooks/android-internal.md) y
+[requisitos de Google](https://support.google.com/googleplay/android-developer/answer/14151465?hl=es).
 
-```bash
-cp apps/mobile/.env.example apps/mobile/.env
-# Completá EXPO_PUBLIC_SUPABASE_ANON_KEY
-pnpm --filter @gc/mobile start
-```
+## Funciones y límites del piloto
 
-Sin URL/anon key reales la app no arranca (`GC-CORE-001`). No hay modo demo.
+El núcleo permite iniciar sesión, consultar agenda, registrar visitas,
+check-in con ubicación, completar visitas, enviar formularios y sincronizar
+operaciones pendientes. Los módulos opcionales dependen del tenant.
+`Solicitudes` aún usa un adjunto y una firma ficticios; `Depósitos` no sube
+la foto de la boleta. No activar esos flujos en el piloto como si estuvieran
+terminados. Ver [auditoría de datos para Play](../../docs/releases/play-data-safety-audit.md).
 
-## Build de producción (EAS)
-
-1. Instalá EAS CLI: `pnpm add -g eas-cli` y `eas login`.
-2. Desde `apps/mobile`, verificá con `eas project:info` el proyecto ya vinculado: `@jarguetams-team/gestiones-comerciales-3uncfxmscvb2on8csmb7`.
-3. Secretos (nunca en git):
-
-```bash
-eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<anon key>"
-eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xcoeipsnykceorcvjwve.supabase.co"
-```
-
-4. Preview interna (APK, **backend productivo**): `eas build --profile preview --platform android`
-5. Producción Android: `eas build --profile production --platform android` (AAB). iOS queda fuera de Gate 4.
-6. Store: `eas submit --platform android --profile production` (Play Internal Testing; requiere cuenta Google Play).
-
-Estos son pasos operativos pendientes, no evidencia de publicación. El propietario
-ya creó el proyecto Expo en `jarguetams-team`; su UUID y acceso están verificados
-y vinculados en `app.json`. Los perfiles preview/production seleccionan variables EAS `production`
-y requieren DSN. Ver `docs/runbooks/android-internal.md` para el estado del piloto
-y la actualización Android necesaria antes de generar el AAB.
-
-## Qué ya cubre el código
-
-- Cola offline persistente (sobrevive kill de la app) por usuario
-- Sesión en SecureStore
-- Permisos de ubicación / cámara / notificaciones para revisión de tiendas
-- Rastreo a nivel de app (el asesor no puede apagarlo; intervalo en `config_rastreo`)
-- Registro de token FCM en `dispositivo`
-- Deep links `gestiones://visita|{solicitud}/id`
-- Foto de boleta (cámara/galería)
-
-## Pendiente operativo (fuera de este repo)
-
-| Ítem | Por qué bloquea el store |
-|---|---|
-| Credenciales de firma EAS | Proyecto vinculado; firma Android aún pendiente |
-| Apple Developer + bundle `com.gc.mobile` | IPA / TestFlight |
-| Google Play Console + SHA-1 en Firebase | AAB / FCM |
-| Política de privacidad URL | Requisito de ubicación en background |
-| `GoogleService-Info.plist` iOS | Push iOS |
-| Detox E2E en CI | Smoke login→agenda→check-in |
-| Firma canvas real (view-shot) | Módulo solicitudes en campo |
-| Biometría de reingreso | Spec M-01 opcional |
-
-Versión de tienda: `1.0.0` (`android.versionCode` / `ios.buildNumber` = 1). EAS production usa `autoIncrement`.
+La ficha, privacidad, declaraciones de ubicación y acceso del revisor están
+preparados como borradores en [`docs/releases`](../../docs/releases/).
+Faltan la revisión de privacidad y la verificación del backend productivo antes
+de presentarlos a Google.

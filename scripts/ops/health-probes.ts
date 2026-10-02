@@ -8,7 +8,8 @@ export function probeOk(input: { kind: ProbeKind; status: number }): boolean {
   if (input.status >= 500) return false
   if (input.kind === 'pages') return input.status === 200
   if (input.kind === 'auth-guard') return input.status === 400 || input.status === 401
-  return input.status < 500
+  // salud_ping existe y es pública: cualquier otro código es una falla real.
+  return input.status === 200
 }
 
 export type ProbeResult = {

@@ -32,11 +32,12 @@ async function authGuard(base: string): Promise<ProbeResult> {
 
 async function postgrest(base: string, anon: string): Promise<ProbeResult> {
   const requestId = crypto.randomUUID()
-  const res = await fetch(`${base.replace(/\/$/, '')}/rest/v1/rpc/now`, {
+  const res = await fetch(`${base.replace(/\/$/, '')}/rest/v1/rpc/salud_ping`, {
     method: 'POST',
     headers: {
       apikey: anon,
       Authorization: `Bearer ${anon}`,
+      'Content-Type': 'application/json',
       'x-request-id': requestId,
     },
     body: '{}',

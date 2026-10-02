@@ -35,3 +35,34 @@ SUPABASE_PROJECT_REF=... SUPABASE_DB_PASSWORD=... bash scripts/ops/backup-stagin
 2. `supabase db push` de migraciones.
 3. Restore PITR a un timestamp (Management / CLI si está disponible).
 4. Smoke: login, una visita, una Edge.
+
+## Dump diario de producción
+
+`ops-backup-prod.yml` (07:10 UTC, Environment `production`) corre
+`scripts/ops/backup-prod.sh`: roles, schema y datos, empaquetados y cifrados con
+`BACKUP_GPG_PUBLIC_KEY` antes de subir el artifact (14 días). Sin la clave
+pública falla con `GC-OPS-008`; nunca sube un dump en claro. La clave privada
+vive fuera de GitHub, con el responsable técnico y una copia custodiada.
+
+Generar el par una vez (fuera del repo):
+
+```bash
+gpg --quick-gen-key "gc-backup <ops@empresa>" default default never
+gpg --armor --export ops@empresa   # → secret BACKUP_GPG_PUBLIC_KEY (env production)
+```
+
+## Restore real (drill)
+
+Nunca contra `xcoeipsnykceorcvjwve`. Proyecto scratch de la misma región/major:
+
+```bash
+gh run download <run-id> -n backup-prod-<run-id>
+gpg --decrypt backup-prod.tar.gpg | tar -xf -
+psql "$SCRATCH_DB_URL" -f roles.sql
+psql "$SCRATCH_DB_URL" -f schema.sql
+psql "$SCRATCH_DB_URL" -c 'set session_replication_role = replica' -f data.sql
+psql "$SCRATCH_DB_URL" -c 'select count(*) from public.tenant; select count(*) from public.usuario; select count(*) from public.visita;'
+```
+
+Registrar en el PR de go-live: run id, hora de inicio y fin (RTO real contra
+4 h), conteos contra producción y el borrado del scratch.

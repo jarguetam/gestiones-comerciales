@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
-import { collectLocalEvidence, evaluateCiEvidence, evaluateHealthEvidence, runGolivePreflight, sentryConfigPresent } from './golive-preflight.ts'
+import {
+  collectLocalEvidence, evaluateCiEvidence, evaluateCron, evaluateDrift, evaluateHealthEvidence,
+  evaluatePitr, evaluateSmtp, runGolivePreflight, sentryConfigPresent,
+} from './golive-preflight.ts'
+
+const okEv = { ok: true, detail: 'ok' }
 
 const green = {
   gate0InventoryPath: 'docs/ops/inventory-latest.json',
@@ -9,8 +14,10 @@ const green = {
   pgtapConclusion: 'success' as const,
   productionHealth: 'success' as const,
   sentryConfigured: true,
-  demoStringInWebSrc: false,
-  apkTrackedInGit: false,
+  demoStringInAppsSrc: false,
+  appArtifactTrackedInGit: false,
+  full: false,
+  remote: { drift: okEv, pitr: okEv, authHook: okEv, smtp: okEv, cron: okEv },
 }
 
 test('ready es false si cualquier check falla', async () => {
@@ -68,24 +75,44 @@ test('probes viejos no autorizan promoción', () => {
 })
 
 test('DEMO_MODE o APK en git bloquean', async () => {
-  assert.equal((await runGolivePreflight({ ...green, demoStringInWebSrc: true })).ready, false)
-  assert.equal((await runGolivePreflight({ ...green, apkTrackedInGit: true })).ready, false)
+  assert.equal((await runGolivePreflight({ ...green, demoStringInAppsSrc: true })).ready, false)
+  assert.equal((await runGolivePreflight({ ...green, appArtifactTrackedInGit: true })).ready, false)
 })
 
-test('collectLocalEvidence detecta DEMO_MODE y apk', () => {
+test('collectLocalEvidence detecta DEMO_MODE en cualquier app y apk/aab', () => {
   const demo = collectLocalEvidence({
-    webSrcFiles: [{ path: 'apps/web/src/x.ts', content: 'const DEMO_MODE = true' }],
+    srcFiles: [{ path: 'apps/mobile/src/x.ts', content: 'const DEMO_MODE = true' }],
     gitTracked: ['apps/web/src/x.ts'],
   })
-  assert.equal(demo.demoStringInWebSrc, true)
-  assert.equal(demo.apkTrackedInGit, false)
+  assert.equal(demo.demoStringInAppsSrc, true)
+  assert.equal(demo.appArtifactTrackedInGit, false)
 
-  const apk = collectLocalEvidence({
-    webSrcFiles: [{ path: 'apps/web/src/x.ts', content: 'export const x = 1' }],
-    gitTracked: ['releases/preview.apk'],
+  const enTest = collectLocalEvidence({
+    srcFiles: [{ path: 'apps/backoffice/src/a.test.ts', content: "assert(!s.includes('DEMO_MODE'))" }],
+    gitTracked: ['releases/app.aab'],
   })
-  assert.equal(apk.demoStringInWebSrc, false)
-  assert.equal(apk.apkTrackedInGit, true)
+  assert.equal(enTest.demoStringInAppsSrc, false)
+  assert.equal(enTest.appArtifactTrackedInGit, true)
+})
+
+test('go-live completo exige evidencia operativa; el deploy no', async () => {
+  const sinPitr = { ...green.remote, pitr: { ok: false, detail: 'enabled=false' } }
+  assert.equal((await runGolivePreflight({ ...green, remote: sinPitr })).ready, true)
+  const full = await runGolivePreflight({ ...green, full: true, remote: sinPitr })
+  assert.equal(full.ready, false)
+  assert.deepEqual(full.checks.slice(6).map((c) => c.id), ['migrations-drift', 'pitr', 'auth-hook', 'smtp', 'cron'])
+})
+
+test('evaluadores remotos', () => {
+  assert.equal(evaluateDrift(['1', '2', '3'], ['1', '2']).ok, true, 'pendientes locales se permiten')
+  assert.equal(evaluateDrift(['1'], ['1', '9']).ok, false)
+  assert.equal(evaluatePitr({ pitr_enabled: true, pitr_retention_days: 7 }).ok, true)
+  assert.equal(evaluatePitr({ pitr_enabled: false }).ok, false)
+  assert.equal(evaluateSmtp({ smtp_host: 'smtp.example.com' }).ok, true)
+  assert.equal(evaluateSmtp({ smtp_host: '' }).ok, false)
+  assert.equal(evaluateCron([{ jobname: 'a', ultimo: 'succeeded' }, { jobname: 'anual', ultimo: null }]).ok, true)
+  assert.equal(evaluateCron([{ jobname: 'agenda', ultimo: 'failed' }]).ok, false)
+  assert.equal(evaluateCron([]).ok, false)
 })
 
 test('supabase-prod exige preflight, workflow_dispatch y production', () => {
