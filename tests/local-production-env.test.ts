@@ -70,3 +70,11 @@ test('CI de fixtures locales no apunta a un backend público', () => {
   assert.ok(urls.length > 0)
   for (const url of urls) assert.equal(url, 'http://127.0.0.1:54321')
 })
+
+test('Auth local permite login por email sin abrir el registro público', () => {
+  const config = readFileSync('supabase/config.toml', 'utf8')
+  const auth = config.match(/^\[auth\]\r?\n((?:(?!^\[)[\s\S])*)/m)?.[1]
+  const email = config.match(/^\[auth\.email\]\r?\n((?:(?!^\[)[\s\S])*)/m)?.[1]
+  assert.match(auth ?? '', /^enable_signup = false$/m)
+  assert.match(email ?? '', /^enable_signup = true$/m)
+})
