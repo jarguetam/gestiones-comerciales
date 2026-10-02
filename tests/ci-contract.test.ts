@@ -112,3 +112,12 @@ test('backup de producción diario, cifrado y fuera de Supabase', () => {
   assert.match(sh, /gpg --batch --yes --trust-model always --encrypt/)
   assert.equal(/upload|artifact/.test(sh), false, 'el script no sube nada en claro')
 })
+
+test('configurar Auth es manual, en production y en seco por defecto', () => {
+  const y = readFileSync('.github/workflows/ops-configure-auth.yml', 'utf8')
+  assert.match(y, /workflow_dispatch/)
+  assert.equal(/\n\s+(push|schedule):/.test(y), false)
+  assert.match(y, /environment:\s*production/)
+  assert.match(y, /default:\s*false/)
+  assert.match(y, /CONFIGURE_APPLY: \$\{\{ inputs\.apply && '1' \|\| '0' \}\}/)
+})
