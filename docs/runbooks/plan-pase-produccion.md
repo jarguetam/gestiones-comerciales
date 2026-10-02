@@ -21,8 +21,10 @@ PR de la rama `ccr-b72839f2-wve8oc` (incluye #79, #80 y #81):
 - Dependabot ignora las subidas de React y Sentry RN que rompen SDK 54.
 
 Corrección: `ops-backup-staging.yml` ya estaba condicionado a `ENABLE_STAGING`
-desde #71; sus fallos son anteriores. Drift nuevo detectado: `public.rls_auto_enable()`
-existe en producción y no en el repo (creada desde el dashboard); revisarla.
+desde #71; sus fallos son anteriores. Drift nuevo detectado: `rls_auto_enable()`, `integracion_encolar`,
+`integracion_procesar`, `importar_lote` e `importar_personas` existen en producción
+sin migración que las cree. La migración P0-1 las restringe si están; falta decidir
+si se versionan o se eliminan.
 
 Pendiente de personas (no automatizable desde el repo): ver §7 y la lista del PR.
 

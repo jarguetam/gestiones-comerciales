@@ -25,10 +25,6 @@ select is(
        'public.recordatorio_kilometraje()',
        'public.snapshot_cuentas()',
        'public.integracion_recibir(uuid,text,text,jsonb,text,text,text)',
-       'public.integracion_encolar(uuid,text,text,jsonb,boolean)',
-       'public.integracion_procesar(bigint)',
-       'public.importar_lote(text,jsonb,uuid)',
-       'public.importar_personas(jsonb)',
        'public.aplicar_plantillas_rubro(uuid,text)'
      ]) f
     where has_function_privilege('authenticated', f::regprocedure, 'execute')),

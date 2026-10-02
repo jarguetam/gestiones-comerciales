@@ -45,10 +45,6 @@ begin
     'public.recordatorio_kilometraje()',
     'public.snapshot_cuentas()',
     'public.integracion_recibir(uuid,text,text,jsonb,text,text,text)',
-    'public.integracion_encolar(uuid,text,text,jsonb,boolean)',
-    'public.integracion_procesar(bigint)',
-    'public.importar_lote(text,jsonb,uuid)',
-    'public.importar_personas(jsonb)',
     'public.aplicar_plantillas_rubro(uuid,text)',
     'public.sync_auth_user_claims()',
     'public.usuario_claims_refresh()',
@@ -59,6 +55,20 @@ begin
     -- El cast falla si la firma no existe: no se omite ninguna en silencio.
     execute format('revoke execute on function %s from authenticated', v_fn::regprocedure);
     execute format('grant execute on function %s to service_role', v_fn::regprocedure);
+  end loop;
+
+  -- Existen en producción sin migración que las cree (drift); solo se tocan si están.
+  foreach v_fn in array array[
+    'public.integracion_encolar(uuid,text,text,jsonb,boolean)',
+    'public.integracion_procesar(bigint)',
+    'public.importar_lote(text,jsonb,uuid)',
+    'public.importar_personas(jsonb)'
+  ]
+  loop
+    if to_regprocedure(v_fn) is not null then
+      execute format('revoke execute on function %s from authenticated', to_regprocedure(v_fn));
+      execute format('grant execute on function %s to service_role', to_regprocedure(v_fn));
+    end if;
   end loop;
 end
 $$;
