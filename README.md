@@ -79,7 +79,7 @@ MODULOS OPTATIVOS (por tenant)
 |---|---|
 | Repo | `jarguetam/gestiones-comerciales` (privado) |
 | Supabase | Org **GestionesComerciales** · Proyecto **GestionesComercialesApp** (`xcoeipsnykceorcvjwve`) · Postgres 17 · us-west-2 |
-| Fase actual | Hardening productivo. Gates 0–5 en `main`. **Gate 6 (go-live) en curso**. Node **22.14.0** / pnpm **9.15.9**. **43 migraciones** en `supabase/migrations/`. **8 Edge Functions** (`auth-guard`, `importer`, `invitar-usuario`, `notify-jobs`, `pdf-solicitud`, `push-notifications`, `rastreo-ingesta`, `webhook-tenant`). Invitaciones y recupero van por **SMTP de Auth**; el `emailer` genérico queda fuera de v1. |
+| Fase actual | Hardening productivo. Gates 0–5 en `main`. **Gate 6 (go-live) en curso**. Node **22.14.0** / pnpm **9.15.9**. **46 migraciones** en `supabase/migrations/`. **8 Edge Functions** (`auth-guard`, `importer`, `invitar-usuario`, `notify-jobs`, `pdf-solicitud`, `push-notifications`, `rastreo-ingesta`, `webhook-tenant`). Invitaciones y recupero van por **SMTP de Auth**; el `emailer` genérico queda fuera de v1. |
 
 ### Cómo entrar (web y móvil)
 
