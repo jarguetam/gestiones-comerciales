@@ -6,6 +6,26 @@ abiertos, CI de GitHub, consulta de solo lectura al Supabase productivo
 [golive.md](golive.md) y [production-readiness.md](production-readiness.md);
 no los reemplaza.
 
+## Avance
+
+PR de la rama `ccr-b72839f2-wve8oc` (incluye #79, #80 y #81):
+
+- P0-1: `20261002120000_p0_execute_security_definer.sql` + `supabase/tests/p0_execute_grants.sql`.
+- P0-2 / P0-3: `20261002120100_p0_notify_jobs_vault.sql` (reinstala `pg_net`; el secreto pasa a Vault).
+- P0-4: `ops-backup-prod.yml` + `scripts/ops/backup-prod.sh` (dump cifrado) y procedimiento de restore en `backup-restore.md`.
+- P0-5: `configure-supabase-project.ts` aplica y verifica Auth con `CONFIGURE_APPLY=1`.
+- P0-6: `NewEventModal` sin catálogos ni asistentes de demo.
+- P0-7: Pages por `workflow_run` de CI verde; `supabase-prod.yml` con `--dry-run` y CLI fijada.
+- Gate: `ops:golive --full` / input `golive` exige drift, PITR, auth hook, SMTP y cron.
+- Probe PostgREST contra `salud_ping()` (exige 200).
+- Dependabot ignora las subidas de React y Sentry RN que rompen SDK 54.
+
+Corrección: `ops-backup-staging.yml` ya estaba condicionado a `ENABLE_STAGING`
+desde #71; sus fallos son anteriores. Drift nuevo detectado: `public.rls_auto_enable()`
+existe en producción y no en el repo (creada desde el dashboard); revisarla.
+
+Pendiente de personas (no automatizable desde el repo): ver §7 y la lista del PR.
+
 ## 0. Diagnóstico
 
 El sistema **ya opera en producción de hecho** sin haber cerrado el gate:
