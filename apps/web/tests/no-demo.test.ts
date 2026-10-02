@@ -21,3 +21,11 @@ test('cargarDominio no menciona AgroMoney como fallback', () => {
   const s = readFileSync(join(webRoot, 'src/lib/cargarDominio.ts'), 'utf8')
   assert.equal(/AgroMoney/.test(s) && /catch/.test(s), false)
 })
+
+test('NewEventModal no cae a catálogos, cartera ni asistentes de demo', () => {
+  const s = readFileSync(join(webRoot, 'src/features/calendar/components/NewEventModal.tsx'), 'utf8')
+  for (const demo of ['CATALOGO_ACTIVIDADES', 'CATALOGO_HORAS', 'INITIAL_ATTENDEES', 'INITIAL_PERSONAS']) {
+    assert.equal(s.includes(demo), false, demo)
+  }
+  assert.equal(/\?\?\s*2\b/.test(s), false, 'hora por defecto inventada')
+})
