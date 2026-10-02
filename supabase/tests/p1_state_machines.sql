@@ -703,7 +703,7 @@ select throws_ok(
   $$select public.visita_completar(
       current_setting('test.visita_replay_id')::bigint, null, null, null
     )$$,
-  'P0001', 'solo el dueño puede completar la visita',
+  '42501', null,
   'sin sesión no puede usar el RPC SECURITY DEFINER'
 );
 
