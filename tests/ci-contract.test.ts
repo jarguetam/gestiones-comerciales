@@ -84,3 +84,31 @@ test('yaml prod no tiene on.push a main para db push', () => {
   assert.match(y, /workflow_dispatch/)
   assert.match(y, /environment:\s*production/)
 })
+
+test('Pages despliega solo el SHA con CI verde en main', () => {
+  const y = readFileSync('.github/workflows/pages-prod.yml', 'utf8')
+  const on = y.slice(y.indexOf('\non:'), y.indexOf('\npermissions:'))
+  assert.equal(/\n\s+push:/.test(on), false, 'sin push directo')
+  assert.match(on, /workflow_run:\s*\n\s+workflows:\s*\[CI\]/)
+  assert.match(y, /workflow_run\.conclusion == 'success'/)
+  assert.match(y, /ref:\s*\$\{\{\s*env\.DEPLOY_SHA\s*\}\}/)
+  assert.equal(y.includes('${GITHUB_SHA}'), false, 'release Sentry del SHA desplegado')
+})
+
+test('supabase-prod muestra dry-run y fija la CLI', () => {
+  const y = prod()
+  assert.match(y, /supabase db push --dry-run/)
+  assert.ok(y.indexOf('--dry-run') < y.lastIndexOf('supabase db push\n'))
+  assert.equal(/version:\s*latest/.test(y), false)
+})
+
+test('backup de producción diario, cifrado y fuera de Supabase', () => {
+  const y = readFileSync('.github/workflows/ops-backup-prod.yml', 'utf8')
+  assert.match(y, /schedule:/)
+  assert.match(y, /environment:\s*production/)
+  assert.match(y, /BACKUP_GPG_PUBLIC_KEY/)
+  const sh = readFileSync('scripts/ops/backup-prod.sh', 'utf8')
+  assert.match(sh, /GC-OPS-008/)
+  assert.match(sh, /gpg --batch --yes --trust-model always --encrypt/)
+  assert.equal(/upload|artifact/.test(sh), false, 'el script no sube nada en claro')
+})
