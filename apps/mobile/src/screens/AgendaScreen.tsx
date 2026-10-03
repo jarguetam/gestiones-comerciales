@@ -23,6 +23,7 @@ import { ejecutarMutacion } from '../lib/sync'
 import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
 import { fechaLocalHoy } from '../lib/visita'
 import NuevaVisitaModal from './NuevaVisitaModal'
+import ResumenHoy, { type DestinoResumen } from './ResumenHoy'
 import { BadgeEstado, Cargando, Icono, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 import { formatearFechaJornada, progresoJornada } from '../lib/jornada'
@@ -57,7 +58,13 @@ function mapFila(row: Record<string, unknown>): Visita {
   }
 }
 
-export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
+export default function AgendaScreen({
+  perfil,
+  onAbrir,
+}: {
+  perfil: Perfil
+  onAbrir: (destino: DestinoResumen) => void
+}) {
   const t = useTheme()
   const [visitas, setVisitas] = useState<Visita[]>([])
   const [cargando, setCargando] = useState(true)
@@ -67,6 +74,7 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mostrarAlta, setMostrarAlta] = useState(false)
+  const [version, setVersion] = useState(0)
 
   const cargar = useCallback(async () => {
     const hoy = fechaLocalHoy()
@@ -90,6 +98,7 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
     }
     setCargando(false)
     setRefrescando(false)
+    setVersion((n) => n + 1)
   }, [])
 
   React.useEffect(() => {
@@ -236,17 +245,9 @@ export default function AgendaScreen({ perfil }: { perfil: Perfil }) {
           />
         }
         ListHeaderComponent={
-          <View style={[styles.hero, { backgroundColor: t.surface, borderColor: t.line }]}>
+          <View>
             <Text style={[styles.heroFecha, { color: t.ink }]}>{formatearFechaJornada(fechaHero)}</Text>
-            <View style={styles.heroLinea}>
-              <Text style={[styles.heroPct, { color: t.ink }]}>{jornada.pct}%</Text>
-              <Text style={[styles.heroMeta, { color: t.muted }]}>
-                {jornada.hechas} de {jornada.total} completadas
-              </Text>
-            </View>
-            <View style={[styles.barra, { backgroundColor: t.canvas }]}>
-              <View style={[styles.barraFill, { width: `${jornada.pct}%`, backgroundColor: t.primary }]} />
-            </View>
+            <ResumenHoy perfil={perfil} jornada={jornada} version={version} onAbrir={onAbrir} />
           </View>
         }
         ListEmptyComponent={
@@ -287,13 +288,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  hero: { borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 12 },
-  heroFecha: { fontSize: 18, fontWeight: '600' },
-  heroLinea: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 6 },
-  heroPct: { fontSize: 16, fontWeight: '600' },
-  heroMeta: { fontSize: 13 },
-  barra: { height: 6, borderRadius: 999, overflow: 'hidden', marginTop: 10 },
-  barraFill: { height: '100%', borderRadius: 999 },
+  heroFecha: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
   tarjeta: {
     borderRadius: 10,
     borderWidth: 1,
