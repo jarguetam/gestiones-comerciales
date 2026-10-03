@@ -340,7 +340,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
     { id: 'ajustes', etiqueta: 'Ajustes' },
   ]
   const principales: { id: Extract<IconoName, 'agenda' | 'personas' | 'leads' | 'formularios'>; etiqueta: string }[] = [
-    { id: 'agenda', etiqueta: 'Agenda' },
+    { id: 'agenda', etiqueta: 'Hoy' },
     { id: 'personas', etiqueta: 'Cartera' },
     { id: 'leads', etiqueta: 'Leads' },
     { id: 'formularios', etiqueta: 'Fichas' },
@@ -416,7 +416,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           />
         ) : (
           <>
-            {tab === 'agenda' && <AgendaScreen perfil={perfil} />}
+            {tab === 'agenda' && <AgendaScreen perfil={perfil} onAbrir={setTab} />}
             {tab === 'personas' && <PersonaScreen perfil={perfil} />}
             {tab === 'leads' && <LeadsScreen perfil={perfil} />}
             {tab === 'formularios' && <FormulariosScreen perfil={perfil} />}

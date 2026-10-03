@@ -49,6 +49,6 @@ caché offline de leads/solicitudes/depósitos, notificaciones en tarjetas.
 | ¿Renombrar «Agenda» a «Hoy» o mantener «Agenda»? | «Hoy», alineado con el design system (bottom nav: Hoy, Jornada, Cartera, CRM). |
 | ¿Tarjetas arriba de la lista o pantalla separada? | Arriba de la lista, colapsando al hacer scroll. Un toque menos para el check-in. |
 | ¿Qué cuenta «Leads»? | Abiertos visibles por RLS para el usuario (lo mismo que ya lista M-11). |
-| ¿Qué cuenta «Depósitos»? | Registrados hoy por el usuario. No se infiere un estado «pendiente» que el modelo no define. |
+| ¿Qué cuenta «Depósitos»? | Registrados hoy por el usuario. `deposito.estado = 'pendiente'` existe, pero significa «sin confirmar por supervisión», no una acción del asesor. |
 | ¿Mostrar tarjeta de Notificaciones? | No: la campana del header ya muestra no leídas. |
 | ¿Incluir Formularios/Fichas? | No: no hay un conteo accionable sin definir «formulario pendiente». |
