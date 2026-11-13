@@ -15,6 +15,7 @@ interface Props {
   intervaloRastreoMin?: number | null
   onSolicitarUbicacion?: () => void
   onLogout: () => void
+  saliendo?: boolean
   onAbrirCola?: () => void
 }
 
@@ -24,17 +25,13 @@ export default function AjustesScreen({
   intervaloRastreoMin,
   onSolicitarUbicacion,
   onLogout,
+  saliendo = false,
   onAbrirCola,
 }: Props) {
   const t = useTheme()
   const [nueva, setNueva] = useState('')
   const [guardando, setGuardando] = useState(false)
   const version = Constants.expoConfig?.version ?? '1.0.0'
-
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    onLogout()
-  }
 
   async function cambiarPassword() {
     if (nueva.trim().length < 8) {
@@ -100,7 +97,7 @@ export default function AjustesScreen({
           variante="secondary"
           onPress={() => void Linking.openURL('https://jarguetam.github.io/gestiones-comerciales/privacidad.html')}
         />
-        <Boton etiqueta="Salir" variante="ghost" onPress={() => void handleLogout()} />
+        <Boton etiqueta="Salir" variante="ghost" onPress={onLogout} cargando={saliendo} />
       </View>
     </ScrollView>
   )

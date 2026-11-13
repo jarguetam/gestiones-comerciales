@@ -1,3 +1,5 @@
+import { esErrorTransitorio } from './errorRed.ts'
+
 /** M-09 — cola local de mutaciones (pendiente | enviado | error) con backoff. */
 
 export type EstadoCola = 'pendiente' | 'enviado' | 'error'
@@ -34,6 +36,7 @@ export interface AltaCola {
 }
 
 const MAX_BACKOFF_MS = 60_000
+export const ESPERA_SIN_RED_MS = 15_000
 
 export function backoffMs(intentos: number): number {
   const n = Math.max(1, intentos)
@@ -75,6 +78,28 @@ export function reintentables(items: ItemCola[], ahora: number): ItemCola[] {
   )
 }
 
+/**
+ * El check-in o el cierre de una visita creada sin señal esperan a que su alta llegue al
+ * servidor (si no, GC-SYNC-001 gastaría intentos), y el cierre espera además al check-in
+ * anterior de la misma visita (si no, el check-in pisaría las coordenadas del cierre).
+ * Esperar no gasta intentos. Los ítems legados (solo `visitaId`) nunca esperan.
+ */
+export function bloqueadoPorDependencia(item: ItemCola, items: ItemCola[]): boolean {
+  if (item.tipo !== 'visita_checkin' && item.tipo !== 'visita_completar') return false
+  const key = item.payload.visitaClienteKey
+  if (typeof key !== 'string' || key === '') return false
+  const altaSinEnviar = items.some(
+    (i) => i.tipo === 'visita' && i.payload.clienteKey === key && i.estado !== 'enviado',
+  )
+  if (altaSinEnviar) return true
+  if (item.tipo !== 'visita_completar') return false
+  const pos = items.findIndex((i) => i.id === item.id)
+  const anteriores = pos >= 0 ? items.slice(0, pos) : items
+  return anteriores.some(
+    (i) => i.tipo === 'visita_checkin' && i.payload.visitaClienteKey === key && i.estado !== 'enviado',
+  )
+}
+
 export function marcarEnviado(items: ItemCola[], id: string): ItemCola[] {
   return items.map((i) => (i.id === id ? { ...i, estado: 'enviado' as const, ultimoError: undefined } : i))
 }
@@ -93,6 +118,70 @@ export function marcarError(items: ItemCola[], id: string, error: string, ahora 
   })
 }
 
+/** Sin señal no es culpa del ítem: sigue pendiente y no gasta intentos. */
+export function marcarSinRed(items: ItemCola[], id: string, ahora = Date.now()): ItemCola[] {
+  return items.map((i) =>
+    i.id === id
+      ? { ...i, estado: 'pendiente' as const, ultimoError: 'GC-NET-001: sin conexión', proximoIntentoEn: ahora + ESPERA_SIN_RED_MS }
+      : i,
+  )
+}
+
+/** Deja listo un ítem agotado y los que dependen de él (check-in y cierre de una visita rechazada). */
+export function reactivar(items: ItemCola[], id: string): ItemCola[] {
+  const objetivo = items.find((i) => i.id === id)
+  if (!objetivo) return items
+  const visitaKey = objetivo.tipo === 'visita' ? objetivo.payload.clienteKey : undefined
+  const listo = (i: ItemCola): ItemCola => ({
+    ...i,
+    estado: 'pendiente',
+    intentos: 0,
+    proximoIntentoEn: 0,
+    ultimoError: undefined,
+  })
+  return items.map((i) => {
+    if (i.id === id) return listo(i)
+    if (
+      typeof visitaKey === 'string' &&
+      i.estado !== 'enviado' &&
+      i.payload.visitaClienteKey === visitaKey
+    ) {
+      return listo(i)
+    }
+    return i
+  })
+}
+
+export function sinEnviar(items: ItemCola[]): number {
+  return items.filter((i) => i.estado !== 'enviado').length
+}
+
+function mensajeDe(err: unknown): string {
+  if (err instanceof Error) return err.message
+  const m = (err as { message?: unknown } | null)?.message
+  return typeof m === 'string' && m ? m : 'error'
+}
+
+/** Un intento sobre un ítem: enviado, rechazado (gasta intento) o sin señal (`transitorio`). */
+export async function intentarItem(
+  item: ItemCola,
+  ejecutar: (item: ItemCola) => Promise<void>,
+  ahora = Date.now(),
+): Promise<{ resultado: ItemCola; transitorio: boolean }> {
+  try {
+    await ejecutar(item)
+    return { resultado: marcarEnviado([item], item.id)[0], transitorio: false }
+  } catch (err) {
+    if (esErrorTransitorio(err)) return { resultado: marcarSinRed([item], item.id, ahora)[0], transitorio: true }
+    return { resultado: marcarError([item], item.id, mensajeDe(err), ahora)[0], transitorio: false }
+  }
+}
+
+/**
+ * Un pase por la cola en orden. Las dependencias se miran contra el estado vivo del pase,
+ * así un alta, su check-in y su cierre pueden salir juntos. El primer error transitorio
+ * corta el pase: sin señal los siguientes fallarían igual y quedan intactos.
+ */
 export async function procesarCola(
   items: ItemCola[],
   ejecutar: (item: ItemCola) => Promise<void>,
@@ -100,12 +189,10 @@ export async function procesarCola(
 ): Promise<ItemCola[]> {
   let next = items
   for (const item of reintentables(items, ahora)) {
-    try {
-      await ejecutar(item)
-      next = marcarEnviado(next, item.id)
-    } catch (err) {
-      next = marcarError(next, item.id, err instanceof Error ? err.message : 'error', ahora)
-    }
+    if (bloqueadoPorDependencia(item, next)) continue
+    const { resultado, transitorio } = await intentarItem(item, ejecutar, ahora)
+    next = next.map((i) => (i.id === item.id ? resultado : i))
+    if (transitorio) break
   }
   return next
 }

@@ -7,11 +7,15 @@
  * Sin URL/anon key reales el arranque falla con GC-CORE-001.
  */
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
-import { brandingDeJson, nombreComercial } from './branding'
 import { claimsEmpresaDe, type Rol } from './claims'
 import { requireMobileEnv } from './env'
-import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
-import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
+import { fetchConLimite } from './fetchLimite'
+import type { Perfil } from './perfil'
+import type { CacheCampo } from './cacheCampo'
+import { claveParticionCola } from './colaParticion.ts'
+import { resolverPerfil } from './perfilRespaldo.ts'
+import { exigirSesion } from './sesionVigente.ts'
+import { claveSesionSupabase } from './sesionSinConexion.ts'
 import { sesionStorage } from './sesionStorage'
 
 export { claimsDe, type Rol } from './claims'
@@ -19,13 +23,18 @@ export type { Perfil } from './perfil'
 
 const { url: supabaseUrl, key: supabaseAnonKey } = requireMobileEnv()
 
+/** Clave explícita (igual a la que supabase-js deriva por defecto) para leer la sesión guardada sin conexión. */
+export const CLAVE_SESION = claveSesionSupabase(supabaseUrl)
+
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: sesionStorage,
+    storageKey: CLAVE_SESION,
+    storage: sesionStorage, // No agregar auth.userStorage: guardaría el user aparte y rompería el modo sin conexión (leerSesionGuardada espera user.id en esta clave).
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
   },
+  global: { fetch: fetchConLimite(15_000) },
 })
 
 /**
@@ -64,46 +73,34 @@ export async function resolverClaims(session: Session): Promise<{ tenantId: stri
 }
 
 /**
- * Hidrata el perfil como la web: claims ya resueltos + tenant por id +
- * usuario propio si RLS lo deja ver. Un embed o .single() vacío ya no
- * bloquea el ingreso (GC-AUTH-022).
+ * Hidrata el perfil: claims ya resueltos + usuario, tenant y módulos si RLS los deja ver.
+ * Sin señal usa la última copia guardada; si una lectura falla por otro motivo (o no hay
+ * copia), devuelve un perfil degradado desde los claims y avisa por consola, porque el
+ * ingreso no depende de esas lecturas (GC-AUTH-022/023).
  */
-export async function cargarPerfil(session: Session, claims: { tenantId: string; rol: Rol }): Promise<Perfil> {
+export async function cargarPerfil(
+  session: Session,
+  claims: { tenantId: string; rol: Rol },
+  cache: CacheCampo,
+): Promise<Perfil> {
   const userId = session.user.id
-  const [usuarioRes, tenantRes, modsRes] = await Promise.all([
-    supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
-    supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
-    supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
-  ])
-  const branding = brandingDeJson(tenantRes.data?.branding)
-  return perfilDesdeFuentes({
+  return resolverPerfil({
     userId,
-    claims,
-    usuario: usuarioRes.data as { id: string; nombre: string } | null,
-    tenantNombre: nombreComercial(branding, (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales'),
-    branding,
-    modulos: modulosDeFilas(modsRes.data as Parameters<typeof modulosDeFilas>[0]),
     email: session.user.email,
     userMetadata: session.user.user_metadata,
+    claims,
+    clave: claveParticionCola(claims.tenantId, userId),
+    cache,
+    leerFuentes: async () => {
+      // Sin sesión vigente las lecturas irían con la anon key y la RLS devolvería vacío:
+      // GC-NET-004 es transitorio, así que se usa el perfil guardado.
+      await exigirSesion(supabase)
+      const [usuario, tenant, modulos] = await Promise.all([
+        supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
+        supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
+        supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
+      ])
+      return { usuario, tenant, modulos }
+    },
   })
-}
-
-export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
-  const err = validarVisitaNueva(b)
-  if (err) throw new Error(err)
-  const { error } = await supabase.rpc('visita_crear', {
-    p_persona_nombre: b.personaNombre!.trim(),
-    p_actividad_id: b.actividadId,
-    p_sub_actividad_id: b.subActividadId,
-    p_actividad_hora_id: b.actividadHoraId,
-    p_zona_id: b.zonaId,
-    p_departamento_id: b.departamentoId,
-    p_municipio_id: b.municipioId,
-    p_fecha: b.fecha,
-    p_hora_inicio: horaParaRpc(b.horaInicio!),
-    p_persona_id: b.personaId ?? null,
-    p_direccion: b.direccion?.trim() || null,
-    p_comentario: b.comentario?.trim() || '',
-  })
-  if (error) throw error
 }

@@ -6,9 +6,10 @@ import React, { useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { supabase, type Perfil } from '../lib/supabase'
 import { useCola } from '../lib/useCola'
-import { sincronizarAhora } from '../lib/colaStore'
+import { reactivarItem, sincronizarAhora } from '../lib/colaStore'
 import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
+import { mensajeDeError } from '../lib/mensajeError'
 import { Card, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
 
@@ -23,6 +24,17 @@ export default function SyncScreen({ colorPrimario, perfil }: Props) {
   const { items, resumen } = useCola()
   const [syncing, setSyncing] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
+  const clave = claveParticionCola(perfil.tenantId, perfil.id)
+
+  async function reintentar(id: string) {
+    setAviso(null)
+    try {
+      await reactivarItem(id, clave)
+      await sincronizarAhora(ejecutarMutacion(supabase), Date.now(), clave)
+    } catch (e) {
+      setAviso(mensajeDeError(e, 'No se pudo reintentar'))
+    }
+  }
 
   async function sync() {
     setSyncing(true)
@@ -66,6 +78,16 @@ export default function SyncScreen({ colorPrimario, perfil }: Props) {
             </Text>
             {item.ultimoError ? <Text style={styles.error}>{item.ultimoError}</Text> : null}
             <Text style={styles.meta}>{item.clienteKey}</Text>
+            {item.estado === 'error' && item.intentos >= item.maxIntentos ? (
+              <TouchableOpacity
+                style={[styles.boton, { backgroundColor: primario, marginTop: 8, marginBottom: 0 }]}
+                onPress={() => void reintentar(item.id)}
+                accessibilityRole="button"
+                accessibilityLabel="Reintentar"
+              >
+                <Text style={styles.botonTexto}>Reintentar</Text>
+              </TouchableOpacity>
+            ) : null}
           </Card>
         )}
       />

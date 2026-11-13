@@ -1,7 +1,8 @@
 /** Tipos del dominio F1 (visita, persona, rastreo) compartidos por las pantallas. */
 
 export interface Visita {
-  id: number
+  id: number | null // null = creada sin señal, aún sin id de servidor
+  cliente_key: string
   persona_nombre: string
   direccion: string | null
   fecha_visita: string // YYYY-MM-DD
@@ -10,6 +11,9 @@ export interface Visita {
   actividad: string | null
   latitud?: number | null
   longitud?: number | null
+  pendiente?: boolean
+  /** Último error del servidor sobre una mutación en cola de esta visita (código GC-*). */
+  errorEnvio?: string
 }
 
 export interface Persona {

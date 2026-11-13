@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { errorAltaPersona, filaDePersona, mensajeGc } from '../src/lib/persistirHelpers.ts'
+import { argsVisitaCrear, errorAltaPersona, filaDePersona, mensajeGc } from '../src/lib/persistirHelpers.ts'
 
 /** Repro del modal: PostgREST no es instanceof Error → se tragaba el 42501. */
 test('mensajeGc no traga el 42501 de PostgREST (objeto, no Error)', () => {
@@ -73,4 +73,47 @@ test('filaDePersona omite teléfono placeholder y documento real', () => {
   assert.equal(fila.documento, '0501199403142')
   assert.equal(fila.direccion, null)
   assert.deepEqual(fila.detalles, {})
+})
+
+const eventoBase = {
+  id: 'tmp',
+  title: 'Visita',
+  date: '2026-09-01',
+  startTime: '09:00',
+  actividadId: 3,
+  subActividadId: 4,
+  personaName: 'Ana',
+  personaId: '12',
+} as unknown as Parameters<typeof argsVisitaCrear>[0]
+
+test('argsVisitaCrear manda geografía nula y la clave', () => {
+  const a = argsVisitaCrear(eventoBase, 7, 'k1')
+  assert.equal(a.p_zona_id, null)
+  assert.equal(a.p_departamento_id, null)
+  assert.equal(a.p_municipio_id, null)
+  assert.equal(a.p_cliente_key, 'k1')
+  assert.equal(a.p_hora_inicio, '09:00:00')
+  assert.equal(a.p_comentario, 'Visita')
+  assert.equal(a.p_persona_nombre, 'Ana')
+})
+
+test('usa el bloque de horas por defecto', () => {
+  assert.equal(argsVisitaCrear(eventoBase, 7, 'k').p_actividad_hora_id, 7)
+  const conHora = { ...eventoBase, actividadHoraId: 9 } as typeof eventoBase
+  assert.equal(argsVisitaCrear(conHora, 7, 'k').p_actividad_hora_id, 9)
+})
+
+test('persona numérica se convierte y la demo no', () => {
+  assert.equal(argsVisitaCrear(eventoBase, 7, 'k').p_persona_id, 12)
+  const demo = { ...eventoBase, personaId: 'vis-x' } as typeof eventoBase
+  assert.equal(argsVisitaCrear(demo, 7, 'k').p_persona_id, null)
+})
+
+test('GC-VIS-001 sin subactividad', () => {
+  const e = { ...eventoBase, subActividadId: undefined } as typeof eventoBase
+  assert.throws(() => argsVisitaCrear(e, 7, 'k'), /GC-VIS-001/)
+})
+
+test('GC-VIS-003 sin horas', () => {
+  assert.throws(() => argsVisitaCrear(eventoBase, null, 'k'), /GC-VIS-003/)
 })

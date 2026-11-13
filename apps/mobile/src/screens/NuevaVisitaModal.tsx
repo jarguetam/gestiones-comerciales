@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,12 +17,21 @@ import {
 } from 'react-native'
 import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import { cargarCatalogosCampo, type CatalogoActividad, type CatalogosCampo } from '../lib/catalogosCampo'
-import { persistirVisitaCampo } from '../lib/supabase'
-import { fechaLocalHoy, type BorradorVisita } from '../lib/visita'
+import { abrirCacheCampo } from '../lib/abrirCache'
+import { mensajeDeError } from '../lib/mensajeError'
+import { claveParticionCola } from '../lib/colaParticion'
+import * as Crypto from 'expo-crypto'
+import { supabase, type Perfil } from '../lib/supabase'
+import { encolarEnFondo } from '../lib/colaStore'
+import type { ItemCola } from '../lib/cola'
+import { avisoCatalogosGuardados } from '../lib/avisoGuardado'
+import { ejecutarMutacion } from '../lib/sync'
+import { fechaLocalHoy, horaParaRpc, validarVisitaNueva, type BorradorVisita } from '../lib/visita'
 
 interface Props {
   visible: boolean
   colorPrimario: string
+  perfil: Perfil
   personaNombre?: string
   personaId?: number
   direccion?: string
@@ -32,6 +42,7 @@ interface Props {
 export default function NuevaVisitaModal({
   visible,
   colorPrimario,
+  perfil,
   personaNombre,
   personaId,
   direccion,
@@ -50,6 +61,9 @@ export default function NuevaVisitaModal({
   const [subId, setSubId] = useState<number | null>(null)
   const [horaId, setHoraId] = useState<number | null>(null)
   const [comentario, setComentario] = useState('')
+  // Una clave por apertura: un doble toque en Guardar encola un solo elemento.
+  const [uuid, setUuid] = useState(() => Crypto.randomUUID())
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
 
   useEffect(() => {
     if (!visible) return
@@ -61,16 +75,26 @@ export default function NuevaVisitaModal({
     setSubId(null)
     setComentario('')
     setError(null)
+    setGuardadoEn(null)
+    setUuid(Crypto.randomUUID())
     setCargando(true)
-    void cargarCatalogosCampo()
+    void cargarCatalogosCampo({
+      clave: claveParticionCola(perfil.tenantId, perfil.id),
+      cache: abrirCacheCampo(),
+      cliente: supabase,
+    })
       .then((c) => {
         setCats(c)
         setHoraId(c.geo.horaDefaultId)
+        setGuardadoEn(c.origen === 'cache' ? (c.guardadoEn ?? '') : null)
         if (c.aviso) setError(c.aviso)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar catálogos'))
+      .catch((e) => {
+        const m = mensajeDeError(e, 'sin detalle')
+        setError(m.startsWith('GC-') ? m : `GC-CAT-001: catálogos no disponibles · ${m}`)
+      })
       .finally(() => setCargando(false))
-  }, [visible, personaNombre, direccion, personaId])
+  }, [visible, personaNombre, direccion, personaId, perfil.tenantId, perfil.id])
 
   const actividad: CatalogoActividad | undefined = useMemo(
     () => cats?.actividades.find((a) => a.id === actividadId),
@@ -85,24 +109,63 @@ export default function NuevaVisitaModal({
       actividadId,
       subActividadId: subId,
       actividadHoraId: horaId,
-      zonaId: cats?.geo.zonaId,
-      departamentoId: cats?.geo.departamentoId,
-      municipioId: cats?.geo.municipioId,
       fecha,
       horaInicio: hora,
       direccion: dir,
       comentario,
     }
+    const invalido = validarVisitaNueva(borrador)
+    if (invalido) {
+      setError(invalido)
+      return
+    }
     setGuardando(true)
+    let envio: Promise<ItemCola | undefined>
     try {
-      await persistirVisitaCampo(borrador)
-      onGuardada()
-      onCerrar()
+      // Se espera solo el guardado en el teléfono; el envío sigue en segundo plano.
+      const r = await encolarEnFondo(
+        {
+          tipo: 'visita',
+          payload: {
+            clienteKey: uuid,
+            personaNombre: nombre.trim(),
+            ...(personaId != null ? { personaId } : {}),
+            actividadId,
+            subActividadId: subId,
+            actividadHoraId: horaId,
+            fecha,
+            horaInicio: horaParaRpc(hora),
+            ...(dir.trim() ? { direccion: dir.trim() } : {}),
+            ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
+          },
+          clienteKey: `visita:${uuid}`,
+        },
+        ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
+      )
+      envio = r.envio
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo agendar')
+      setError(mensajeDeError(e, 'No se pudo agendar'))
+      return
     } finally {
       setGuardando(false)
     }
+    onGuardada()
+    onCerrar()
+    // El servidor pudo rechazarla: el ítem queda en la cola (no se borra) y se avisa con su código GC-*.
+    envio.then(
+      (item) => {
+        if (item?.estado === 'error' && item.ultimoError) {
+          Alert.alert('La visita no se pudo enviar', `${item.ultimoError}\nQuedó en la cola de sincronización.`)
+        }
+      },
+      (e: unknown) => {
+        Alert.alert(
+          'La visita quedó guardada sin enviar',
+          `${mensajeDeError(e, 'GC-SYNC-002: no se pudo sincronizar la cola')}\nSe reintenta desde Sincronización.`,
+        )
+      },
+    )
   }
 
   return (
@@ -121,6 +184,9 @@ export default function NuevaVisitaModal({
         ) : (
           <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
             {error ? <Text style={styles.error}>{error}</Text> : null}
+            {guardadoEn !== null ? (
+              <Text style={styles.hint}>{avisoCatalogosGuardados(guardadoEn)}</Text>
+            ) : null}
 
             <Text style={styles.label}>Cliente / visitado *</Text>
             <TextInput
@@ -194,13 +260,6 @@ export default function NuevaVisitaModal({
                 </Pressable>
               ))}
             </View>
-
-            {cats?.zonas[0] ? (
-              <Text style={styles.hint}>
-                Zona {cats.zonas[0].nombre}
-                {cats.geo.zonaId ? ' · se usa la zona y geografía del tenant' : ''}
-              </Text>
-            ) : null}
 
             <Text style={styles.label}>Comentario</Text>
             <TextInput

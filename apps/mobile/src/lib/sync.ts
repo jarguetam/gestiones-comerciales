@@ -1,13 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ItemCola } from './cola'
+import { exigirSesion } from './sesionVigente.ts'
+
+/**
+ * Id servidor de la visita de un ítem de cola. Las visitas creadas sin red no
+ * tienen id: se resuelven por la clave de idempotencia con la que se crearon.
+ * Si la consulta falla se relanza el error tal cual (un fallo de red sigue
+ * siendo transitorio); si no hay fila, la alta aún no sincronizó.
+ */
+export async function resolverVisitaId(
+  cliente: SupabaseClient,
+  p: Record<string, unknown>,
+): Promise<number> {
+  if (typeof p.visitaId === 'number') return p.visitaId
+  const { data, error } = await cliente
+    .from('visita')
+    .select('id')
+    .eq('cliente_key', p.visitaClienteKey)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('GC-SYNC-001: la visita aún no llega al servidor')
+  return (data as { id: number }).id
+}
 
 /** Ejecuta una mutación encolada contra PostgREST/RPC. El servidor valida reglas. */
 export function ejecutarMutacion(cliente: SupabaseClient) {
   return async (item: ItemCola) => {
+    // Sin sesión la petición saldría con la anon key y el servidor la rechazaría (42501).
+    await exigirSesion(cliente)
     const p = item.payload
     if (item.tipo === 'visita_checkin') {
       const { error } = await cliente.rpc('visita_checkin', {
-        p_visita_id: p.visitaId,
+        p_visita_id: await resolverVisitaId(cliente, p),
         p_latitud: p.latitud,
         p_longitud: p.longitud,
       })
@@ -16,7 +40,7 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
     }
     if (item.tipo === 'visita_completar') {
       const { error } = await cliente.rpc('visita_completar', {
-        p_visita_id: p.visitaId,
+        p_visita_id: await resolverVisitaId(cliente, p),
         p_comentario: p.comentario ?? null,
         p_latitud: p.latitud ?? null,
         p_longitud: p.longitud ?? null,
@@ -40,14 +64,15 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
         p_actividad_id: p.actividadId,
         p_sub_actividad_id: p.subActividadId,
         p_actividad_hora_id: p.actividadHoraId,
-        p_zona_id: p.zonaId,
-        p_departamento_id: p.departamentoId,
-        p_municipio_id: p.municipioId,
+        p_zona_id: null,
+        p_departamento_id: null,
+        p_municipio_id: null,
         p_fecha: p.fecha,
         p_hora_inicio: p.horaInicio,
         p_persona_id: p.personaId ?? null,
         p_direccion: p.direccion ?? null,
         p_comentario: p.comentario ?? '',
+        p_cliente_key: p.clienteKey,
       })
       if (error) throw error
       return
@@ -86,6 +111,10 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
         categoria: p.categoria ?? null,
         detalles: p.detalles ?? {},
       })
+      // Como mensajeGc de la web: la cola muestra el código, no el texto crudo de Postgres.
+      if (error && (error as { code?: unknown }).code === '23505') {
+        throw new Error('GC-PER-030: ya existe un cliente con ese documento', { cause: error })
+      }
       if (error) throw error
       return
     }

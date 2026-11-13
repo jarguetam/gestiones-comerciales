@@ -10,9 +10,10 @@ import { useTheme } from '../theme'
 interface Props {
   onSolicitarUbicacion: () => void
   onLogout: () => void
+  saliendo?: boolean
 }
 
-export default function CampoBloqueadoScreen({ onSolicitarUbicacion, onLogout }: Props) {
+export default function CampoBloqueadoScreen({ onSolicitarUbicacion, onLogout, saliendo = false }: Props) {
   const t = useTheme()
 
   return (
@@ -24,7 +25,7 @@ export default function CampoBloqueadoScreen({ onSolicitarUbicacion, onLogout }:
       </Text>
       <Boton etiqueta="Conceder ubicación" onPress={onSolicitarUbicacion} />
       <Boton etiqueta="Abrir ajustes" onPress={() => void Linking.openSettings()} />
-      <Boton etiqueta="Cerrar sesión" variante="ghost" onPress={onLogout} />
+      <Boton etiqueta="Cerrar sesión" variante="ghost" onPress={onLogout} cargando={saliendo} />
     </View>
   )
 }

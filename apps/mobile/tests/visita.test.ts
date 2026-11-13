@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
+import { LIMITE_PERSONAS_CAMPO } from '../src/lib/catalogosCampo.ts'
 import { validarVisitaNueva } from '../src/lib/visita.ts'
 
 const ok = {
@@ -7,9 +8,6 @@ const ok = {
   actividadId: 1,
   subActividadId: 11,
   actividadHoraId: 2,
-  zonaId: 1,
-  departamentoId: 1,
-  municipioId: 1,
   fecha: '2026-08-29',
   horaInicio: '09:00',
 }
@@ -23,8 +21,12 @@ test('GC-VIS-001 si faltan actividad o subactividad', () => {
   assert.equal(validarVisitaNueva({ ...ok, subActividadId: undefined }), 'GC-VIS-001: actividad y subactividad requeridas')
 })
 
-test('GC-VIS-002 si faltan zona o geografía', () => {
-  assert.equal(validarVisitaNueva({ ...ok, zonaId: null }), 'GC-VIS-002: faltan zona o geografía del tenant')
+test('oficina y geografía las resuelve el servidor', () => {
+  assert.equal(validarVisitaNueva(ok), null)
+})
+
+test('el límite de clientes en campo cubre carteras grandes', () => {
+  assert.ok(LIMITE_PERSONAS_CAMPO >= 1000)
 })
 
 test('GC-VIS-003 si no hay bloque de horas', () => {

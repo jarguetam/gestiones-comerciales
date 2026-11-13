@@ -10,7 +10,7 @@ function exigirOnline() {
 import type { CalendarEvent } from '../features/calendar/types'
 import type { PersonaItem } from '../features/calendar/personasData'
 import type { GeoDefaults } from './catalogos'
-import { filaDePersona, mensajeGc } from './persistirHelpers'
+import { argsVisitaCrear, filaDePersona, mensajeGc } from './persistirHelpers'
 
 export { errorAltaPersona, filaDePersona, mensajeGc } from './persistirHelpers'
 
@@ -48,40 +48,11 @@ export async function persistirPersona(persona: PersonaItem): Promise<PersonaIte
 
 export async function persistirVisita(evento: CalendarEvent, geo: GeoDefaults): Promise<CalendarEvent> {
   exigirOnline()
-  if (!evento.actividadId || !evento.subActividadId) {
-    throw new Error('GC-VIS-001: actividad y subactividad requeridas')
-  }
-  if (!geo.departamentoId || !geo.municipioId || !geo.zonaId) {
-    throw new Error('GC-VIS-002: faltan zona o geografía del tenant')
-  }
-  const horaId = evento.actividadHoraId ?? geo.horaDefaultId
-  if (!horaId) throw new Error('GC-VIS-003: catálogo de horas vacío')
-
-  const { usuarioId, tenantId } = await contextoOperacion()
-  const personaId = evento.personaId && /^\d+$/.test(evento.personaId) ? Number(evento.personaId) : null
-  const { data, error } = await supabase
-    .from('visita')
-    .insert({
-      tenant_id: tenantId,
-      usuario_id: usuarioId,
-      creado_por: usuarioId,
-      persona_id: personaId,
-      persona_nombre: evento.personaName ?? '—',
-      direccion: evento.location ?? null,
-      comentario: evento.notes?.trim() || evento.title,
-      departamento_id: geo.departamentoId,
-      municipio_id: geo.municipioId,
-      zona_id: geo.zonaId,
-      actividad_id: evento.actividadId,
-      sub_actividad_id: evento.subActividadId,
-      actividad_hora_id: horaId,
-      fecha_visita: evento.date,
-      hora_inicio: evento.startTime.length === 5 ? `${evento.startTime}:00` : evento.startTime,
-    })
-    .select('id')
-    .single()
+  const args = argsVisitaCrear(evento, geo.horaDefaultId, crypto.randomUUID())
+  const { data, error } = await supabase.rpc('visita_crear', args)
   if (error) throw new Error(mensajeGc(error))
-  return { ...evento, id: `vis-${data.id}` }
+  const row = data as { id: number | string }
+  return { ...evento, id: `vis-${row.id}` }
 }
 
 export interface FormularioEnviado {

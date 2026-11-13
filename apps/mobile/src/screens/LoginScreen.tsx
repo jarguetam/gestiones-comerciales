@@ -3,6 +3,8 @@
  * Email + contraseña + TOTP si aal1→aal2. Sin modo demo.
  */
 import React, { useState } from 'react'
+import { mensajeDeError } from '../lib/mensajeError'
+import { abrirCacheCampo } from '../lib/abrirCache'
 import {
   KeyboardAvoidingView,
   Linking,
@@ -63,7 +65,7 @@ export default function LoginScreen({ onLogin, onRecuperar }: Props) {
       }
       await hidratarSesion(data.session)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error de autenticación')
+      setError(mensajeDeError(e, 'Error de autenticación'))
     } finally {
       setCargando(false)
     }
@@ -84,7 +86,7 @@ export default function LoginScreen({ onLogin, onRecuperar }: Props) {
       if (!data.session) throw new Error('Sesión MFA incompleta (GC-AUTH-021)')
       await hidratarSesion(data.session)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Código MFA inválido')
+      setError(mensajeDeError(e, 'Código MFA inválido'))
     } finally {
       setCargando(false)
     }
@@ -93,7 +95,7 @@ export default function LoginScreen({ onLogin, onRecuperar }: Props) {
   async function hidratarSesion(session: Session) {
     const claims = await resolverClaims(session)
     if (!claims) throw new Error('Usuario sin tenant asignado (GC-AUTH-021)')
-    const perfil = await cargarPerfil(session, claims)
+    const perfil = await cargarPerfil(session, claims, abrirCacheCampo())
     onLogin(perfil)
   }
 

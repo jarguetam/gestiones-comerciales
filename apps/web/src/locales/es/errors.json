@@ -29,7 +29,7 @@
   "GC-IMP-050": "Método no permitido.",
   "GC-IMP-051": "Se requiere autenticación para importar.",
   "GC-VIS-001": "Actividad y subactividad son requeridas.",
-  "GC-VIS-002": "Faltan zona o geografía del tenant.",
+  "GC-VIS-002": "Falta oficina o geografía, o la oficina del usuario está inactiva.",
   "GC-VIS-003": "El catálogo de horas está vacío.",
   "GC-CRM-000": "Lead no encontrado.",
   "GC-CRM-001": "Retroceder en el embudo requiere rol supervisor o superior.",

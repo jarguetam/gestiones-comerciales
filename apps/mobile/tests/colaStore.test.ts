@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { encolar, type ItemCola } from '../src/lib/cola.ts'
+import { encolar, reintentables, type ItemCola } from '../src/lib/cola.ts'
 import { persistenciaMemoria } from '../src/lib/colaPersistencia.ts'
 import * as store from '../src/lib/colaStore.ts'
 
@@ -128,4 +128,91 @@ test('una sincronización tardía de A no procesa la cola de B', async () => {
   await assert.rejects(store.sincronizarAhora(async () => { enviados++ }, Date.now(), 'tenant:a'), /GC-CORE-001/)
   assert.equal(enviados, 0)
   assert.equal(store.leerCola()[0].estado, 'pendiente')
+})
+
+test('reactivarItem deja el ítem listo para el próximo envío', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:r')
+  const agotado = { ...encolar([], alta('a'))[0], estado: 'error' as const, intentos: 5, proximoIntentoEn: 9e12 }
+  await store.hidratarCola([agotado])
+  assert.equal(reintentables(store.leerCola(), Date.now()).length, 0)
+  await store.reactivarItem('a', 'tenant:r')
+  assert.equal(reintentables(store.leerCola(), Date.now()).length, 1)
+})
+
+test('reactivarItem rechaza una clave de otra sesión', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:r')
+  await assert.rejects(store.reactivarItem('a', 'tenant:x'), /GC-CORE-001/)
+})
+
+test('sincronizarAhora se detiene en el primer error transitorio y deja intactos los siguientes', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:t')
+  await store.hidratarCola(encolar(encolar(encolar([], alta('a')), alta('b')), alta('c')))
+  const antes = store.leerCola()[2]
+  const llamados: string[] = []
+  await store.sincronizarAhora(async (it) => {
+    llamados.push(it.id)
+    if (it.id === 'b') throw { message: 'Network request failed' }
+  }, 1000, 'tenant:t')
+  assert.deepEqual(llamados, ['a', 'b'])
+  const [a, b, c] = store.leerCola()
+  assert.equal(a.estado, 'enviado')
+  assert.deepEqual([b.estado, b.intentos], ['pendiente', 0])
+  assert.deepEqual(c, antes)
+})
+
+const altaVisita = { tipo: 'visita' as const, payload: { clienteKey: 'u1' }, clienteKey: 'visita:u1', id: 'v' }
+const checkinVisita = {
+  tipo: 'visita_checkin' as const,
+  payload: { visitaClienteKey: 'u1', latitud: 1, longitud: 2 },
+  clienteKey: 'visita_checkin:u1',
+  id: 'ci',
+}
+
+test('sincronizarAhora no envía el check-in mientras su alta no llega y no le gasta intentos', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:t')
+  await store.hidratarCola(encolar(encolar([], altaVisita), checkinVisita))
+  const llamados: string[] = []
+  await store.sincronizarAhora(async (it) => {
+    llamados.push(it.id)
+    if (it.id === 'v') throw { code: 'P0001', message: 'GC-VIS-002: la empresa no tiene oficinas activas' }
+  }, 1000, 'tenant:t')
+  assert.deepEqual(llamados, ['v'])
+  const ci = store.leerCola()[1]
+  assert.deepEqual([ci.estado, ci.intentos], ['pendiente', 0])
+})
+
+test('sincronizarAhora envía alta y check-in en el mismo pase, en orden', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:t')
+  await store.hidratarCola(encolar(encolar([], altaVisita), checkinVisita))
+  const llamados: string[] = []
+  await store.sincronizarAhora(async (it) => { llamados.push(it.id) }, 1000, 'tenant:t')
+  assert.deepEqual(llamados, ['v', 'ci'])
+  assert.deepEqual(store.leerCola().map((i) => i.estado), ['enviado', 'enviado'])
+})
+
+test('encolarEnFondo vuelve tras el guardado sin esperar el envío y luego informa el rechazo', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:t')
+  await store.hidratarCola([])
+  const rpc = deferred()
+  const inicio = deferred()
+  const { envio } = await store.encolarEnFondo(alta('a'), async () => {
+    inicio.resolve()
+    await rpc.promise
+    throw { code: 'P0001', message: 'GC-VIS-001: actividad y subactividad requeridas' }
+  }, 'tenant:t')
+  // Ya está guardado y el envío sigue en curso.
+  assert.equal(store.leerCola()[0].estado, 'pendiente')
+  await inicio.promise
+  rpc.resolve()
+  const final = await envio
+  assert.equal(final?.id, 'a')
+  assert.equal(final?.estado, 'error')
+  assert.equal(final?.ultimoError, 'GC-VIS-001: actividad y subactividad requeridas')
+})
+
+test('encolarEnFondo con un fallo de disco rechaza antes de enviar', async () => {
+  store.configurarPersistencia({ load: async () => null, save: async () => { throw new Error('disco lleno') } }, 'tenant:t')
+  let enviados = 0
+  await assert.rejects(store.encolarEnFondo(alta('a'), async () => { enviados++ }, 'tenant:t'), /disco lleno/)
+  assert.equal(enviados, 0)
 })

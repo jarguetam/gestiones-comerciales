@@ -6,9 +6,6 @@ export interface BorradorVisita {
   actividadId?: number | null
   subActividadId?: number | null
   actividadHoraId?: number | null
-  zonaId?: number | null
-  departamentoId?: number | null
-  municipioId?: number | null
   fecha?: string | null
   horaInicio?: string | null
   direccion?: string | null
@@ -21,9 +18,6 @@ export function validarVisitaNueva(b: BorradorVisita): string | null {
   }
   if (!b.actividadId || !b.subActividadId) {
     return 'GC-VIS-001: actividad y subactividad requeridas'
-  }
-  if (!b.departamentoId || !b.municipioId || !b.zonaId) {
-    return 'GC-VIS-002: faltan zona o geografía del tenant'
   }
   if (!b.actividadHoraId) {
     return 'GC-VIS-003: catálogo de horas vacío'

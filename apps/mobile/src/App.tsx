@@ -5,6 +5,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   Linking,
@@ -29,10 +30,23 @@ import AjustesScreen from './screens/AjustesScreen'
 import CampoBloqueadoScreen from './screens/CampoBloqueadoScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { supabase, CLAVE_SESION, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { sesionStorage } from './lib/sesionStorage'
+import {
+  leerSesionGuardada,
+  perfilSinConexion,
+  puedeEntrarSinConexion,
+  renovarSinConexion,
+} from './lib/sesionSinConexion'
+import { borrarSesionGuardada, cerrarSesionYBorrar, LIMITE_SALIDA_MS } from './lib/sesionBorrar'
+import { intentarConLimite } from './lib/conLimite'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
-import { clearCola } from './lib/colaStore'
+import { clearCola, leerCola } from './lib/colaStore'
+import { sinEnviar } from './lib/cola'
+import { abrirCacheCampo } from './lib/abrirCache'
+import { cargarCatalogosCampo } from './lib/catalogosCampo'
+import { cacheConGuardadoSi, crearPrecargaCatalogos } from './lib/precargaCatalogos'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { contarNoLeidas } from './lib/notificaciones'
@@ -86,6 +100,10 @@ export default function App() {
   const [listo, setListo] = useState(false)
   const [recuperar, setRecuperar] = useState(false)
   const [colaLista, setColaLista] = useState<string | null>(null)
+  const [sinConexion, setSinConexion] = useState(false)
+  // Desde que empieza un cierre de sesión, el modo sin conexión deja de intentar renovar.
+  const renovacionPausada = useRef(false)
+  const secuenciaSesion = useRef(0)
   const [errorCola, setErrorCola] = useState<string | null>(null)
   const [intentoCola, setIntentoCola] = useState(0)
   const claveCola = perfil ? claveParticionCola(perfil.tenantId, perfil.id) : null
@@ -123,21 +141,103 @@ export default function App() {
 
   useEffect(() => {
     return suscribirSesion(supabase, async (estado, event) => {
-      if (event === 'SIGNED_OUT' || !estado.session) {
+      // Solo avanzan la secuencia los eventos que escriben estado: USER_UPDATED no anula un SIGNED_IN en curso.
+      const escribe =
+        event === 'SIGNED_OUT' || !estado.session ||
+        event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED'
+      if (!escribe) return
+      const n = ++secuenciaSesion.current
+      // Un manejador anterior (p. ej. TOKEN_REFRESHED esperando cargarPerfil) no pisa a uno posterior.
+      const vigente = () => n === secuenciaSesion.current
+      if (event === 'SIGNED_OUT') {
+        setSinConexion(false)
         configurarPersistencia(null)
         setColaLista(null)
-        if (event === 'SIGNED_OUT') setPerfil(null)
+        setPerfil(null)
+        setListo(true)
+        return
+      }
+      if (!estado.session) {
+        // Token vencido y sin señal: auth-js conserva la sesión pero la emite nula.
+        try {
+          const guardada = await leerSesionGuardada(sesionStorage, CLAVE_SESION)
+          if (guardada && !puedeEntrarSinConexion(guardada, Date.now())) {
+            // Más de 7 días: sin la sesión guardada, auth-js no entra solo desde Login al volver la señal. La cola queda.
+            await borrarSesionGuardada(sesionStorage, CLAVE_SESION)
+          } else if (guardada) {
+            const perfilLocal = await perfilSinConexion(guardada, abrirCacheCampo())
+            if (perfilLocal) {
+              if (!vigente()) return
+              setPerfil(perfilLocal)
+              setSinConexion(true)
+              setListo(true)
+              return
+            }
+          }
+        } catch (e) {
+          console.warn('GC-AUTH-032: no se pudo armar el perfil sin conexión', e)
+        }
+        if (!vigente()) return
+        configurarPersistencia(null)
+        setColaLista(null)
         setListo(true)
         return
       }
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         const claims = await resolverClaims(estado.session)
-        if (claims) setPerfil(await cargarPerfil(estado.session, claims))
-        else setPerfil(null)
+        if (!vigente()) return
+        if (claims) {
+          try {
+            const p = await cargarPerfil(estado.session, claims, abrirCacheCampo())
+            if (!vigente()) return
+            setPerfil(p)
+          } catch (e) {
+            console.warn('GC-AUTH-024: no se pudo cargar el perfil', e)
+            if (!vigente()) return
+            setPerfil(null)
+          }
+        } else setPerfil(null)
+        setSinConexion(false)
         setListo(true)
       }
     })
   }, [])
+
+  // Modo sin conexión: intenta renovar la sesión cada 30 s y al volver la app al frente.
+  useEffect(() => {
+    if (!sinConexion) return
+    let vigente = true
+    let enCurso = false
+    const renovar = () => {
+      if (enCurso || renovacionPausada.current) return
+      enCurso = true
+      void (async () => {
+        try {
+          const { decision, error } = await renovarSinConexion(supabase.auth)
+          // El cierre de sesión pudo empezar mientras se esperaba la respuesta.
+          if (!vigente || renovacionPausada.current) return
+          if (decision === 'normal') {
+            setSinConexion(false)
+          } else if (decision === 'login') {
+            console.warn('GC-AUTH-026: sesión rechazada al renovar', error)
+            setSinConexion(false)
+            setPerfil(null)
+          }
+        } finally {
+          enCurso = false
+        }
+      })()
+    }
+    const t = setInterval(renovar, 30_000)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') renovar()
+    })
+    return () => {
+      vigente = false
+      clearInterval(t)
+      sub.remove()
+    }
+  }, [sinConexion])
 
   useEffect(() => {
     if (!perfil || colaLista !== claveCola || errorCola) return
@@ -163,10 +263,12 @@ export default function App() {
   }, [perfil, colaLista, claveCola, errorCola])
 
   async function salirConErrorCola() {
-    // Si el disco no abre, cerrar la sesión local conserva la cola de su dueño.
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-    if (error) setErrorCola(error.message)
-    else setPerfil(null)
+    // Si el disco no abre, cerrar la sesión conserva la cola de su dueño. Sin señal, signOut solo no borra nada.
+    renovacionPausada.current = true
+    await cerrarSesionYBorrar(supabase, sesionStorage, CLAVE_SESION)
+    renovacionPausada.current = false
+    setSinConexion(false)
+    setPerfil(null)
   }
 
   return (
@@ -193,7 +295,18 @@ export default function App() {
           ) : colaLista !== claveCola ? (
             <Cargando etiqueta="Cargando datos locales…" />
           ) : (
-            <Shell perfil={perfil} onLogout={() => setPerfil(null)} />
+            <Shell
+              perfil={perfil}
+              sinConexion={sinConexion}
+              onSaliendo={(saliendo) => {
+                renovacionPausada.current = saliendo
+              }}
+              onLogout={() => {
+                renovacionPausada.current = false
+                setSinConexion(false)
+                setPerfil(null)
+              }}
+            />
           )}
         </SafeAreaView>
       </ThemeProvider>
@@ -201,7 +314,17 @@ export default function App() {
   )
 }
 
-function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
+function Shell({
+  perfil,
+  sinConexion,
+  onSaliendo,
+  onLogout,
+}: {
+  perfil: Perfil
+  sinConexion: boolean
+  onSaliendo: (saliendo: boolean) => void
+  onLogout: () => void
+}) {
   const t = useTheme()
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
@@ -211,9 +334,38 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const [rastreoBloqueado, setRastreoBloqueado] = useState(false)
   const avisoUbicacionMostrado = useRef(false)
   const refrescarCampoRef = useRef<(() => Promise<void>) | null>(null)
+  // Desde que empieza el logout ninguna descarga en curso vuelve a escribir la caché.
+  const saliendo = useRef(false)
+  const [cerrando, setCerrando] = useState(false)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
   const campoBloqueado = campo === 'blocked_location'
+
+  // Catálogos (y clientes) en el teléfono sin abrir «Agendar»: al entrar, al volver la app
+  // al frente y cada 30 s mientras la última precarga no haya llegado al servidor.
+  useEffect(() => {
+    let vivo = true
+    const precarga = crearPrecargaCatalogos({
+      cargar: () =>
+        cargarCatalogosCampo({
+          clave: claveParticionCola(perfil.tenantId, perfil.id),
+          cache: cacheConGuardadoSi(abrirCacheCampo(), () => vivo && !saliendo.current),
+          cliente: supabase,
+        }),
+    })
+    void precarga.siHaceFalta()
+    const reintento = setInterval(() => {
+      void precarga.siHaceFalta()
+    }, 30_000)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void precarga.siHaceFalta()
+    })
+    return () => {
+      vivo = false
+      clearInterval(reintento)
+      sub.remove()
+    }
+  }, [perfil.tenantId, perfil.id])
 
   async function mostrarAvisoUbicacion() {
     const config = await leerConfigRastreo(supabase)
@@ -324,10 +476,46 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       })
   }, [tab])
 
-  async function handleLogout() {
-    await detenerRastreo(supabase)
-    await logoutCleanupNativo(supabase, perfil, clearCola)
+  async function cerrarSesion() {
+    saliendo.current = true
+    setCerrando(true)
+    onSaliendo(true)
+    try {
+      // Sin señal, detenerRastreo puede esperar la renovación del token (~25 s): no frena el cierre.
+      await intentarConLimite(
+        () => detenerRastreo(supabase),
+        LIMITE_SALIDA_MS,
+        'GC-RAS-017: no se pudo detener el rastreo al salir',
+      )
+      // Se recuenta justo antes de limpiar: mientras se detenía el rastreo pudo entrar un registro.
+      const pendientesAhora = sinEnviar(leerCola())
+      await logoutCleanupNativo(supabase, perfil, clearCola, pendientesAhora, (clave) =>
+        abrirCacheCampo().limpiar(clave),
+      )
+    } catch (e) {
+      saliendo.current = false
+      setCerrando(false)
+      onSaliendo(false)
+      throw e
+    }
     onLogout()
+  }
+
+  async function handleLogout() {
+    if (saliendo.current) return
+    const n = sinEnviar(leerCola())
+    if (n === 0) {
+      await cerrarSesion()
+      return
+    }
+    Alert.alert(
+      'Cerrar sesión',
+      `Tienes ${n} registros sin enviar. Se guardan en este teléfono y se envían cuando vuelvas a entrar con tu usuario.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Salir', style: 'destructive', onPress: () => void cerrarSesion() },
+      ],
+    )
   }
 
   const extras: { id: Extract<IconoName, 'solicitudes' | 'depositos' | 'ajustes'>; etiqueta: string }[] = [
@@ -388,15 +576,29 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           ) : null}
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.headerBtn, { borderColor: t.line }]}
+          style={[styles.headerBtn, { borderColor: t.line, opacity: cerrando ? 0.6 : 1 }]}
           onPress={() => void handleLogout()}
+          disabled={cerrando}
           accessibilityLabel="Salir"
           accessibilityRole="button"
+          accessibilityState={{ disabled: cerrando, busy: cerrando }}
         >
-          <Icono name="salir" color={t.ink} size={18} />
+          {cerrando ? <ActivityIndicator color={t.ink} size="small" /> : <Icono name="salir" color={t.ink} size={18} />}
           <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Salir</Text>
         </TouchableOpacity>
       </View>
+
+      {sinConexion ? (
+        <View
+          style={[styles.offline, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]}
+          accessibilityRole="alert"
+          accessibilityLabel="Modo sin conexión · tus registros se enviarán cuando vuelva la señal"
+        >
+          <Text style={[styles.offlineTexto, { color: t.warningText }]}>
+            Modo sin conexión · tus registros se enviarán cuando vuelva la señal
+          </Text>
+        </View>
+      ) : null}
 
       {pendientes > 0 ? (
         <View style={[styles.offline, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]} accessibilityRole="alert">
@@ -413,6 +615,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           <CampoBloqueadoScreen
             onSolicitarUbicacion={() => void mostrarAvisoUbicacion()}
             onLogout={() => void handleLogout()}
+            saliendo={cerrando}
           />
         ) : (
           <>
@@ -429,6 +632,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
                 intervaloRastreoMin={intervaloRastreoMin}
                 onSolicitarUbicacion={() => void mostrarAvisoUbicacion()}
                 onLogout={() => void handleLogout()}
+                saliendo={cerrando}
                 onAbrirCola={() => setTab('sync')}
               />
             )}
@@ -511,8 +715,10 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
                 setMas(false)
                 void handleLogout()
               }}
+              disabled={cerrando}
               accessibilityRole="button"
               accessibilityLabel="Salir"
+              accessibilityState={{ disabled: cerrando, busy: cerrando }}
             >
               <Icono name="salir" color={t.ink} size={20} />
               <Text style={[styles.masTexto, { color: t.ink }]}>Salir</Text>

@@ -32,6 +32,8 @@ test('logoutCleanup borra sesión y solo la cola de ese usuario', async () => {
     deleteSession: async () => {
       sesionBorrada = true
     },
+    pendientes: 0,
+    clearCache: async () => undefined,
     clearCola: (clave) => store.clear(clave),
     invalidateFcm: async () => {
       fcm = true
@@ -46,10 +48,67 @@ test('logoutCleanup borra sesión y solo la cola de ese usuario', async () => {
 test('logout espera la limpieza durable antes de emitir SIGNED_OUT', async () => {
   const orden: string[] = []
   await logoutCleanup({
-    userId: 'a', tenantId: 't',
+    userId: 'a', tenantId: 't', pendientes: 0,
+    clearCache: async () => { orden.push('cache') },
     clearCola: async () => { await Promise.resolve(); orden.push('cola') },
     deleteSession: async () => { orden.push('sesion') },
     invalidateFcm: async () => { orden.push('fcm') },
   })
-  assert.deepEqual(orden, ['cola', 'sesion', 'fcm'])
+  assert.deepEqual(orden, ['cola', 'sesion', 'cache', 'fcm'])
+})
+
+test('con pendientes conserva la cola y cierra sesión', async () => {
+  const llamadas: string[] = []
+  const r = await logoutCleanup({
+    userId: 'u1', tenantId: 't1', pendientes: 2,
+    clearCola: async (c) => { llamadas.push(`cola:${c}`) },
+    deleteSession: async () => { llamadas.push('sesion') },
+    clearCache: async (c) => { llamadas.push(`cache:${c}`) },
+    invalidateFcm: async () => { llamadas.push('fcm') },
+  })
+  assert.deepEqual(llamadas, ['sesion', 'cache:t1:u1', 'fcm'])
+  assert.deepEqual(r, { colaConservada: true })
+})
+
+test('sin pendientes limpia cola y caché de la sesión', async () => {
+  const llamadas: string[] = []
+  const r = await logoutCleanup({
+    userId: 'u1', tenantId: 't1', pendientes: 0,
+    clearCola: async (c) => { llamadas.push(`cola:${c}`) },
+    deleteSession: async () => { llamadas.push('sesion') },
+    clearCache: async (c) => { llamadas.push(`cache:${c}`) },
+    invalidateFcm: async () => { llamadas.push('fcm') },
+  })
+  assert.deepEqual(llamadas, ['cola:t1:u1', 'sesion', 'cache:t1:u1', 'fcm'])
+  assert.deepEqual(r, { colaConservada: false })
+})
+
+test('si clearCache falla, el error se propaga', async () => {
+  await assert.rejects(
+    logoutCleanup({
+      userId: 'u1', tenantId: 't1', pendientes: 0,
+      clearCola: async () => undefined,
+      deleteSession: async () => undefined,
+      clearCache: async () => { throw new Error('cache') },
+      invalidateFcm: async () => undefined,
+    }),
+    /cache/,
+  )
+})
+
+test('GC-AUTH-029 si invalidateFcm falla, el logout termina y avisa', async () => {
+  const llamadas: string[] = []
+  const avisos: string[] = []
+  const r = await logoutCleanup({
+    userId: 'u1', tenantId: 't1', pendientes: 0,
+    clearCola: async () => { llamadas.push('cola') },
+    deleteSession: async () => { llamadas.push('sesion') },
+    clearCache: async () => { llamadas.push('cache') },
+    invalidateFcm: async () => { throw new Error('red') },
+    advertir: (m) => avisos.push(m),
+  })
+  assert.deepEqual(llamadas, ['cola', 'sesion', 'cache'])
+  assert.deepEqual(r, { colaConservada: false })
+  assert.equal(avisos.length, 1)
+  assert.match(avisos[0], /GC-AUTH-029/)
 })

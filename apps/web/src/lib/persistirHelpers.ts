@@ -1,4 +1,5 @@
 import type { PersonaItem } from '../features/calendar/personasData'
+import type { CalendarEvent } from '../features/calendar/types'
 
 export interface ContextoPersona {
   usuarioId: string
@@ -66,5 +67,34 @@ export function filaDePersona(persona: PersonaItem, ctx: ContextoPersona): FilaP
     categoria: persona.categoria,
     asesor_id: ctx.usuarioId,
     detalles: telefono ? { telefono } : {},
+  }
+}
+
+/** Argumentos de la RPC `visita_crear`: oficina y geografía las resuelve el servidor. */
+export function argsVisitaCrear(
+  evento: CalendarEvent,
+  horaDefaultId: number | null,
+  clienteKey: string,
+): Record<string, unknown> {
+  if (!evento.actividadId || !evento.subActividadId) {
+    throw new Error('GC-VIS-001: actividad y subactividad requeridas')
+  }
+  const horaId = evento.actividadHoraId ?? horaDefaultId
+  if (!horaId) throw new Error('GC-VIS-003: catálogo de horas vacío')
+  const personaId = evento.personaId && /^\d+$/.test(evento.personaId) ? Number(evento.personaId) : null
+  return {
+    p_persona_nombre: evento.personaName ?? '—',
+    p_actividad_id: evento.actividadId,
+    p_sub_actividad_id: evento.subActividadId,
+    p_actividad_hora_id: horaId,
+    p_zona_id: null,
+    p_departamento_id: null,
+    p_municipio_id: null,
+    p_fecha: evento.date,
+    p_hora_inicio: evento.startTime.length === 5 ? `${evento.startTime}:00` : evento.startTime,
+    p_persona_id: personaId,
+    p_direccion: evento.location ?? null,
+    p_comentario: evento.notes?.trim() || evento.title,
+    p_cliente_key: clienteKey,
   }
 }

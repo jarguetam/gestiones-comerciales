@@ -26,8 +26,5 @@ export interface ZonaCatalogo {
 }
 
 export interface GeoDefaults {
-  zonaId: number | null
-  departamentoId: number | null
-  municipioId: number | null
   horaDefaultId: number | null
 }
