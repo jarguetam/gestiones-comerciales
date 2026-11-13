@@ -8,7 +8,7 @@ const appJson = JSON.parse(readFileSync(new URL('../app.json', import.meta.url),
 const gitignore = readFileSync(new URL('../../../.gitignore', import.meta.url), 'utf8')
 const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8')) as {
   build?: Record<string, { ios?: unknown; android?: { buildType?: string }; environment?: string; env?: Record<string, string> }>
-  submit?: Record<string, { ios?: unknown; android?: { track?: string } }>
+  submit?: Record<string, { ios?: unknown; android?: { track?: string; releaseStatus?: string } }>
 }
 
 test('app.json tiene extra.eas.projectId no vacío', () => {
@@ -34,8 +34,18 @@ test('preview es APK y production es AAB', () => {
   assert.equal(eas.build?.production?.android?.buildType, 'app-bundle')
 })
 
-test('el AAB se envía a prueba cerrada de Play', () => {
-  assert.equal(eas.submit?.production?.android?.track, 'alpha')
+test('submit internal sube a prueba interna en borrador (app aún en borrador en Play)', () => {
+  assert.deepEqual(eas.submit?.internal?.android, { track: 'internal', releaseStatus: 'draft' })
+})
+
+test('submit closed envía el AAB a prueba cerrada de Play', () => {
+  assert.equal(eas.submit?.closed?.android?.track, 'alpha')
+})
+
+test('ningún perfil de submit publica en el track production', () => {
+  for (const [nombre, perfil] of Object.entries(eas.submit ?? {})) {
+    assert.notEqual(perfil.android?.track, 'production', `submit.${nombre} no debe ir a production`)
+  }
 })
 
 test('EAS identifica el backend real: development local, preview y AAB production', () => {
