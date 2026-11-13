@@ -12,6 +12,8 @@ test('el formulario conserva un UUID al encolar y reintentar el RPC', async () =
   const [item] = encolar([], alta)
   const llamadas: Array<Record<string, unknown>> = []
   const cliente = {
+    // El envío exige sesión vigente (GC-NET-004).
+    auth: { getSession: async () => ({ data: { session: { access_token: 'jwt' } } }) },
     rpc: async (_nombre: string, parametros: Record<string, unknown>) => {
       llamadas.push(parametros)
       return { error: null }

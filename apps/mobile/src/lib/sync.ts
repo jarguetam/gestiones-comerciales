@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ItemCola } from './cola'
+import { exigirSesion } from './sesionVigente.ts'
 
 /**
  * Id servidor de la visita de un ítem de cola. Las visitas creadas sin red no
@@ -25,6 +26,8 @@ export async function resolverVisitaId(
 /** Ejecuta una mutación encolada contra PostgREST/RPC. El servidor valida reglas. */
 export function ejecutarMutacion(cliente: SupabaseClient) {
   return async (item: ItemCola) => {
+    // Sin sesión la petición saldría con la anon key y el servidor la rechazaría (42501).
+    await exigirSesion(cliente)
     const p = item.payload
     if (item.tipo === 'visita_checkin') {
       const { error } = await cliente.rpc('visita_checkin', {

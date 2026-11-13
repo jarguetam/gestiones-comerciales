@@ -21,3 +21,8 @@ test('esErrorTransitorio tolera valores que no son Error', () => {
   assert.equal(esErrorTransitorio(42), false)
   assert.equal(esErrorTransitorio(new DOMException('aborted', 'AbortError')), true)
 })
+
+test('GC-NET-004 (sesión sin renovar) es transitorio', () => {
+  assert.equal(esErrorTransitorio(new Error('GC-NET-004: sesión sin renovar (sin conexión)')), true)
+  assert.equal(esErrorTransitorio({ message: 'GC-NET-004: sesión sin renovar (sin conexión)' }), true)
+})

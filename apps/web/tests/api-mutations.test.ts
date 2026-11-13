@@ -118,6 +118,8 @@ test('los módulos reales llaman las RPC canónicas de transición', async () =>
 test('la mutación móvil de completar visita ejecuta RPC, no PostgREST UPDATE', async () => {
   const calls: Array<{ kind: string; name: string; args: unknown }> = []
   const client = {
+    // El envío móvil exige sesión vigente (GC-NET-004).
+    auth: { getSession: async () => ({ data: { session: { access_token: 'jwt' } } }) },
     rpc: async (name: string, args: unknown) => {
       calls.push({ kind: 'rpc', name, args })
       return { error: null }

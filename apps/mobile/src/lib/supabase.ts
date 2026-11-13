@@ -14,6 +14,7 @@ import type { Perfil } from './perfil'
 import type { CacheCampo } from './cacheCampo'
 import { claveParticionCola } from './colaParticion.ts'
 import { resolverPerfil } from './perfilRespaldo.ts'
+import { exigirSesion } from './sesionVigente.ts'
 import { sesionStorage } from './sesionStorage'
 
 export { claimsDe, type Rol } from './claims'
@@ -86,6 +87,9 @@ export async function cargarPerfil(
     clave: claveParticionCola(claims.tenantId, userId),
     cache,
     leerFuentes: async () => {
+      // Sin sesión vigente las lecturas irían con la anon key y la RLS devolvería vacío:
+      // GC-NET-004 es transitorio, así que se usa el perfil guardado.
+      await exigirSesion(supabase)
       const [usuario, tenant, modulos] = await Promise.all([
         supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
         supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),

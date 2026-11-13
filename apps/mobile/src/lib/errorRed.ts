@@ -2,6 +2,7 @@
 
 const PATRON_RED = /network request failed|failed to fetch|fetch failed|networkerror|timed? ?out|aborted/i
 const PATRON_JWT = /jwt expired/i
+const PATRON_SESION = /^GC-NET-004:/
 
 export function esErrorTransitorio(err: unknown): boolean {
   let message = ''
@@ -16,7 +17,7 @@ export function esErrorTransitorio(err: unknown): boolean {
     if (typeof o.code === 'string') code = o.code
     if (typeof o.name === 'string') name = o.name
   }
-  if (code === 'PGRST301' || PATRON_JWT.test(message)) return true
+  if (code === 'PGRST301' || PATRON_JWT.test(message) || PATRON_SESION.test(message)) return true
   if (code !== '') return false
   return name === 'AbortError' || PATRON_RED.test(message)
 }

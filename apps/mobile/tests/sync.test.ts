@@ -9,9 +9,13 @@ interface Llamadas {
   consultas: Array<{ tabla: string; columnas: string; col: string; valor: unknown }>
 }
 
-function clienteFalso(respuestaVisita: { data: unknown; error: unknown } = { data: null, error: null }) {
+function clienteFalso(
+  respuestaVisita: { data: unknown; error: unknown } = { data: null, error: null },
+  session: unknown = { access_token: 'jwt' },
+) {
   const llamadas: Llamadas = { rpc: [], consultas: [] }
   const cliente = {
+    auth: { getSession: async () => ({ data: { session }, error: null }) },
     rpc: async (nombre: string, args: Record<string, unknown>) => {
       llamadas.rpc.push({ nombre, args })
       return { data: null, error: null }
@@ -128,4 +132,17 @@ test('ítems de la versión anterior siguen sincronizando', async () => {
   assert.deepEqual(llamadas.rpc, [
     { nombre: 'visita_checkin', args: { p_visita_id: 104, p_latitud: 1, p_longitud: 2 } },
   ])
+})
+
+test('sin sesión vigente lanza GC-NET-004 y no llama al servidor', async () => {
+  const { cliente, llamadas } = clienteFalso({ data: { id: 77 }, error: null }, null)
+  for (const it of [
+    item('visita', { clienteKey: 'u1', personaNombre: 'Ana', actividadId: 1, subActividadId: 2, actividadHoraId: 3 }),
+    item('visita_checkin', { visitaClienteKey: 'u1', latitud: 1, longitud: 2 }),
+    item('visita_completar', { visitaId: 5 }),
+  ]) {
+    await assert.rejects(ejecutarMutacion(cliente)(it), { message: 'GC-NET-004: sesión sin renovar (sin conexión)' })
+  }
+  assert.deepEqual(llamadas.rpc, [])
+  assert.deepEqual(llamadas.consultas, [])
 })
