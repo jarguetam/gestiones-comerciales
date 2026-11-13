@@ -53,3 +53,43 @@ test('perfil guardado conserva módulos sin señal', async () => {
   })
   assert.ok(r.datos.modulos.includes('depositos'))
 })
+
+test('si leer la caché falla sin señal, el error lleva la falla de red como causa', async () => {
+  const errRed = red()
+  const errDisco = new Error('disco ilegible')
+  await assert.rejects(
+    conRespaldo({
+      cargar: async () => { throw errRed },
+      leer: async () => { throw errDisco },
+      guardar: async () => {},
+    }),
+    (e) => e === errDisco && (e as Error).cause === errRed,
+  )
+})
+
+test('si leer la caché lanza algo que no es Error, igual conserva la causa de red', async () => {
+  const errRed = red()
+  await assert.rejects(
+    conRespaldo({
+      cargar: async () => { throw errRed },
+      leer: async () => { throw { message: 'SQLITE_BUSY' } },
+      guardar: async () => {},
+    }),
+    (e) => e instanceof Error && e.message === 'SQLITE_BUSY' && e.cause === errRed,
+  )
+})
+
+test('si guardar falla tras cargar del servidor, avisa con GC-CACHE-001 y devuelve los datos', async () => {
+  const avisos: Array<[string, unknown]> = []
+  const fallo = new Error('disco lleno')
+  const r = await conRespaldo({
+    cargar: async () => 7,
+    leer: async () => null,
+    guardar: async () => { throw fallo },
+    advertir: (m, d) => { avisos.push([m, d]) },
+  })
+  assert.deepEqual(r, { datos: 7, origen: 'servidor' })
+  assert.equal(avisos.length, 1)
+  assert.match(avisos[0][0], /^GC-CACHE-001/)
+  assert.equal(avisos[0][1], fallo)
+})

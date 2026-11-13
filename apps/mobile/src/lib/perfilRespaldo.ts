@@ -66,6 +66,7 @@ export async function resolverPerfil(e: EntradaPerfil): Promise<Perfil> {
         })
       },
       leer: () => e.cache.leer<Perfil>(e.clave, 'perfil'),
+      advertir,
       // Un perfil degradado no debe pisar una copia completa anterior.
       guardar: async (p) => {
         if (!esDegradado) await e.cache.guardar(e.clave, 'perfil', p)

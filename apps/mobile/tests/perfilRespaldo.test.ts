@@ -69,3 +69,31 @@ test('mensajeDeError', () => {
   assert.equal(mensajeDeError('texto', 'x'), 'texto')
   assert.equal(mensajeDeError(null, 'x'), 'x')
 })
+
+test('sesión sin renovar (GC-NET-004) usa el perfil guardado', async () => {
+  const cache = cacheMemoria()
+  await cache.guardar('t1:u1', 'perfil', { id: 'u1', modulos: ['depositos'] })
+  const p = await resolverPerfil({
+    ...base,
+    cache,
+    leerFuentes: async () => { throw new Error('GC-NET-004: sesión sin renovar (sin conexión)') },
+  })
+  assert.deepEqual(p.modulos, ['depositos'])
+})
+
+test('si no se puede guardar la copia, el perfil del servidor igual entra y se avisa', async () => {
+  const avisos: string[] = []
+  const cache = { ...cacheMemoria(), guardar: async () => { throw new Error('disco lleno') } }
+  const p = await resolverPerfil({
+    ...base,
+    cache,
+    leerFuentes: async () => ({
+      usuario: { data: { id: 'u1', nombre: 'Ana López' }, error: null },
+      tenant: { data: { nombre: 'Hábitat' }, error: null },
+      modulos: { data: [{ modulo: { codigo: 'depositos' } }], error: null },
+    }),
+    advertir: (m) => { avisos.push(m) },
+  })
+  assert.equal(p.nombre, 'Ana López')
+  assert.deepEqual(avisos, ['GC-CACHE-001: no se pudo guardar la copia local'])
+})
