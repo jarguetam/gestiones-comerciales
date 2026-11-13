@@ -111,6 +111,10 @@ export function ejecutarMutacion(cliente: SupabaseClient) {
         categoria: p.categoria ?? null,
         detalles: p.detalles ?? {},
       })
+      // Como mensajeGc de la web: la cola muestra el código, no el texto crudo de Postgres.
+      if (error && (error as { code?: unknown }).code === '23505') {
+        throw new Error('GC-PER-030: ya existe un cliente con ese documento', { cause: error })
+      }
       if (error) throw error
       return
     }

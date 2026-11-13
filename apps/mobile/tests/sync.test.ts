@@ -146,3 +146,26 @@ test('sin sesión vigente lanza GC-NET-004 y no llama al servidor', async () => 
   assert.deepEqual(llamadas.rpc, [])
   assert.deepEqual(llamadas.consultas, [])
 })
+
+function clienteInsert(error: unknown) {
+  return {
+    auth: { getSession: async () => ({ data: { session: { access_token: 'jwt' } }, error: null }) },
+    from: () => ({ insert: async () => ({ data: null, error }) }),
+  } as unknown as SupabaseClient
+}
+
+const personaPayload = { tenantId: 't1', asesorId: 'u1', nombre: 'Ana', documento: '123' }
+
+test('GC-PER-030 alta de cliente con documento repetido (23505)', async () => {
+  await assert.rejects(
+    ejecutarMutacion(clienteInsert({ code: '23505', message: 'duplicate key value violates unique constraint "persona_tenant_documento_key"' }))(
+      item('persona', personaPayload),
+    ),
+    { message: 'GC-PER-030: ya existe un cliente con ese documento' },
+  )
+})
+
+test('alta de cliente: otro error de PostgREST sale tal cual', async () => {
+  const error = { code: '42501', message: 'new row violates row-level security policy for table "persona"' }
+  await assert.rejects(ejecutarMutacion(clienteInsert(error))(item('persona', personaPayload)), (e) => e === error)
+})
