@@ -29,7 +29,7 @@ export const CLAVE_SESION = claveSesionSupabase(supabaseUrl)
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storageKey: CLAVE_SESION,
-    storage: sesionStorage,
+    storage: sesionStorage, // No agregar auth.userStorage: guardaría el user aparte y rompería el modo sin conexión (leerSesionGuardada espera user.id en esta clave).
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

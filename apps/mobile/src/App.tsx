@@ -29,7 +29,15 @@ import AjustesScreen from './screens/AjustesScreen'
 import CampoBloqueadoScreen from './screens/CampoBloqueadoScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
-import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { supabase, CLAVE_SESION, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
+import { sesionStorage } from './lib/sesionStorage'
+import {
+  decidirTrasRenovar,
+  leerSesionGuardada,
+  perfilSinConexion,
+  puedeEntrarSinConexion,
+  type SesionGuardada,
+} from './lib/sesionSinConexion'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
 import { clearCola, leerCola } from './lib/colaStore'
@@ -90,6 +98,7 @@ export default function App() {
   const [listo, setListo] = useState(false)
   const [recuperar, setRecuperar] = useState(false)
   const [colaLista, setColaLista] = useState<string | null>(null)
+  const [sinConexion, setSinConexion] = useState<SesionGuardada | null>(null)
   const [errorCola, setErrorCola] = useState<string | null>(null)
   const [intentoCola, setIntentoCola] = useState(0)
   const claveCola = perfil ? claveParticionCola(perfil.tenantId, perfil.id) : null
@@ -127,10 +136,32 @@ export default function App() {
 
   useEffect(() => {
     return suscribirSesion(supabase, async (estado, event) => {
-      if (event === 'SIGNED_OUT' || !estado.session) {
+      if (event === 'SIGNED_OUT') {
+        setSinConexion(null)
         configurarPersistencia(null)
         setColaLista(null)
-        if (event === 'SIGNED_OUT') setPerfil(null)
+        setPerfil(null)
+        setListo(true)
+        return
+      }
+      if (!estado.session) {
+        // Token vencido y sin señal: auth-js conserva la sesión pero la emite nula.
+        try {
+          const guardada = await leerSesionGuardada(sesionStorage, CLAVE_SESION)
+          if (guardada && puedeEntrarSinConexion(guardada, Date.now())) {
+            const perfilLocal = await perfilSinConexion(guardada, abrirCacheCampo())
+            if (perfilLocal) {
+              setPerfil(perfilLocal)
+              setSinConexion(guardada)
+              setListo(true)
+              return
+            }
+          }
+        } catch (e) {
+          console.warn('GC-AUTH-025: sesión guardada ilegible', e)
+        }
+        configurarPersistencia(null)
+        setColaLista(null)
         setListo(true)
         return
       }
@@ -144,10 +175,54 @@ export default function App() {
             setPerfil(null)
           }
         } else setPerfil(null)
+        setSinConexion(null)
         setListo(true)
       }
     })
   }, [])
+
+  // Modo sin conexión: intenta renovar la sesión cada 30 s y al volver la app al frente.
+  useEffect(() => {
+    if (!sinConexion) return
+    let vigente = true
+    let enCurso = false
+    const renovar = () => {
+      if (enCurso) return
+      enCurso = true
+      void (async () => {
+        let resultado: { session: unknown | null; error: unknown | null }
+        try {
+          const r = await supabase.auth.refreshSession({ refresh_token: sinConexion.refresh_token })
+          resultado = { session: r.data?.session ?? null, error: r.error }
+        } catch (e) {
+          // refreshSession puede lanzar ante un fallo inesperado: se clasifica igual que un error devuelto.
+          resultado = { session: null, error: e }
+        }
+        try {
+          if (!vigente) return
+          const decision = decidirTrasRenovar(resultado)
+          if (decision === 'normal') {
+            setSinConexion(null)
+          } else if (decision === 'login') {
+            console.warn('GC-AUTH-026: sesión rechazada al renovar', resultado.error)
+            setSinConexion(null)
+            setPerfil(null)
+          }
+        } finally {
+          enCurso = false
+        }
+      })()
+    }
+    const t = setInterval(renovar, 30_000)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') renovar()
+    })
+    return () => {
+      vigente = false
+      clearInterval(t)
+      sub.remove()
+    }
+  }, [sinConexion])
 
   useEffect(() => {
     if (!perfil || colaLista !== claveCola || errorCola) return
@@ -203,7 +278,7 @@ export default function App() {
           ) : colaLista !== claveCola ? (
             <Cargando etiqueta="Cargando datos locales…" />
           ) : (
-            <Shell perfil={perfil} onLogout={() => setPerfil(null)} />
+            <Shell perfil={perfil} sinConexion={sinConexion !== null} onLogout={() => { setSinConexion(null); setPerfil(null) }} />
           )}
         </SafeAreaView>
       </ThemeProvider>
@@ -211,7 +286,7 @@ export default function App() {
   )
 }
 
-function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
+function Shell({ perfil, sinConexion, onLogout }: { perfil: Perfil; sinConexion: boolean; onLogout: () => void }) {
   const t = useTheme()
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
@@ -461,6 +536,18 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
           <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Salir</Text>
         </TouchableOpacity>
       </View>
+
+      {sinConexion ? (
+        <View
+          style={[styles.offline, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]}
+          accessibilityRole="alert"
+          accessibilityLabel="Modo sin conexión · tus registros se enviarán cuando vuelva la señal"
+        >
+          <Text style={[styles.offlineTexto, { color: t.warningText }]}>
+            Modo sin conexión · tus registros se enviarán cuando vuelva la señal
+          </Text>
+        </View>
+      ) : null}
 
       {pendientes > 0 ? (
         <View style={[styles.offline, { backgroundColor: t.warningBg, borderColor: t.warningBorder }]} accessibilityRole="alert">

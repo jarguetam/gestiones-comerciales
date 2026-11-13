@@ -24,7 +24,12 @@ export async function logoutCleanupNativo(
     userId: perfil.id,
     tenantId: perfil.tenantId,
     deleteSession: async () => {
-      await cliente.auth.signOut()
+      const { error } = await cliente.auth.signOut()
+      if (error) {
+        // Sin red el cierre global falla y supabase-js conserva la sesión: se fuerza el cierre local.
+        console.warn('GC-AUTH-027: no se pudo cerrar sesión en el servidor, se cierra solo en el teléfono', error)
+        await cliente.auth.signOut({ scope: 'local' })
+      }
       await borrarSesionLocal()
     },
     pendientes,
