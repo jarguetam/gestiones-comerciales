@@ -487,7 +487,8 @@ Cada escritura en producción se muestra a Josue y se ejecuta solo con su visto 
   - Login y permiso de ubicación «siempre».
   - Una jornada de rastreo en segundo plano con puntos en el mapa.
   - **Modo avión con la app recién abierta:** se ve la agenda y la pestaña Depósitos sigue según los módulos guardados; se programa, se hace check-in y se cierra.
-  - **Sesión vencida sin señal:** con el teléfono más de una hora sin señal, la app abre con el perfil guardado. Si `supabase-js` cierra la sesión en ese caso, detenerse y reportarlo como hallazgo; no parcharlo a ciegas.
+  - **Sesión vencida sin señal:** con el teléfono más de una hora sin señal, la app entra en modo sin conexión con el aviso «Modo sin conexión · tus registros se enviarán cuando vuelva la señal», con el usuario y el perfil guardados (la agenda sale de la caché y lo que se registre queda en la cola). Al volver la señal, la app renueva la sesión sola (cada 30 s o al volver a primer plano) y el aviso desaparece sin pedir login; la cola se envía. Si en cambio `supabase-js` cierra la sesión, detenerse y reportarlo como hallazgo; no parcharlo a ciegas.
+  - **Más de 7 días sin señal:** con la sesión vencida hace más de 7 días, la app va a Login (no entra en modo sin conexión) y la cola se conserva; al volver a entrar con el mismo usuario, se envía. Una sesión guardada corrupta también lleva a Login (`GC-AUTH-025`); un refresh rechazado por el servidor, a Login con `GC-AUTH-026`, siempre conservando la cola.
   - **Señal débil** (limitada o intermitente): ninguna pantalla queda girando más de 15 s, y la cola sigue avanzando.
   - Al reconectar, todo llega una sola vez y la oficina es la del asesor.
   - Cerrar sesión con pendientes avisa, conserva la cola y, al volver a entrar con el mismo usuario, la envía.

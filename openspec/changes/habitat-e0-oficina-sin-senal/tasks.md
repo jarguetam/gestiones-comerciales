@@ -24,3 +24,5 @@
 - [ ] 10. Desplegar en orden: base de datos → web → APK.
   - Listo cuando: CI `validate` en verde; en producción `visita_crear` incluye `p_cliente_key uuid` y `zona` tiene `municipio_id`; la web publicada crea visitas con la oficina del usuario; el build EAS `preview` queda `FINISHED` con enlace de instalación.
   - **E2E del change (dispositivo real):** en modo avión, con la app recién abierta, el asesor ve su agenda, programa una actividad, le hace check-in y la cierra; al reconectar todo llega una sola vez y en orden.
+- [ ] 11. Modo sin conexión con sesión vencida y reglas de caché (plan `docs/superpowers/plans/2026-11-13-habitat-e0b-sesion-sin-conexion.md`).
+  - Listo cuando: pasan las pruebas de modo sin conexión, cierre de sesión sin red y caché sin documento, y `pnpm --filter @gc/mobile typecheck`; en dispositivo, con la sesión vencida sin señal la app entra en modo sin conexión y sale sola al volver la señal; con más de 7 días va a Login.

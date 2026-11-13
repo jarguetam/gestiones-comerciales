@@ -215,3 +215,71 @@ La web SHALL crear visitas con el RPC `visita_crear`, enviando oficina y geograf
 #### Scenario: Validaciones previas
 - **WHEN** falta subactividad o bloque de horas
 - **THEN** lanza `GC-VIS-001` o `GC-VIS-003`, respectivamente
+
+### Requirement: Modo sin conexión con sesión vencida
+Si al abrir la app llega `INITIAL_SESSION` sin sesión pero hay una sesión guardada cuyo token de acceso venció hace 7 días o menos, la app SHALL entrar en modo sin conexión con el usuario guardado, los claims decodificados localmente y el perfil en caché (o degradado), y SHALL mostrar el aviso «Modo sin conexión · tus registros se enviarán cuando vuelva la señal». NUNCA SHALL enviar el JWT vencido: las escrituras esperan (`GC-NET-004`) y las lecturas usan la caché. Cada 30 s y al volver la app a primer plano SHALL intentar `refreshSession({ refresh_token })`.
+
+#### Scenario: Entrada en modo sin conexión
+- **WHEN** llega `INITIAL_SESSION` sin sesión y la sesión guardada venció hace 2 días
+- **THEN** la app entra en modo sin conexión con el usuario guardado, muestra el aviso y no va a Login
+
+#### Scenario: Salida normal al volver la señal
+- **WHEN** en modo sin conexión el `refreshSession` tiene éxito
+- **THEN** la app pasa a modo normal, el aviso desaparece y la cola se envía con el nuevo token
+
+#### Scenario: Sigue sin señal
+- **WHEN** en modo sin conexión el `refreshSession` falla por red
+- **THEN** la app permanece en modo sin conexión y reintenta en el siguiente ciclo
+
+#### Scenario: Refresh rechazado por el servidor
+- **WHEN** en modo sin conexión el servidor rechaza el `refresh_token`
+- **THEN** la app registra `GC-AUTH-026`, va a Login y conserva la cola
+
+#### Scenario: Más de 7 días
+- **WHEN** el token de acceso guardado venció hace más de 7 días
+- **THEN** la app va a Login y no entra en modo sin conexión
+
+#### Scenario: Sesión guardada corrupta
+- **WHEN** la sesión guardada no se puede interpretar
+- **THEN** se registra `GC-AUTH-025` y la app va a Login
+
+#### Scenario: Sin perfil en caché
+- **WHEN** la app entra en modo sin conexión y no hay perfil en caché
+- **THEN** usa un perfil degradado (decisión R4)
+
+### Requirement: Cerrar sesión sin conexión borra la sesión guardada
+El cierre de sesión SHALL borrar siempre las claves de sesión guardadas (`CLAVE_SESION`, `-user` y `-code-verifier`), aunque `signOut` falle sin red, y NO SHALL borrar los ítems sin enviar de la cola.
+
+#### Scenario: signOut falla sin red
+- **WHEN** el usuario sale sin señal y `signOut` falla
+- **THEN** se registra `GC-AUTH-027`, se borran las tres claves y la app vuelve a Login con la cola intacta
+
+#### Scenario: Falla el borrado de claves
+- **WHEN** falla el borrado de una de las claves
+- **THEN** se registra `GC-AUTH-028` y el cierre continúa
+
+#### Scenario: Falla la desactivación del dispositivo
+- **WHEN** la desactivación del dispositivo falla al salir
+- **THEN** se registra la advertencia `GC-AUTH-029` y no se bloquea el regreso a Login
+
+### Requirement: Perfil degradado en vez de bloquear el login
+Un error no transitorio al leer el perfil NO SHALL bloquear el ingreso: la app SHALL continuar con un perfil degradado y registrar `GC-AUTH-023` (decisión R3). Sin señal y sin perfil en caché, SHALL usar también un perfil degradado (decisión R4).
+
+#### Scenario: Error de lectura del perfil que no es de red
+- **WHEN** la lectura del perfil falla con un error del servidor (no transitorio)
+- **THEN** el usuario entra con perfil degradado y se registra `GC-AUTH-023`
+
+### Requirement: La caché de clientes no guarda documento
+La caché de campo SHALL guardar de cada cliente solo `id`, `nombre`, `direccion` y `categoria`, sin número de documento. La búsqueda sin señal SHALL ser por nombre o categoría; el servidor SHALL detectar el cliente duplicado por documento.
+
+#### Scenario: Campos guardados
+- **WHEN** se guarda la lista de clientes en la caché
+- **THEN** cada registro contiene solo `id`, `nombre`, `direccion` y `categoria`
+
+#### Scenario: Búsqueda sin señal
+- **WHEN** se busca un cliente sin señal por nombre o categoría
+- **THEN** se encuentra en la caché; la búsqueda por documento no está disponible
+
+#### Scenario: Cliente duplicado
+- **WHEN** se registra sin señal un cliente cuyo documento ya existe
+- **THEN** el servidor lo detecta al sincronizar y rechaza el duplicado
