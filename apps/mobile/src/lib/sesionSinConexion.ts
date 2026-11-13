@@ -85,11 +85,41 @@ export async function perfilSinConexion(
 
 export type DecisionRenovar = 'normal' | 'seguir' | 'login'
 
-export function decidirTrasRenovar(r: { session: unknown | null; error: unknown | null }): DecisionRenovar {
+function esErrorAuth(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false
+  const o = e as { __isAuthError?: unknown; status?: unknown; name?: unknown }
+  return o.__isAuthError === true || typeof o.status === 'number' || (typeof o.name === 'string' && o.name.startsWith('Auth'))
+}
+
+export function decidirTrasRenovar(
+  r: { session: unknown | null; error: unknown | null },
+  advertir: Advertir = (m, d) => console.warn(m, d),
+): DecisionRenovar {
   if (r.session) return 'normal'
-  if (r.error) {
-    const nombre = (r.error as { name?: unknown }).name
-    return nombre === 'AuthRetryableFetchError' || esErrorTransitorio(r.error) ? 'seguir' : 'login'
+  if (!r.error) return 'login'
+  const nombre = (r.error as { name?: unknown }).name
+  if (nombre === 'AuthRetryableFetchError' || esErrorTransitorio(r.error)) return 'seguir'
+  if (esErrorAuth(r.error)) return 'login'
+  // Un fallo local (p. ej. SecureStore) no dice nada de la sesión: mandar a Login sin señal dejaría al asesor sin trabajar.
+  advertir('GC-AUTH-033: error inesperado al renovar', r.error)
+  return 'seguir'
+}
+
+/**
+ * Intento de salir del modo sin conexión. Usa `getSession`: lee el token guardado en ese momento
+ * (no una copia que auth-js ya pudo rotar), renueva solo si hace falta y, con el almacenamiento
+ * vacío (tras salir), no llama a la red ni vuelve a guardar una sesión.
+ */
+export async function renovarSinConexion(
+  auth: { getSession(): Promise<{ data: { session: unknown | null }; error: unknown | null }> },
+  advertir: Advertir = (m, d) => console.warn(m, d),
+): Promise<{ decision: DecisionRenovar; error: unknown | null }> {
+  let r: { session: unknown | null; error: unknown | null }
+  try {
+    const { data, error } = await auth.getSession()
+    r = { session: data.session, error }
+  } catch (e) {
+    r = { session: null, error: e }
   }
-  return 'login'
+  return { decision: decidirTrasRenovar(r, advertir), error: r.error }
 }

@@ -8,6 +8,7 @@ import {
   leerSesionGuardada,
   perfilSinConexion,
   puedeEntrarSinConexion,
+  renovarSinConexion,
   type SesionGuardada,
 } from '../src/lib/sesionSinConexion.ts'
 
@@ -102,4 +103,66 @@ test('decidirTrasRenovar', () => {
     'login',
   )
   assert.equal(decidirTrasRenovar({ session: null, error: null }), 'login')
+})
+
+test('decidirTrasRenovar: AuthRetryableFetchError sin mensaje de red sigue (por el nombre)', () => {
+  assert.equal(
+    decidirTrasRenovar({ session: null, error: { name: 'AuthRetryableFetchError', status: 503, message: 'Service Unavailable' } }),
+    'seguir',
+  )
+})
+
+test('decidirTrasRenovar: GC-AUTH-033 error que no es de auth (SecureStore) sigue y avisa', () => {
+  const avisos: Array<[string, unknown]> = []
+  const e = new Error('could not decrypt the stored value')
+  assert.equal(decidirTrasRenovar({ session: null, error: e }, (m, d) => avisos.push([m, d])), 'seguir')
+  assert.deepEqual(avisos, [['GC-AUTH-033: error inesperado al renovar', e]])
+})
+
+test('decidirTrasRenovar: errores de auth van a Login sin GC-AUTH-033', () => {
+  const avisos: string[] = []
+  const advertir = (m: string) => { avisos.push(m) }
+  for (const error of [
+    { name: 'AuthApiError', status: 400, message: 'Invalid Refresh Token: Already Used' },
+    { name: 'AuthSessionMissingError', status: 400, message: 'Auth session missing!' },
+    { __isAuthError: true, name: 'AuthError', message: 'x' },
+  ]) {
+    assert.equal(decidirTrasRenovar({ session: null, error }, advertir), 'login')
+  }
+  assert.equal(decidirTrasRenovar({ session: null, error: null }, advertir), 'login')
+  assert.deepEqual(avisos, [])
+})
+
+function authCon(getSession: () => Promise<{ data: { session: unknown | null }; error: unknown | null }>) {
+  return { getSession }
+}
+
+test('renovarSinConexion: sesión guardada vigente o renovada → normal', async () => {
+  const r = await renovarSinConexion(authCon(async () => ({ data: { session: { access_token: 'nuevo' } }, error: null })))
+  assert.deepEqual(r, { decision: 'normal', error: null })
+})
+
+test('renovarSinConexion: fallo de red reintentable → seguir', async () => {
+  const error = { name: 'AuthRetryableFetchError', status: 0, message: 'Network request failed' }
+  const r = await renovarSinConexion(authCon(async () => ({ data: { session: null }, error })))
+  assert.deepEqual(r, { decision: 'seguir', error })
+})
+
+test('renovarSinConexion: refresh rechazado (auth-js ya borró la sesión) → login', async () => {
+  const error = { name: 'AuthApiError', status: 400, message: 'Invalid Refresh Token: Already Used' }
+  const r = await renovarSinConexion(authCon(async () => ({ data: { session: null }, error })))
+  assert.deepEqual(r, { decision: 'login', error })
+})
+
+test('renovarSinConexion: almacenamiento vacío (tras salir) → login', async () => {
+  const r = await renovarSinConexion(authCon(async () => ({ data: { session: null }, error: null })))
+  assert.deepEqual(r, { decision: 'login', error: null })
+})
+
+test('renovarSinConexion: GC-AUTH-033 getSession que lanza un error ajeno a auth → seguir', async () => {
+  const avisos: string[] = []
+  const e = new Error('SecureStore: keystore unavailable')
+  const r = await renovarSinConexion(authCon(async () => { throw e }), (m) => { avisos.push(m) })
+  assert.deepEqual(r, { decision: 'seguir', error: e })
+  assert.deepEqual(avisos, ['GC-AUTH-033: error inesperado al renovar'])
 })
