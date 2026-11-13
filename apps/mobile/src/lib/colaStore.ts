@@ -1,4 +1,12 @@
-import { encolar, procesarCola, reactivar, reintentables, type AltaCola, type ItemCola } from './cola.ts'
+import {
+  bloqueadoPorDependencia,
+  encolar,
+  intentarItem,
+  reactivar,
+  reintentables,
+  type AltaCola,
+  type ItemCola,
+} from './cola.ts'
 import type { ColaPersist } from './colaPersistencia'
 
 interface ContextoCola {
@@ -103,6 +111,25 @@ export async function encolarYSync(
   return sincronizarAhora(ejecutar, Date.now(), clave)
 }
 
+/**
+ * Para pantallas: espera solo el guardado durable (la captura ya no se pierde) y arranca
+ * el envío sin esperarlo. `envio` se resuelve con el estado del ítem al terminar ese pase
+ * (un rechazo del servidor queda en `estado: 'error'` con su `ultimoError`) y se rechaza
+ * si el pase falla (disco, sesión). Quien lo use debe manejar ambos casos.
+ */
+export async function encolarEnFondo(
+  alta: AltaCola,
+  ejecutar: (item: ItemCola) => Promise<void>,
+  clave?: string,
+): Promise<{ envio: Promise<ItemCola | undefined> }> {
+  const ctx = activo
+  await encolarMutacion(alta, clave)
+  const id = ctx.items.find((i) => i.clienteKey === alta.clienteKey && i.estado !== 'enviado')?.id
+  if (ctx !== activo || id === undefined) return { envio: Promise.resolve(undefined) }
+  const envio = sincronizarAhora(ejecutar, Date.now(), clave).then((items) => items.find((i) => i.id === id))
+  return { envio }
+}
+
 export function sincronizarAhora(ejecutar: (item: ItemCola) => Promise<void>, ahora = Date.now(), clave?: string) {
   const ctx = activo
   if (!ctx.persist || ctx.clave !== clave) {
@@ -117,10 +144,14 @@ export function sincronizarAhora(ejecutar: (item: ItemCola) => Promise<void>, ah
     const lote = reintentables(ctx.items, ahora)
     for (const item of lote) {
       if (!vigente()) break
-      const [resultado] = await procesarCola([item], ejecutar, ahora)
+      // Contra el estado vivo: un check-in sale en este pase si su alta acaba de llegar.
+      if (bloqueadoPorDependencia(item, ctx.items)) continue
+      const { resultado, transitorio } = await intentarItem(item, ejecutar, ahora)
       if (!vigente()) break
       // El RPC solo reemplaza su elemento; conserva las altas concurrentes.
       await publicar(ctx.items.map((i) => i.id === item.id ? resultado : i), ctx)
+      // Sin señal los siguientes fallarían igual: esperan intactos al próximo pase.
+      if (transitorio) break
     }
     return ctx.items
   })().finally(() => { ctx.sync = null })

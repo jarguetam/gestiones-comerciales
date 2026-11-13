@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import {
   backoffMs,
+  bloqueadoPorDependencia,
   contarPendientes,
   ESPERA_SIN_RED_MS,
   marcarSinRed,
@@ -178,4 +179,89 @@ test('sinEnviar cuenta pendientes y errores, no enviados', () => {
 test('mismo clienteKey no duplica la visita', () => {
   const a = encolar([], { tipo: 'visita', payload: {}, clienteKey: 'visita:u1' })
   assert.equal(encolar(a, { tipo: 'visita', payload: {}, clienteKey: 'visita:u1' }).length, 1)
+})
+
+const red = () => ({ message: 'Network request failed' })
+
+test('procesarCola se detiene en el primer error transitorio y no toca los siguientes', async () => {
+  const inicial = [
+    item({ id: 'a', clienteKey: 'a' }),
+    item({ id: 'b', clienteKey: 'b' }),
+    item({ id: 'c', clienteKey: 'c', estado: 'error', intentos: 2, ultimoError: 'x' }),
+  ]
+  const llamados: string[] = []
+  const r = await procesarCola(inicial, async (it) => {
+    llamados.push(it.id)
+    if (it.id === 'b') throw red()
+  }, 1000)
+  assert.deepEqual(llamados, ['a', 'b'])
+  assert.equal(r[0].estado, 'enviado')
+  assert.deepEqual([r[1].estado, r[1].intentos, r[1].ultimoError], ['pendiente', 0, 'GC-NET-001: sin conexión'])
+  assert.deepEqual(r[2], inicial[2])
+})
+
+const alta = (over: Partial<ItemCola> = {}) =>
+  item({ id: 'v', tipo: 'visita', payload: { clienteKey: 'u1' }, clienteKey: 'visita:u1', ...over })
+const checkin = (over: Partial<ItemCola> = {}) =>
+  item({ id: 'ci', tipo: 'visita_checkin', payload: { visitaClienteKey: 'u1', latitud: 1, longitud: 2 }, clienteKey: 'visita_checkin:u1', ...over })
+const cierre = (over: Partial<ItemCola> = {}) =>
+  item({ id: 'co', tipo: 'visita_completar', payload: { visitaClienteKey: 'u1', latitud: 3, longitud: 4 }, clienteKey: 'visita_completar:u1', ...over })
+
+test('bloqueadoPorDependencia: check-in y cierre esperan a su alta; el cierre, al check-in previo', () => {
+  assert.equal(bloqueadoPorDependencia(checkin(), [alta(), checkin()]), true)
+  assert.equal(bloqueadoPorDependencia(checkin(), [alta({ estado: 'enviado' }), checkin()]), false)
+  assert.equal(bloqueadoPorDependencia(cierre(), [alta({ estado: 'enviado' }), checkin(), cierre()]), true)
+  assert.equal(bloqueadoPorDependencia(cierre(), [alta({ estado: 'enviado' }), checkin({ estado: 'enviado' }), cierre()]), false)
+  // Visita que ya vino del servidor: no hay alta en la cola.
+  assert.equal(bloqueadoPorDependencia(checkin(), [checkin()]), false)
+  // Un check-in posterior al cierre no lo bloquea.
+  assert.equal(bloqueadoPorDependencia(cierre(), [cierre(), checkin()]), false)
+  // El alta en sí y otros tipos nunca esperan.
+  assert.equal(bloqueadoPorDependencia(alta(), [alta(), checkin()]), false)
+})
+
+test('dependiente no se envía mientras su alta está pendiente y no gasta intentos', async () => {
+  const inicial = [alta({ estado: 'error', intentos: 1, proximoIntentoEn: 9e12 }), checkin()]
+  const llamados: string[] = []
+  const r = await procesarCola(inicial, async (it) => { llamados.push(it.id) }, 1000)
+  assert.deepEqual(llamados, [])
+  assert.deepEqual(r[1], inicial[1])
+})
+
+test('si el servidor rechaza el alta, su check-in espera sin gastar intentos', async () => {
+  const llamados: string[] = []
+  const r = await procesarCola([alta(), checkin()], async (it) => {
+    llamados.push(it.id)
+    if (it.tipo === 'visita') throw { code: 'P0001', message: 'GC-VIS-002: la empresa no tiene oficinas activas' }
+  }, 1000)
+  assert.deepEqual(llamados, ['v'])
+  assert.deepEqual([r[0].estado, r[0].intentos], ['error', 1])
+  assert.deepEqual([r[1].estado, r[1].intentos, r[1].ultimoError], ['pendiente', 0, undefined])
+})
+
+test('dependiente se envía una vez enviada su alta, en el mismo pase y en orden', async () => {
+  const llamados: string[] = []
+  const r = await procesarCola([alta(), checkin(), cierre()], async (it) => { llamados.push(it.id) }, 1000)
+  assert.deepEqual(llamados, ['v', 'ci', 'co'])
+  assert.deepEqual(r.map((i) => i.estado), ['enviado', 'enviado', 'enviado'])
+  const despues: string[] = []
+  await procesarCola([alta({ estado: 'enviado' }), checkin()], async (it) => { despues.push(it.id) }, 1000)
+  assert.deepEqual(despues, ['ci'])
+})
+
+test('el cierre espera mientras el check-in previo de la misma visita no está enviado', async () => {
+  const inicial = [checkin({ estado: 'error', intentos: 1, proximoIntentoEn: 9e12 }), cierre()]
+  const llamados: string[] = []
+  const r = await procesarCola(inicial, async (it) => { llamados.push(it.id) }, 1000)
+  assert.deepEqual(llamados, [])
+  assert.deepEqual(r[1], inicial[1])
+})
+
+test('ítems legados solo con visitaId nunca esperan', async () => {
+  const legadoCheckin = item({ id: 'l1', tipo: 'visita_checkin', payload: { visitaId: 104 }, clienteKey: 'visita_checkin:104', estado: 'error', intentos: 1, proximoIntentoEn: 9e12 })
+  const legadoCierre = item({ id: 'l2', tipo: 'visita_completar', payload: { visitaId: 104 }, clienteKey: 'visita_completar:104' })
+  assert.equal(bloqueadoPorDependencia(legadoCierre, [alta(), legadoCheckin, legadoCierre]), false)
+  const llamados: string[] = []
+  await procesarCola([alta({ estado: 'error', intentos: 1, proximoIntentoEn: 9e12 }), legadoCheckin, legadoCierre], async (it) => { llamados.push(it.id) }, 1000)
+  assert.deepEqual(llamados, ['l2'])
 })
