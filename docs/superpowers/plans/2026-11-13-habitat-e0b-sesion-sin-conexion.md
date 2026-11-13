@@ -69,7 +69,7 @@
   - `interface SesionGuardada { access_token: string; refresh_token: string; expires_at?: number; user: { id: string; email?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> } }`
   - `leerSesionGuardada(storage: { getItem(k: string): Promise<string | null> }, clave: string, advertir?: (m: string, d: unknown) => void): Promise<SesionGuardada | null>`. JSON inválido o sin `access_token`/`refresh_token`/`user.id` → `null` + `advertir('GC-AUTH-025: sesión guardada ilegible', err)`. Sin valor → `null` sin advertir.
   - `MAX_DIAS_SIN_CONEXION = 7`
-  - `puedeEntrarSinConexion(g: SesionGuardada, ahoraMs: number): boolean`. Si `expires_at` falta → `true`. Si no → `ahoraMs - expires_at*1000 <= 7 días`.
+  - `puedeEntrarSinConexion(g: SesionGuardada, ahoraMs: number): boolean`. Si `expires_at` falta → `false` (revisión final: no se puede medir el plazo). Si no → `ahoraMs - expires_at*1000 <= 7 días`.
   - `perfilSinConexion(g: SesionGuardada, cache: CacheCampo, advertir?): Promise<Perfil | null>`:
     - Claims con `claimsEmpresaDe({ accessToken: g.access_token, appMetadata: g.user.app_metadata })`; sin claims → `null`.
     - Si hay claims, llama a `resolverPerfil` (de `perfilRespaldo.ts`) con `leerFuentes` que lanza `new Error(MENSAJE_SESION_SIN_RENOVAR)` (de `sesionVigente.ts`), `clave = claveParticionCola(tenantId, g.user.id)` y la caché recibida. Así usa el perfil guardado o, si no hay, el degradado.
@@ -81,7 +81,7 @@
 - [ ] **Step 1: Pruebas que fallan.**
   - `claveSesionSupabase('https://xcoeipsnykceorcvjwve.supabase.co')` → `'sb-xcoeipsnykceorcvjwve-auth-token'`; `'http://127.0.0.1:54321'` → `'sb-127-auth-token'`.
   - `leerSesionGuardada`: JSON válido → objeto; `'{'` → `null` + advertencia `GC-AUTH-025`; sin `refresh_token` → `null` + advertencia; storage vacío → `null` sin advertencia (Review Focus 1).
-  - `puedeEntrarSinConexion`: vencido hace 6 días → `true`; hace 8 días → `false` (Review Focus 5); sin `expires_at` → `true`.
+  - `puedeEntrarSinConexion`: vencido hace 6 días → `true`; hace 8 días → `false` (Review Focus 5); sin `expires_at` → `false`.
   - `perfilSinConexion`: con perfil en `cacheMemoria()` → ese perfil (con sus `modulos`); sin caché → perfil degradado con el `tenantId` y el `rol` del JWT; JWT sin claims → `null`.
   - `decidirTrasRenovar`: `{ session: {...}, error: null }` → `'normal'`; `{ session: null, error: { name: 'AuthRetryableFetchError', message: 'Failed to fetch' } }` → `'seguir'` (Review Focus 2); `{ session: null, error: { name: 'AuthApiError', status: 400, message: 'Invalid Refresh Token' } }` → `'login'` (Review Focus 3).
 - [ ] **Step 2: Verlas fallar.** Run: `pnpm --filter @gc/mobile test`. Expected: FAIL.

@@ -217,27 +217,37 @@ La web SHALL crear visitas con el RPC `visita_crear`, enviando oficina y geograf
 - **THEN** lanza `GC-VIS-001` o `GC-VIS-003`, respectivamente
 
 ### Requirement: Modo sin conexión con sesión vencida
-Si al abrir la app llega `INITIAL_SESSION` sin sesión pero hay una sesión guardada cuyo token de acceso venció hace 7 días o menos, la app SHALL entrar en modo sin conexión con el usuario guardado, los claims decodificados localmente y el perfil en caché (o degradado), y SHALL mostrar el aviso «Modo sin conexión · tus registros se enviarán cuando vuelva la señal». NUNCA SHALL enviar el JWT vencido: las escrituras esperan (`GC-NET-004`) y las lecturas usan la caché. Cada 30 s y al volver la app a primer plano SHALL intentar `refreshSession({ refresh_token })`.
+Si al abrir la app llega `INITIAL_SESSION` sin sesión pero hay una sesión guardada cuyo token de acceso venció hace 7 días o menos, la app SHALL entrar en modo sin conexión con el usuario guardado, los claims decodificados localmente y el perfil en caché (o degradado), y SHALL mostrar el aviso «Modo sin conexión · tus registros se enviarán cuando vuelva la señal». NUNCA SHALL enviar el JWT vencido: las escrituras esperan (`GC-NET-004`) y las lecturas usan la caché. Cada 30 s y al volver la app a primer plano SHALL intentar renovar con `getSession()`, que lee el token guardado en ese momento y lo renueva solo si hace falta (nunca una copia del `refresh_token`, que auth-js pudo rotar o borrar). La sesión guardada sin `expires_at` no entra en modo sin conexión.
+
+Cadencia real: auth-js reintenta cada renovación ~25 s y, tras un fallo, devuelve el mismo fallo durante 60 s, así que un intento real sale cada ~85–90 s. Al volver la señal el aviso puede tardar hasta ~2 min en irse, más hasta 30 s para el envío de la cola. Al abrir en modo avión con el token vencido, «Cargando sesión…» puede durar ~25–30 s antes del modo sin conexión (medir en el teléfono; si se confirma, evaluar una «entrada temprana» como seguimiento).
 
 #### Scenario: Entrada en modo sin conexión
 - **WHEN** llega `INITIAL_SESSION` sin sesión y la sesión guardada venció hace 2 días
 - **THEN** la app entra en modo sin conexión con el usuario guardado, muestra el aviso y no va a Login
 
 #### Scenario: Salida normal al volver la señal
-- **WHEN** en modo sin conexión el `refreshSession` tiene éxito
+- **WHEN** en modo sin conexión la renovación tiene éxito (o auth-js ya había guardado una sesión vigente)
 - **THEN** la app pasa a modo normal, el aviso desaparece y la cola se envía con el nuevo token
 
 #### Scenario: Sigue sin señal
-- **WHEN** en modo sin conexión el `refreshSession` falla por red
+- **WHEN** en modo sin conexión la renovación falla por red
 - **THEN** la app permanece en modo sin conexión y reintenta en el siguiente ciclo
 
+#### Scenario: Error local al renovar
+- **WHEN** la renovación falla por un error ajeno a auth (p. ej. SecureStore)
+- **THEN** se registra `GC-AUTH-033` y la app permanece en modo sin conexión
+
 #### Scenario: Refresh rechazado por el servidor
-- **WHEN** en modo sin conexión el servidor rechaza el `refresh_token`
+- **WHEN** en modo sin conexión el servidor rechaza el `refresh_token` (auth-js ya borró la sesión) o no queda sesión guardada
 - **THEN** la app registra `GC-AUTH-026`, va a Login y conserva la cola
 
 #### Scenario: Más de 7 días
 - **WHEN** el token de acceso guardado venció hace más de 7 días
-- **THEN** la app va a Login y no entra en modo sin conexión
+- **THEN** la app va a Login, no entra en modo sin conexión y borra la sesión guardada (la cola se conserva), así auth-js no entra solo desde Login al volver la señal
+
+#### Scenario: Sesión guardada sin `expires_at`
+- **WHEN** la sesión guardada no trae `expires_at`
+- **THEN** la app va a Login (no se puede medir el plazo de 7 días) y borra la sesión guardada, igual que con más de 7 días; la cola se conserva
 
 #### Scenario: Sesión guardada corrupta
 - **WHEN** la sesión guardada no se puede interpretar
@@ -247,12 +257,22 @@ Si al abrir la app llega `INITIAL_SESSION` sin sesión pero hay una sesión guar
 - **WHEN** la app entra en modo sin conexión y no hay perfil en caché
 - **THEN** usa un perfil degradado (decisión R4)
 
+#### Scenario: Falla el armado del perfil sin conexión
+- **WHEN** leer la caché o armar el perfil sin conexión lanza
+- **THEN** se registra `GC-AUTH-032` y la app va a Login
+
 ### Requirement: Cerrar sesión sin conexión borra la sesión guardada
-El cierre de sesión SHALL borrar siempre las claves de sesión guardadas (`CLAVE_SESION`, `-user` y `-code-verifier`), aunque `signOut` falle sin red, y NO SHALL borrar los ítems sin enviar de la cola.
+El cierre de sesión SHALL borrar siempre las claves de sesión guardadas (`CLAVE_SESION`, `-user` y `-code-verifier`), aunque `signOut` falle sin red, y NO SHALL borrar los ítems sin enviar de la cola. Las claves locales SHALL borrarse primero, antes de esperar la red: si el asesor cierra la app durante la espera, la sesión ya no está. Desde ese momento el modo sin conexión deja de intentar renovar y «Salir» queda deshabilitado y ocupado. `signOut` y la detención del rastreo esperan como máximo 3 s cada uno.
+
+Con las claves ya borradas `signOut` no llega al servidor, así que la revocación se hace aparte con el token leído antes de borrar, solo si no venció. Con el token vencido (el caso sin señal) no se revoca; tampoco al salir con señal pero con el token ya vencido, que antes auth-js renovaba y revocaba.
 
 #### Scenario: signOut falla sin red
-- **WHEN** el usuario sale sin señal y `signOut` falla
+- **WHEN** el usuario sale sin señal y `signOut` (o la revocación) falla o no responde en 3 s
 - **THEN** se registra `GC-AUTH-027`, se borran las tres claves y la app vuelve a Login con la cola intacta
+
+#### Scenario: El rastreo no se detiene a tiempo
+- **WHEN** detener el rastreo al salir no termina en 3 s o falla
+- **THEN** se registra `GC-RAS-017` y el cierre continúa
 
 #### Scenario: Falla el borrado de claves
 - **WHEN** falla el borrado de una de las claves
