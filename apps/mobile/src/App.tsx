@@ -32,11 +32,10 @@ import SyncScreen from './screens/SyncScreen'
 import { supabase, CLAVE_SESION, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { sesionStorage } from './lib/sesionStorage'
 import {
-  decidirTrasRenovar,
   leerSesionGuardada,
   perfilSinConexion,
   puedeEntrarSinConexion,
-  type SesionGuardada,
+  renovarSinConexion,
 } from './lib/sesionSinConexion'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
@@ -98,7 +97,9 @@ export default function App() {
   const [listo, setListo] = useState(false)
   const [recuperar, setRecuperar] = useState(false)
   const [colaLista, setColaLista] = useState<string | null>(null)
-  const [sinConexion, setSinConexion] = useState<SesionGuardada | null>(null)
+  const [sinConexion, setSinConexion] = useState(false)
+  // Desde que empieza un cierre de sesión, el modo sin conexión deja de intentar renovar.
+  const renovacionPausada = useRef(false)
   const [errorCola, setErrorCola] = useState<string | null>(null)
   const [intentoCola, setIntentoCola] = useState(0)
   const claveCola = perfil ? claveParticionCola(perfil.tenantId, perfil.id) : null
@@ -137,7 +138,7 @@ export default function App() {
   useEffect(() => {
     return suscribirSesion(supabase, async (estado, event) => {
       if (event === 'SIGNED_OUT') {
-        setSinConexion(null)
+        setSinConexion(false)
         configurarPersistencia(null)
         setColaLista(null)
         setPerfil(null)
@@ -152,7 +153,7 @@ export default function App() {
             const perfilLocal = await perfilSinConexion(guardada, abrirCacheCampo())
             if (perfilLocal) {
               setPerfil(perfilLocal)
-              setSinConexion(guardada)
+              setSinConexion(true)
               setListo(true)
               return
             }
@@ -175,7 +176,7 @@ export default function App() {
             setPerfil(null)
           }
         } else setPerfil(null)
-        setSinConexion(null)
+        setSinConexion(false)
         setListo(true)
       }
     })
@@ -187,25 +188,18 @@ export default function App() {
     let vigente = true
     let enCurso = false
     const renovar = () => {
-      if (enCurso) return
+      if (enCurso || renovacionPausada.current) return
       enCurso = true
       void (async () => {
-        let resultado: { session: unknown | null; error: unknown | null }
         try {
-          const r = await supabase.auth.refreshSession({ refresh_token: sinConexion.refresh_token })
-          resultado = { session: r.data?.session ?? null, error: r.error }
-        } catch (e) {
-          // refreshSession puede lanzar ante un fallo inesperado: se clasifica igual que un error devuelto.
-          resultado = { session: null, error: e }
-        }
-        try {
-          if (!vigente) return
-          const decision = decidirTrasRenovar(resultado)
+          const { decision, error } = await renovarSinConexion(supabase.auth)
+          // El cierre de sesión pudo empezar mientras se esperaba la respuesta.
+          if (!vigente || renovacionPausada.current) return
           if (decision === 'normal') {
-            setSinConexion(null)
+            setSinConexion(false)
           } else if (decision === 'login') {
-            console.warn('GC-AUTH-026: sesión rechazada al renovar', resultado.error)
-            setSinConexion(null)
+            console.warn('GC-AUTH-026: sesión rechazada al renovar', error)
+            setSinConexion(false)
             setPerfil(null)
           }
         } finally {
@@ -278,7 +272,18 @@ export default function App() {
           ) : colaLista !== claveCola ? (
             <Cargando etiqueta="Cargando datos locales…" />
           ) : (
-            <Shell perfil={perfil} sinConexion={sinConexion !== null} onLogout={() => { setSinConexion(null); setPerfil(null) }} />
+            <Shell
+              perfil={perfil}
+              sinConexion={sinConexion}
+              onSaliendo={(saliendo) => {
+                renovacionPausada.current = saliendo
+              }}
+              onLogout={() => {
+                renovacionPausada.current = false
+                setSinConexion(false)
+                setPerfil(null)
+              }}
+            />
           )}
         </SafeAreaView>
       </ThemeProvider>
@@ -286,7 +291,17 @@ export default function App() {
   )
 }
 
-function Shell({ perfil, sinConexion, onLogout }: { perfil: Perfil; sinConexion: boolean; onLogout: () => void }) {
+function Shell({
+  perfil,
+  sinConexion,
+  onSaliendo,
+  onLogout,
+}: {
+  perfil: Perfil
+  sinConexion: boolean
+  onSaliendo: (saliendo: boolean) => void
+  onLogout: () => void
+}) {
   const t = useTheme()
   const [tab, setTab] = useState<Tab>('agenda')
   const [mas, setMas] = useState(false)
@@ -439,6 +454,7 @@ function Shell({ perfil, sinConexion, onLogout }: { perfil: Perfil; sinConexion:
 
   async function cerrarSesion() {
     saliendo.current = true
+    onSaliendo(true)
     try {
       await detenerRastreo(supabase)
       // Se recuenta justo antes de limpiar: mientras se detenía el rastreo pudo entrar un registro.
@@ -448,6 +464,7 @@ function Shell({ perfil, sinConexion, onLogout }: { perfil: Perfil; sinConexion:
       )
     } catch (e) {
       saliendo.current = false
+      onSaliendo(false)
       throw e
     }
     onLogout()
