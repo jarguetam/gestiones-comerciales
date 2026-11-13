@@ -48,3 +48,100 @@ test('GC-AUTH-028 removeItem que lanza: avisa, intenta las demás y no rechaza',
   assert.equal(avisos.length, 1)
   assert.match(avisos[0], /GC-AUTH-028/)
 })
+
+const AHORA = 1_800_000_000_000
+
+function storageConSesion(expiresAt: number) {
+  const st = storageFalso([CLAVE, `${CLAVE}-user`, 'otra'])
+  const sesion = JSON.stringify({ access_token: 'jwt-a', refresh_token: 'r', expires_at: expiresAt, user: { id: 'u1' } })
+  return { ...st, async getItem(k: string) { return st.datos.has(k) ? (k === CLAVE ? sesion : 'x') : null } }
+}
+
+test('GC-AUTH-027 borra las claves antes de signOut y no espera más del límite', async () => {
+  const st = storageFalso([CLAVE, `${CLAVE}-user`, `${CLAVE}-code-verifier`, 'otra'])
+  const avisos: string[] = []
+  let clavesAlLlamar: string[] | null = null
+  await cerrarSesionYBorrar(
+    {
+      auth: {
+        signOut: () => {
+          clavesAlLlamar = [...st.datos.keys()]
+          return new Promise(() => undefined)
+        },
+      },
+    },
+    st, CLAVE, (m) => avisos.push(m), { limiteMs: 20 },
+  )
+  assert.deepEqual(clavesAlLlamar, ['otra'])
+  assert.deepEqual([...st.datos.keys()], ['otra'])
+  assert.deepEqual(avisos, ['GC-AUTH-027: no se pudo cerrar sesión en el servidor'])
+})
+
+test('token vigente: revoca en el servidor con ese token, ya sin claves locales', async () => {
+  const st = storageConSesion(AHORA / 1000 + 600)
+  const revocadas: Array<{ jwt: string; scope: unknown; claves: string[] }> = []
+  const avisos: string[] = []
+  await cerrarSesionYBorrar(
+    {
+      auth: {
+        signOut: async () => ({ error: null }),
+        admin: {
+          signOut: async (jwt: string, scope?: unknown) => {
+            revocadas.push({ jwt, scope, claves: [...st.datos.keys()] })
+            return { error: null }
+          },
+        },
+      },
+    },
+    st, CLAVE, (m) => avisos.push(m), { ahoraMs: () => AHORA },
+  )
+  assert.deepEqual(revocadas, [{ jwt: 'jwt-a', scope: 'global', claves: ['otra'] }])
+  assert.deepEqual(avisos, [])
+})
+
+test('token vencido (caso sin señal): no intenta revocar', async () => {
+  const st = storageConSesion(AHORA / 1000 - 60)
+  let revocada = false
+  await cerrarSesionYBorrar(
+    {
+      auth: {
+        signOut: async () => ({ error: null }),
+        admin: { signOut: async () => { revocada = true; return { error: null } } },
+      },
+    },
+    st, CLAVE, () => undefined, { ahoraMs: () => AHORA },
+  )
+  assert.equal(revocada, false)
+  assert.equal(st.datos.has(CLAVE), false)
+})
+
+test('GC-AUTH-027 revocación que falla o no responde: avisa y termina', async () => {
+  for (const revocar of [
+    async () => ({ error: { name: 'AuthApiError', status: 500, message: 'boom' } }),
+    () => new Promise<{ error: unknown }>(() => undefined),
+  ]) {
+    const st = storageConSesion(AHORA / 1000 + 600)
+    const avisos: string[] = []
+    await cerrarSesionYBorrar(
+      { auth: { signOut: async () => ({ error: null }), admin: { signOut: revocar } } },
+      st, CLAVE, (m) => avisos.push(m), { limiteMs: 20, ahoraMs: () => AHORA },
+    )
+    assert.deepEqual(avisos, ['GC-AUTH-027: no se pudo cerrar sesión en el servidor'])
+    assert.equal(st.datos.has(CLAVE), false)
+  }
+})
+
+test('revocación con 401: el token ya no sirve en el servidor y no se avisa', async () => {
+  const st = storageConSesion(AHORA / 1000 + 600)
+  const avisos: string[] = []
+  await cerrarSesionYBorrar(
+    {
+      auth: {
+        signOut: async () => ({ error: null }),
+        admin: { signOut: async () => ({ error: { name: 'AuthApiError', status: 401, message: 'invalid JWT' } }) },
+      },
+    },
+    st, CLAVE, (m) => avisos.push(m), { ahoraMs: () => AHORA },
+  )
+  assert.deepEqual(avisos, [])
+})
