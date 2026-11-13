@@ -4,7 +4,7 @@
 -- Autónomo: crea y revierte sus propios fixtures.
 -- ============================================================
 begin;
-select plan(11);
+select plan(12);
 
 -- ---------- preparación (como postgres) ----------
 insert into public.departamento (nombre) values ('E0 Depto A'), ('E0 Depto B');
@@ -159,8 +159,25 @@ select throws_ok(
     p_fecha => current_date, p_hora_inicio => '15:00'
   )$$,
   'P0001',
-  'GC-VIS-002: la zona no pertenece al tenant',
+  'GC-VIS-002: la oficina del usuario está inactiva o no pertenece a la empresa',
   'caso 9: zona inactiva del usuario no se reemplaza en silencio'
+);
+
+-- ---------- caso 9b: zona explícita inactiva -> mensaje de zona ajena ----------
+select throws_ok(
+  $$select public.visita_crear(
+    p_persona_nombre => 'E0 zona explícita inactiva',
+    p_actividad_id => (select id from public.actividad where tenant_id = '11111111-1111-1111-1111-111111111111'),
+    p_sub_actividad_id => (select id from public.sub_actividad where tenant_id = '11111111-1111-1111-1111-111111111111'),
+    p_actividad_hora_id => (select id from public.actividad_hora where tenant_id = '11111111-1111-1111-1111-111111111111'),
+    p_zona_id => (select id from public.zona
+                   where tenant_id = '11111111-1111-1111-1111-111111111111' and codigo = 'Z8E0'),
+    p_departamento_id => null, p_municipio_id => null,
+    p_fecha => current_date, p_hora_inicio => '15:30'
+  )$$,
+  'P0001',
+  'GC-VIS-002: la zona no pertenece al tenant',
+  'caso 9b: p_zona_id explícito conserva su mensaje'
 );
 
 -- ---------- caso 4b: T2 sin zonas activas -> GC-VIS-002 ----------

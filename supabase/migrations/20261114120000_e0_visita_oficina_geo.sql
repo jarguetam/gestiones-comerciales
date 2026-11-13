@@ -97,7 +97,11 @@ begin
   if not exists (
     select 1 from public.zona z where z.id = v_zona and z.tenant_id = v_tenant and z.activo
   ) then
-    raise exception 'GC-VIS-002: la zona no pertenece al tenant';
+    if p_zona_id is not null then
+      raise exception 'GC-VIS-002: la zona no pertenece al tenant';
+    end if;
+    -- La primera zona activa siempre pasa: si falla, es la oficina del propio usuario.
+    raise exception 'GC-VIS-002: la oficina del usuario está inactiva o no pertenece a la empresa';
   end if;
 
   -- 3. Municipio y 4. departamento.
