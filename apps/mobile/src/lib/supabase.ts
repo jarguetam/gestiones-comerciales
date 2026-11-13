@@ -15,6 +15,7 @@ import type { CacheCampo } from './cacheCampo'
 import { claveParticionCola } from './colaParticion.ts'
 import { resolverPerfil } from './perfilRespaldo.ts'
 import { exigirSesion } from './sesionVigente.ts'
+import { claveSesionSupabase } from './sesionSinConexion.ts'
 import { sesionStorage } from './sesionStorage'
 
 export { claimsDe, type Rol } from './claims'
@@ -22,8 +23,12 @@ export type { Perfil } from './perfil'
 
 const { url: supabaseUrl, key: supabaseAnonKey } = requireMobileEnv()
 
+/** Clave explícita (igual a la que supabase-js deriva por defecto) para leer la sesión guardada sin conexión. */
+export const CLAVE_SESION = claveSesionSupabase(supabaseUrl)
+
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storageKey: CLAVE_SESION,
     storage: sesionStorage,
     autoRefreshToken: true,
     persistSession: true,
