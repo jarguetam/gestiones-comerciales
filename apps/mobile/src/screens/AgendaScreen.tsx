@@ -61,6 +61,7 @@ export default function AgendaScreen({
   const [refrescando, setRefrescando] = useState(false)
   const [checkinDe, setCheckinDe] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [mensajeEsError, setMensajeEsError] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [version, setVersion] = useState(0)
@@ -129,10 +130,12 @@ export default function AgendaScreen({
     fallo: string,
   ) {
     setMensaje(null)
+    setMensajeEsError(false)
     setCheckinDe(visita.cliente_key)
     try {
       const pos = await gps()
-      await encolarYSync(
+      const claveItem = `${tipo}:${visita.cliente_key}`
+      const items = await encolarYSync(
         {
           tipo,
           payload: {
@@ -141,13 +144,20 @@ export default function AgendaScreen({
             latitud: pos.lat,
             longitud: pos.lng,
           },
-          clienteKey: `${tipo}:${visita.cliente_key}`,
+          clienteKey: claveItem,
         },
         ejecutarMutacion(supabase),
         claveCola,
       )
-      setMensaje(exito)
+      const rechazado = items.find((i) => i.clienteKey === claveItem && i.estado === 'error')
+      if (rechazado?.ultimoError) {
+        setMensajeEsError(true)
+        setMensaje(rechazado.ultimoError)
+      } else {
+        setMensaje(exito)
+      }
     } catch (e) {
+      setMensajeEsError(true)
       setMensaje(mensajeDeError(e, fallo))
     } finally {
       setCheckinDe(null)
@@ -176,7 +186,11 @@ export default function AgendaScreen({
           </View>
           <BadgeEstado estado={ETIQUETA_ESTADO[item.estado] ?? item.estado} />
         </View>
-        {item.pendiente ? <Text style={[styles.direccion, { color: t.muted }]}>Pendiente de enviar</Text> : null}
+        {item.errorEnvio ? (
+          <Text style={[styles.direccion, { color: t.danger }]}>No se pudo enviar · {item.errorEnvio}</Text>
+        ) : item.pendiente ? (
+          <Text style={[styles.direccion, { color: t.muted }]}>Pendiente de enviar</Text>
+        ) : null}
         {item.estado === 'programada' && !conCheckin && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
@@ -230,7 +244,7 @@ export default function AgendaScreen({
           Sin conexión · agenda guardada a las {horaGuardada(guardadoEn)}
         </Text>
       ) : null}
-      {mensaje && <Text style={[styles.mensaje, { color: t.success }]}>{mensaje}</Text>}
+      {mensaje && <Text style={[styles.mensaje, { color: mensajeEsError ? t.danger : t.success }]}>{mensaje}</Text>}
       <FlatList
         data={visitas}
         keyExtractor={(v) => v.cliente_key}

@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -119,7 +120,8 @@ export default function NuevaVisitaModal({
     }
     setGuardando(true)
     try {
-      await encolarYSync(
+      const claveItem = `visita:${uuid}`
+      const items = await encolarYSync(
         {
           tipo: 'visita',
           payload: {
@@ -134,13 +136,19 @@ export default function NuevaVisitaModal({
             ...(dir.trim() ? { direccion: dir.trim() } : {}),
             ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
           },
-          clienteKey: `visita:${uuid}`,
+          clienteKey: claveItem,
         },
         ejecutarMutacion(supabase),
         claveParticionCola(perfil.tenantId, perfil.id),
       )
+      // El servidor pudo rechazarla: el ítem queda en la cola (no se borra) y se avisa con su código GC-*.
+      const rechazado = items.find((i) => i.clienteKey === claveItem && i.estado === 'error')
       onGuardada()
       onCerrar()
+      if (rechazado?.ultimoError) {
+        Alert.alert('La visita no se pudo enviar', `${rechazado.ultimoError}
+Quedó en la cola de sincronización.`)
+      }
     } catch (e) {
       setError(mensajeDeError(e, 'No se pudo agendar'))
     } finally {

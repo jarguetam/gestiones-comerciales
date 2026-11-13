@@ -87,6 +87,7 @@ export function agendaConCola(base: Visita[], cola: ItemCola[], fecha: string): 
       latitud: null,
       longitud: null,
       pendiente: it.estado !== 'enviado',
+      ...(it.estado === 'error' && it.ultimoError ? { errorEnvio: it.ultimoError } : {}),
     })
   }
 
@@ -113,6 +114,7 @@ export function agendaConCola(base: Visita[], cola: ItemCola[], fecha: string): 
       }
     }
     if (aplica && pendiente) fila.pendiente = true
+    if (it.estado === 'error' && it.ultimoError) fila.errorEnvio = it.ultimoError
   }
 
   return [...filas.values()].sort((a, b) => {

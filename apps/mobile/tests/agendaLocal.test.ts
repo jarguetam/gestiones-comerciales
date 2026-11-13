@@ -192,3 +192,25 @@ test('descargarAgenda consulta el rango sin filtrar por usuario y lanza el error
   const err = new Error('boom')
   await assert.rejects(descargarAgenda(mk({ data: null, error: err }) as never, FECHA), (e) => e === err)
 })
+
+test('agendaConCola: visita en error lleva errorEnvio y sigue pendiente', () => {
+  const r = agendaConCola([], [itemVisita({ estado: 'error', intentos: 1, ultimoError: 'GC-VIS-002: actividad inválida' })], FECHA)
+  assert.equal(r[0].errorEnvio, 'GC-VIS-002: actividad inválida')
+  assert.equal(r[0].pendiente, true)
+})
+
+test('agendaConCola: completar en error conserva estado local y lleva errorEnvio', () => {
+  const r = agendaConCola(
+    [base()],
+    [itemMut('visita_completar', { estado: 'error', intentos: 1, ultimoError: 'GC-VIS-009: no se puede cerrar' })],
+    FECHA,
+  )
+  assert.equal(r[0].estado, 'completada')
+  assert.equal(r[0].errorEnvio, 'GC-VIS-009: no se puede cerrar')
+  assert.equal(r[0].pendiente, true)
+})
+
+test('agendaConCola: ítem pendiente sin error no lleva errorEnvio', () => {
+  const r = agendaConCola([], [itemVisita()], FECHA)
+  assert.equal(r[0].errorEnvio, undefined)
+})

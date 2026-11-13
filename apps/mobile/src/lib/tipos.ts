@@ -12,6 +12,8 @@ export interface Visita {
   latitud?: number | null
   longitud?: number | null
   pendiente?: boolean
+  /** Último error del servidor sobre una mutación en cola de esta visita (código GC-*). */
+  errorEnvio?: string
 }
 
 export interface Persona {
