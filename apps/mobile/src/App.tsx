@@ -100,6 +100,7 @@ export default function App() {
   const [sinConexion, setSinConexion] = useState(false)
   // Desde que empieza un cierre de sesión, el modo sin conexión deja de intentar renovar.
   const renovacionPausada = useRef(false)
+  const secuenciaSesion = useRef(0)
   const [errorCola, setErrorCola] = useState<string | null>(null)
   const [intentoCola, setIntentoCola] = useState(0)
   const claveCola = perfil ? claveParticionCola(perfil.tenantId, perfil.id) : null
@@ -137,6 +138,14 @@ export default function App() {
 
   useEffect(() => {
     return suscribirSesion(supabase, async (estado, event) => {
+      // Solo avanzan la secuencia los eventos que escriben estado: USER_UPDATED no anula un SIGNED_IN en curso.
+      const escribe =
+        event === 'SIGNED_OUT' || !estado.session ||
+        event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED'
+      if (!escribe) return
+      const n = ++secuenciaSesion.current
+      // Un manejador anterior (p. ej. TOKEN_REFRESHED esperando cargarPerfil) no pisa a uno posterior.
+      const vigente = () => n === secuenciaSesion.current
       if (event === 'SIGNED_OUT') {
         setSinConexion(false)
         configurarPersistencia(null)
@@ -152,6 +161,7 @@ export default function App() {
           if (guardada && puedeEntrarSinConexion(guardada, Date.now())) {
             const perfilLocal = await perfilSinConexion(guardada, abrirCacheCampo())
             if (perfilLocal) {
+              if (!vigente()) return
               setPerfil(perfilLocal)
               setSinConexion(true)
               setListo(true)
@@ -161,6 +171,7 @@ export default function App() {
         } catch (e) {
           console.warn('GC-AUTH-025: sesión guardada ilegible', e)
         }
+        if (!vigente()) return
         configurarPersistencia(null)
         setColaLista(null)
         setListo(true)
@@ -168,11 +179,15 @@ export default function App() {
       }
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         const claims = await resolverClaims(estado.session)
+        if (!vigente()) return
         if (claims) {
           try {
-            setPerfil(await cargarPerfil(estado.session, claims, abrirCacheCampo()))
+            const p = await cargarPerfil(estado.session, claims, abrirCacheCampo())
+            if (!vigente()) return
+            setPerfil(p)
           } catch (e) {
             console.warn('GC-AUTH-024: no se pudo cargar el perfil', e)
+            if (!vigente()) return
             setPerfil(null)
           }
         } else setPerfil(null)
