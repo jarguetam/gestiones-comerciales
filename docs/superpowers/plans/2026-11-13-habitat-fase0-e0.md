@@ -403,14 +403,29 @@ La app arranca sin señal con los claims del JWT guardado (`resolverClaims` los 
 
 El orden importa. La web y la app nuevas mandan `p_cliente_key`, y la Task 11 (Step 5) necesita las columnas nuevas de `zona`: salir antes que la migración las rompe.
 
+`pages-prod.yml` publica la web **sola** después de CI verde en `main`; `supabase-prod.yml` es manual. Si la migración llegara a producción después de la web nueva, esa web llamaría a `visita_crear` con `p_cliente_key` contra la función vieja de 12 argumentos y fallaría el alta de visitas en la web de **todas** las empresas. Por eso la migración tiene que estar en producción **antes** de que se publique la web nueva. Es compatible hacia atrás: la web vieja inserta directo y las llamadas por nombre de la app vieja (12 argumentos) siguen resolviendo.
+
+**Restricción:** `supabase-prod.yml` no se puede correr con el SHA del PR antes del merge. Su paso «Go-live preflight» (`scripts/ops/golive-preflight.ts`, checks `ci` y `pgtap`, también con `golive: false`) exige una corrida de CI `push` en `main`, exitosa y con pgTAP, para ese mismo SHA. Además, el Environment `production` tiene branch policy `main` (`docs/runbooks/plan-pase-produccion.md` §3.4). No se desactiva ese control (`AGENTS.md`).
+
 - [ ] **Step 1: PR y CI.** Push de `habitat/e0-preparacion` y PR en GitHub (en esta PC no hay `gh`). Expected: CI `validate` en verde: lint, typecheck, unitarias, e2e con fixtures y pgTAP.
-- [ ] **Step 2: Migración en producción.**
-  - Después del merge, correr a mano `supabase-prod.yml` (`workflow_dispatch`) con el SHA mergeado y `golive: false`.
-  - Seguir `docs/runbooks/migrations.md`; si exige un periodo en staging y no hay staging, decidirlo con Josue.
+- [ ] **Step 2: Rama al día y staging.**
+  - Traer `main` a la rama (merge o rebase) y esperar CI en verde sobre ese HEAD. `supabase-prod.yml` también despliega las Edge Functions del SHA: con la rama atrasada se revertirían funciones que ya están en producción.
+  - Si hay staging, seguir `docs/runbooks/migrations.md`: `supabase-staging.yml` (`workflow_dispatch` desde la rama), e2e de staging y revisar errores `GC-*`. Si el runbook exige staging y no lo hay, decidirlo con Josue.
+  - Antes del Step 3, correr los chequeos de producción de la Task 11, Step 1b.
+- [ ] **Step 3: Migración en producción antes de publicar la web nueva — decisión pendiente con Josue.** Por la restricción de arriba hay dos caminos, sin tocar workflows:
+  - **(a) Dos PR.**
+    1. Primer PR: todo menos el cambio web de la Task 9 (migración, app y docs). Mergearlo; Pages republica la web vieja, que es compatible.
+    2. Con CI verde en `main`, correr `supabase-prod.yml` con **ese SHA de `main`** y `golive: false`.
+    3. Verificar y recién entonces mergear el PR de la Task 9.
+  - **(b) Un PR, reteniendo Pages.** Solo sirve si el Environment `production` exige reviewers; está documentado, pero no se pudo verificar (403).
+    1. Mergear y dejar **sin aprobar** el despliegue de `pages-prod.yml`.
+    2. Correr `supabase-prod.yml` con el SHA mergeado y verificar.
+    3. Recién entonces aprobar Pages.
+    - Si el Environment no exige reviewers, Pages publica solo y este camino no sirve.
   - Si falla el preflight, corregir la causa; no desactivar controles (`AGENTS.md`).
-  - Expected: `select pg_get_function_arguments('public.visita_crear'::regproc);` incluye `p_cliente_key uuid`, y `zona` tiene `municipio_id`.
-- [ ] **Step 3: Web.** `pages-prod.yml` publica después de CI verde en `main`. Expected: en la web publicada, «Nueva visita» crea una visita y queda con la oficina del usuario.
-- [ ] **Step 4: APK.** Run: `pnpm --filter @gc/mobile build:apk` (perfil EAS `preview`). Expected: build `FINISHED` con enlace de instalación. Lo usa la Task 11, Step 9.
+  - Expected, antes de publicar la web nueva: `select pg_get_function_arguments('public.visita_crear'::regproc);` incluye `p_cliente_key uuid`, y `zona` tiene `municipio_id`.
+- [ ] **Step 4: Web.** Publicar la web nueva solo después del Step 3: merge del PR de la Task 9 en (a), o aprobación de Pages en (b). Expected: en la web publicada, «Nueva visita» crea una visita y queda con la oficina del usuario.
+- [ ] **Step 5: APK.** Run: `pnpm --filter @gc/mobile build:apk` (perfil EAS `preview`). Expected: build `FINISHED` con enlace de instalación. Lo usa la Task 11, Step 9.
 
 ---
 
@@ -427,6 +442,19 @@ Cada escritura en producción se muestra a Josue y se ejecuta solo con su visto 
 - [ ] **Step 1: Acceso (spec 0.1).** Josue reconecta el conector Supabase a la organización GestionesComerciales, o deja `SUPABASE_ACCESS_TOKEN` en el entorno.
   Run: `select version from supabase_migrations.schema_migrations order by version desc limit 5;`
   Expected: aparece `20261002120200`. Si no, aplicar primero las migraciones de `main`.
+- [ ] **Step 1b: Chequeos de producción antes de desplegar (antes de la Task 10, Step 3).** Solo lectura.
+  - Oficinas que `visita_crear` va a rechazar. Con E0, si la `zona_id` del usuario está inactiva o es de otra empresa, el alta falla con `GC-VIS-002: la oficina del usuario está inactiva o no pertenece a la empresa` en vez de usar otra oficina. Revisarlo en **todas** las empresas, no solo en Hábitat:
+    ```sql
+    select u.tenant_id, u.id, u.nombre, u.rol, u.activo, u.zona_id,
+           z.tenant_id as zona_tenant, z.activo as zona_activa
+      from public.usuario u
+      left join public.zona z on z.id = u.zona_id
+     where u.zona_id is not null
+       and (z.id is null or z.tenant_id <> u.tenant_id or not z.activo)
+     order by u.tenant_id, u.nombre;
+    ```
+    Expected: 0 filas. Si hay, mostrarlas a Josue y corregir la `zona_id` de cada usuario (con su visto bueno) antes de la migración.
+  - `max_rows` de PostgREST en producción: en el dashboard (Project Settings → API → Max rows) o con la Management API (`GET /v1/projects/{ref}/postgrest`, campo `max_rows`). La app pide clientes y agenda en páginas de 500 y toma una página corta como el final. Expected: `max_rows` ≥ 500; si es menor, la app cortaría la cartera y la agenda en silencio.
 - [ ] **Step 2: Respaldo (0.12).** Revisar en GitHub Actions la última corrida de `ops-backup-prod.yml` y hacer el ensayo de restauración de `docs/runbooks/backup-restore.md` sobre Supabase local. Expected: el conteo de `public.tenant` y `public.usuario` del respaldo coincide con producción.
 - [ ] **Step 3: Empresa (0.2).** En el backoffice, buscar «Hábitat»/«Habitat»; si no existe, crearla con el asistente, solo con el módulo núcleo. Expected: `select id, codigo, nombre from tenant where nombre ilike '%bitat%';` devuelve exactamente una fila.
 - [ ] **Step 4: Geografía (0.3).** Importar en el backoffice (Catálogos → Geografía) el CSV `departamento,municipio` de Honduras: 18 departamentos, de la lista oficial del INE. Expected: `select count(*) from departamento where nombre in ('Cortés','Atlántida','Copán','Comayagua','Francisco Morazán','Colón')` = 6.
@@ -454,7 +482,7 @@ Cada escritura en producción se muestra a Josue y se ejecuta solo con su visto 
   - Importar en la web (Personas → Importar CSV) como Ana o como superadmin.
   - Las coordenadas se ignoran hasta E5.
   - Expected: `select asesor_id, count(*) from persona where tenant_id = :habitat group by 1` cuadra con el archivo, sin filas con `asesor_id` nulo.
-- [ ] **Step 8: APK (0.8).** Instalar el APK de la Task 10, Step 4, en los teléfonos de prueba.
+- [ ] **Step 8: APK (0.8).** Instalar el APK de la Task 10, Step 5, en los teléfonos de prueba.
 - [ ] **Step 9: Prueba en teléfonos reales (0.9)**, en dos marcas, con un asesor de prueba de Hábitat. Expected, todo verdadero:
   - Login y permiso de ubicación «siempre».
   - Una jornada de rastreo en segundo plano con puntos en el mapa.
