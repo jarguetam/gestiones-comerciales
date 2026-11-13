@@ -128,9 +128,10 @@ Secuencia de la primera publicación:
    git tag android-1.0.1 && git push origin android-1.0.1
    ```
 
-Mientras la app está en borrador, la API de Play solo acepta releases en
-borrador («Only releases with status draft may be created on draft app»);
-por eso `closed` se usa después de la primera aprobación.
+`internal` usa `releaseStatus: draft`: sube el AAB sin desplegarlo, como
+documenta Expo, y el release se completa en Play Console. No se probó si
+`closed` (release completado) funciona con una app que nunca pasó revisión;
+por eso la secuencia lo usa después de la primera aprobación.
 
 EAS incrementa `versionCode` (`appVersionSource: remote` + `autoIncrement`).
 El nombre del tag no cambia la versión visible: para eso, actualizar
