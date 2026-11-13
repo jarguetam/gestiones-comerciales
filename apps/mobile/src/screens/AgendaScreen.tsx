@@ -17,6 +17,7 @@ import {
 import * as Location from 'expo-location'
 import { supabase, type Perfil } from '../lib/supabase'
 import type { Visita } from '../lib/tipos'
+import { mapFilaVisita } from '../lib/agendaLocal'
 import { encolarYSync } from '../lib/colaStore'
 import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
@@ -37,26 +38,6 @@ const ETIQUETA_ESTADO: Record<string, string> = {
 }
 
 const UMBRAL_GEOCERCA_M = 200
-
-function mapFila(row: Record<string, unknown>): Visita {
-  const act = row.actividad
-  let actividad: string | null = null
-  if (typeof act === 'string') actividad = act
-  else if (act && typeof act === 'object' && 'nombre' in act) {
-    actividad = String((act as { nombre: unknown }).nombre)
-  }
-  return {
-    id: Number(row.id),
-    persona_nombre: String(row.persona_nombre ?? '—'),
-    direccion: (row.direccion as string | null) ?? null,
-    fecha_visita: String(row.fecha_visita ?? ''),
-    hora_inicio: (row.hora_inicio as string | null) ?? null,
-    estado: (row.estado as Visita['estado']) ?? 'programada',
-    actividad,
-    latitud: row.latitud != null ? Number(row.latitud) : null,
-    longitud: row.longitud != null ? Number(row.longitud) : null,
-  }
-}
 
 export default function AgendaScreen({
   perfil,
@@ -80,19 +61,19 @@ export default function AgendaScreen({
     const hoy = fechaLocalHoy()
     const rpc = await supabase.rpc('visitas_del_dia', { p_fecha: hoy })
     if (!rpc.error && rpc.data) {
-      setVisitas((rpc.data as Array<Record<string, unknown>>).map(mapFila))
+      setVisitas((rpc.data as Array<Record<string, unknown>>).map(mapFilaVisita))
       setError(null)
     } else {
       const q = await supabase
         .from('visita')
-        .select('id, persona_nombre, direccion, fecha_visita, hora_inicio, estado, latitud, longitud, actividad(nombre)')
+        .select('id, cliente_key, persona_nombre, direccion, fecha_visita, hora_inicio, estado, latitud, longitud, actividad(nombre)')
         .eq('fecha_visita', hoy)
         .order('hora_inicio')
       if (q.error) {
         setError(q.error.message || rpc.error?.message || 'No se pudo leer la agenda')
         setVisitas([])
       } else {
-        setVisitas(((q.data ?? []) as Array<Record<string, unknown>>).map(mapFila))
+        setVisitas(((q.data ?? []) as Array<Record<string, unknown>>).map(mapFilaVisita))
         setError(null)
       }
     }
@@ -122,20 +103,22 @@ export default function AgendaScreen({
   }
 
   async function handleCheckin(visita: Visita) {
+    if (visita.id == null) return // sin id de servidor: Task 8 lo reencamina por cliente_key
+    const visitaId = visita.id
     setMensaje(null)
-    setCheckinDe(visita.id)
+    setCheckinDe(visitaId)
     try {
       const pos = await gps()
       await encolarYSync(
         {
           tipo: 'visita_checkin',
-          payload: { visitaId: visita.id, latitud: pos.lat, longitud: pos.lng },
-          clienteKey: `visita_checkin:${visita.id}`,
+          payload: { visitaId, latitud: pos.lat, longitud: pos.lng },
+          clienteKey: `visita_checkin:${visitaId}`,
         },
         ejecutarMutacion(supabase),
         claveParticionCola(perfil.tenantId, perfil.id),
       )
-      setCheckins((prev) => new Set(prev).add(visita.id))
+      setCheckins((prev) => new Set(prev).add(visitaId))
       setMensaje(avisoGeocerca(visita, pos.lat, pos.lng) ?? `Check-in en ${visita.persona_nombre}`)
       await cargar()
     } catch (e) {
@@ -146,20 +129,22 @@ export default function AgendaScreen({
   }
 
   async function handleCompletar(visita: Visita) {
+    if (visita.id == null) return
+    const visitaId = visita.id
     setMensaje(null)
-    setCheckinDe(visita.id)
+    setCheckinDe(visitaId)
     try {
       const pos = await gps()
       await encolarYSync(
         {
           tipo: 'visita_completar',
-          payload: { visitaId: visita.id, latitud: pos.lat, longitud: pos.lng },
-          clienteKey: `visita_completar:${visita.id}`,
+          payload: { visitaId, latitud: pos.lat, longitud: pos.lng },
+          clienteKey: `visita_completar:${visitaId}`,
         },
         ejecutarMutacion(supabase),
         claveParticionCola(perfil.tenantId, perfil.id),
       )
-      setVisitas((prev) => prev.map((v) => (v.id === visita.id ? { ...v, estado: 'completada' } : v)))
+      setVisitas((prev) => prev.map((v) => (v.id === visitaId ? { ...v, estado: 'completada' } : v)))
       setMensaje(`Visita completada · ${visita.persona_nombre}`)
       await cargar()
     } catch (e) {
@@ -181,7 +166,7 @@ export default function AgendaScreen({
           </View>
           <BadgeEstado estado={ETIQUETA_ESTADO[item.estado] ?? item.estado} />
         </View>
-        {item.estado === 'programada' && !checkins.has(item.id) && (
+        {item.estado === 'programada' && !(item.id != null && item.id != null && checkins.has(item.id)) && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => void handleCheckin(item)}
@@ -200,7 +185,7 @@ export default function AgendaScreen({
             )}
           </TouchableOpacity>
         )}
-        {item.estado === 'programada' && checkins.has(item.id) && (
+        {item.estado === 'programada' && item.id != null && checkins.has(item.id) && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => void handleCompletar(item)}
@@ -232,7 +217,7 @@ export default function AgendaScreen({
       {mensaje && <Text style={[styles.mensaje, { color: t.success }]}>{mensaje}</Text>}
       <FlatList
         data={visitas}
-        keyExtractor={(v) => String(v.id)}
+        keyExtractor={(v) => v.cliente_key || String(v.id)}
         renderItem={renderVisita}
         refreshControl={
           <RefreshControl
