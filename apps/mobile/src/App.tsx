@@ -137,8 +137,8 @@ export default function App() {
         if (claims) {
           try {
             setPerfil(await cargarPerfil(estado.session, claims, abrirCacheCampo()))
-          } catch {
-            // Error no transitorio (o sin copia guardada): igual que antes, sin perfil.
+          } catch (e) {
+            console.warn('GC-AUTH-024: no se pudo cargar el perfil', e)
             setPerfil(null)
           }
         } else setPerfil(null)

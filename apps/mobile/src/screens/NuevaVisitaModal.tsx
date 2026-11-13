@@ -17,6 +17,7 @@ import {
 import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import { cargarCatalogosCampo, type CatalogoActividad, type CatalogosCampo } from '../lib/catalogosCampo'
 import { abrirCacheCampo } from '../lib/abrirCache'
+import { mensajeDeError } from '../lib/mensajeError'
 import { claveParticionCola } from '../lib/colaParticion'
 import { persistirVisitaCampo, type Perfil } from '../lib/supabase'
 import { fechaLocalHoy, type BorradorVisita } from '../lib/visita'
@@ -72,7 +73,10 @@ export default function NuevaVisitaModal({
         setHoraId(c.geo.horaDefaultId)
         if (c.aviso) setError(c.aviso)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar catálogos'))
+      .catch((e) => {
+        const m = mensajeDeError(e, 'sin detalle')
+        setError(m.startsWith('GC-') ? m : `GC-CAT-001: catálogos no disponibles · ${m}`)
+      })
       .finally(() => setCargando(false))
   }, [visible, personaNombre, direccion, personaId, perfil.tenantId, perfil.id])
 
@@ -100,7 +104,7 @@ export default function NuevaVisitaModal({
       onGuardada()
       onCerrar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo agendar')
+      setError(mensajeDeError(e, 'No se pudo agendar'))
     } finally {
       setGuardando(false)
     }

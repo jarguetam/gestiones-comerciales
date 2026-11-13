@@ -7,14 +7,13 @@
  * Sin URL/anon key reales el arranque falla con GC-CORE-001.
  */
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
-import { brandingDeJson, nombreComercial } from './branding'
 import { claimsEmpresaDe, type Rol } from './claims'
 import { requireMobileEnv } from './env'
 import { fetchConLimite } from './fetchLimite'
-import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
+import type { Perfil } from './perfil'
 import type { CacheCampo } from './cacheCampo'
 import { claveParticionCola } from './colaParticion.ts'
-import { conRespaldo } from './respaldo.ts'
+import { resolverPerfil } from './perfilRespaldo.ts'
 import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
 
@@ -69,9 +68,10 @@ export async function resolverClaims(session: Session): Promise<{ tenantId: stri
 }
 
 /**
- * Hidrata el perfil como la web: claims ya resueltos + tenant por id +
- * usuario propio si RLS lo deja ver. Un embed o .single() vacío ya no
- * bloquea el ingreso (GC-AUTH-022).
+ * Hidrata el perfil: claims ya resueltos + usuario, tenant y módulos si RLS los deja ver.
+ * Sin señal usa la última copia guardada; si una lectura falla por otro motivo (o no hay
+ * copia), devuelve un perfil degradado desde los claims y avisa por consola, porque el
+ * ingreso no depende de esas lecturas (GC-AUTH-022/023).
  */
 export async function cargarPerfil(
   session: Session,
@@ -79,33 +79,22 @@ export async function cargarPerfil(
   cache: CacheCampo,
 ): Promise<Perfil> {
   const userId = session.user.id
-  const clave = claveParticionCola(claims.tenantId, userId)
-  const { datos } = await conRespaldo<Perfil>({
-    cargar: async () => {
-      const [usuarioRes, tenantRes, modsRes] = await Promise.all([
+  return resolverPerfil({
+    userId,
+    email: session.user.email,
+    userMetadata: session.user.user_metadata,
+    claims,
+    clave: claveParticionCola(claims.tenantId, userId),
+    cache,
+    leerFuentes: async () => {
+      const [usuario, tenant, modulos] = await Promise.all([
         supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
         supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
         supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
       ])
-      for (const res of [usuarioRes, tenantRes, modsRes]) {
-        if (res.error) throw res.error
-      }
-      const branding = brandingDeJson(tenantRes.data?.branding)
-      return perfilDesdeFuentes({
-        userId,
-        claims,
-        usuario: usuarioRes.data as { id: string; nombre: string } | null,
-        tenantNombre: nombreComercial(branding, (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales'),
-        branding,
-        modulos: modulosDeFilas(modsRes.data as Parameters<typeof modulosDeFilas>[0]),
-        email: session.user.email,
-        userMetadata: session.user.user_metadata,
-      })
+      return { usuario, tenant, modulos }
     },
-    leer: () => cache.leer<Perfil>(clave, 'perfil'),
-    guardar: (perfil) => cache.guardar(clave, 'perfil', perfil),
   })
-  return datos
 }
 
 export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
