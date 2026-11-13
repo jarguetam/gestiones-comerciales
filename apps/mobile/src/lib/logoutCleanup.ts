@@ -7,12 +7,18 @@ export async function logoutCleanup(opts: {
   clearCola: (clave: string) => Promise<void>
   clearCache: (clave: string) => Promise<void>
   invalidateFcm: () => Promise<void>
+  advertir?: (mensaje: string, detalle: unknown) => void
 }): Promise<{ colaConservada: boolean }> {
   const clave = `${opts.tenantId}:${opts.userId}`
   const colaConservada = opts.pendientes > 0
   if (!colaConservada) await opts.clearCola(clave)
   await opts.deleteSession()
   await opts.clearCache(clave)
-  await opts.invalidateFcm()
+  try {
+    await opts.invalidateFcm()
+  } catch (e) {
+    // Sin red el dispositivo no se puede desactivar: el cierre de sesión debe completarse igual.
+    ;(opts.advertir ?? ((m, d) => console.warn(m, d)))('GC-AUTH-029: no se pudo desactivar el dispositivo', e)
+  }
   return { colaConservada }
 }

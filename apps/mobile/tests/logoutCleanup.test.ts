@@ -95,3 +95,20 @@ test('si clearCache falla, el error se propaga', async () => {
     /cache/,
   )
 })
+
+test('GC-AUTH-029 si invalidateFcm falla, el logout termina y avisa', async () => {
+  const llamadas: string[] = []
+  const avisos: string[] = []
+  const r = await logoutCleanup({
+    userId: 'u1', tenantId: 't1', pendientes: 0,
+    clearCola: async () => { llamadas.push('cola') },
+    deleteSession: async () => { llamadas.push('sesion') },
+    clearCache: async () => { llamadas.push('cache') },
+    invalidateFcm: async () => { throw new Error('red') },
+    advertir: (m) => avisos.push(m),
+  })
+  assert.deepEqual(llamadas, ['cola', 'sesion', 'cache'])
+  assert.deepEqual(r, { colaConservada: false })
+  assert.equal(avisos.length, 1)
+  assert.match(avisos[0], /GC-AUTH-029/)
+})
