@@ -35,6 +35,8 @@ import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
 import { clearCola, leerCola } from './lib/colaStore'
 import { sinEnviar } from './lib/cola'
 import { abrirCacheCampo } from './lib/abrirCache'
+import { cargarCatalogosCampo } from './lib/catalogosCampo'
+import { cacheConGuardadoSi, crearPrecargaCatalogos } from './lib/precargaCatalogos'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { contarNoLeidas } from './lib/notificaciones'
@@ -219,9 +221,37 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
   const [rastreoBloqueado, setRastreoBloqueado] = useState(false)
   const avisoUbicacionMostrado = useRef(false)
   const refrescarCampoRef = useRef<(() => Promise<void>) | null>(null)
+  // Desde que empieza el logout ninguna descarga en curso vuelve a escribir la caché.
+  const saliendo = useRef(false)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
   const campoBloqueado = campo === 'blocked_location'
+
+  // Catálogos (y clientes) en el teléfono sin abrir «Agendar»: al entrar, al volver la app
+  // al frente y cada 30 s mientras la última precarga no haya llegado al servidor.
+  useEffect(() => {
+    let vivo = true
+    const precarga = crearPrecargaCatalogos({
+      cargar: () =>
+        cargarCatalogosCampo({
+          clave: claveParticionCola(perfil.tenantId, perfil.id),
+          cache: cacheConGuardadoSi(abrirCacheCampo(), () => vivo && !saliendo.current),
+          cliente: supabase,
+        }),
+    })
+    void precarga.siHaceFalta()
+    const reintento = setInterval(() => {
+      void precarga.siHaceFalta()
+    }, 30_000)
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void precarga.siHaceFalta()
+    })
+    return () => {
+      vivo = false
+      clearInterval(reintento)
+      sub.remove()
+    }
+  }, [perfil.tenantId, perfil.id])
 
   async function mostrarAvisoUbicacion() {
     const config = await leerConfigRastreo(supabase)
@@ -332,18 +362,26 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       })
   }, [tab])
 
-  async function cerrarSesion(pendientes: number) {
-    await detenerRastreo(supabase)
-    await logoutCleanupNativo(supabase, perfil, clearCola, pendientes, (clave) =>
-      abrirCacheCampo().limpiar(clave),
-    )
+  async function cerrarSesion() {
+    saliendo.current = true
+    try {
+      await detenerRastreo(supabase)
+      // Se recuenta justo antes de limpiar: mientras se detenía el rastreo pudo entrar un registro.
+      const pendientesAhora = sinEnviar(leerCola())
+      await logoutCleanupNativo(supabase, perfil, clearCola, pendientesAhora, (clave) =>
+        abrirCacheCampo().limpiar(clave),
+      )
+    } catch (e) {
+      saliendo.current = false
+      throw e
+    }
     onLogout()
   }
 
   async function handleLogout() {
     const n = sinEnviar(leerCola())
     if (n === 0) {
-      await cerrarSesion(0)
+      await cerrarSesion()
       return
     }
     Alert.alert(
@@ -351,7 +389,7 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       `Tienes ${n} registros sin enviar. Se guardan en este teléfono y se envían cuando vuelvas a entrar con tu usuario.`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Salir', style: 'destructive', onPress: () => void cerrarSesion(n) },
+        { text: 'Salir', style: 'destructive', onPress: () => void cerrarSesion() },
       ],
     )
   }
