@@ -17,15 +17,19 @@ export async function logoutCleanupNativo(
   cliente: SupabaseClient,
   perfil: { id: string; tenantId: string },
   clearCola: (clave: string) => Promise<void>,
-): Promise<void> {
-  await logoutCleanup({
+  pendientes: number,
+  clearCache: (clave: string) => Promise<void>,
+): Promise<{ colaConservada: boolean }> {
+  return logoutCleanup({
     userId: perfil.id,
     tenantId: perfil.tenantId,
     deleteSession: async () => {
       await cliente.auth.signOut()
       await borrarSesionLocal()
     },
+    pendientes,
     clearCola,
+    clearCache,
     invalidateFcm: () => invalidateFcmToken(cliente, perfil.id),
   })
 }

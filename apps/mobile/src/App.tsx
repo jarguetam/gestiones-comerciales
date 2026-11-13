@@ -32,7 +32,9 @@ import SyncScreen from './screens/SyncScreen'
 import { supabase, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
-import { clearCola } from './lib/colaStore'
+import { clearCola, leerCola } from './lib/colaStore'
+import { sinEnviar } from './lib/cola'
+import { abrirCacheCampo } from './lib/abrirCache'
 import { nombreComercial } from './lib/branding'
 import { useCola } from './lib/useCola'
 import { contarNoLeidas } from './lib/notificaciones'
@@ -324,10 +326,28 @@ function Shell({ perfil, onLogout }: { perfil: Perfil; onLogout: () => void }) {
       })
   }, [tab])
 
-  async function handleLogout() {
+  async function cerrarSesion(pendientes: number) {
     await detenerRastreo(supabase)
-    await logoutCleanupNativo(supabase, perfil, clearCola)
+    await logoutCleanupNativo(supabase, perfil, clearCola, pendientes, (clave) =>
+      abrirCacheCampo().limpiar(clave),
+    )
     onLogout()
+  }
+
+  async function handleLogout() {
+    const n = sinEnviar(leerCola())
+    if (n === 0) {
+      await cerrarSesion(0)
+      return
+    }
+    Alert.alert(
+      'Cerrar sesión',
+      `Tienes ${n} registros sin enviar. Se guardan en este teléfono y se envían cuando vuelvas a entrar con tu usuario.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Salir', style: 'destructive', onPress: () => void cerrarSesion(n) },
+      ],
+    )
   }
 
   const extras: { id: Extract<IconoName, 'solicitudes' | 'depositos' | 'ajustes'>; etiqueta: string }[] = [
