@@ -42,7 +42,7 @@ function telefonoDe(detalles: unknown): string {
 
 export async function cargarDominio(): Promise<DominioCargado> {
   try {
-    const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, deptoRes, muniRes, usuarioRes] =
+    const [sessionRes, tenantRes, personaRes, visitaRes, leadRes, moduloRes, actRes, subRes, horaRes, zonaRes, usuarioRes] =
       await Promise.all([
       supabase.auth.getSession(),
       supabase.from('tenant').select('id, nombre, codigo, branding, configuracion').limit(50),
@@ -71,8 +71,6 @@ export async function cargarDominio(): Promise<DominioCargado> {
       supabase.from('sub_actividad').select('id, actividad_id, nombre, activo').eq('activo', true).order('nombre'),
       supabase.from('actividad_hora').select('id, nombre, cantidad, activo').eq('activo', true).order('cantidad'),
       supabase.from('zona').select('id, codigo, nombre, activo').eq('activo', true).order('nombre'),
-      supabase.from('departamento').select('id').limit(1).maybeSingle(),
-      supabase.from('municipio').select('id').limit(1).maybeSingle(),
       supabase.from('usuario').select('id, nombre, rol').eq('activo', true).order('nombre'),
     ])
 
@@ -119,9 +117,6 @@ export async function cargarDominio(): Promise<DominioCargado> {
     const horas: CatalogoHora[] = (horaRes.data ?? []) as CatalogoHora[]
     const zonas: ZonaCatalogo[] = (zonaRes.data ?? []) as ZonaCatalogo[]
     const geo: GeoDefaults = {
-      zonaId: zonas[0]?.id ?? null,
-      departamentoId: (deptoRes.data as { id?: number } | null)?.id ?? null,
-      municipioId: (muniRes.data as { id?: number } | null)?.id ?? null,
       horaDefaultId: horas[0]?.id ?? null,
     }
 

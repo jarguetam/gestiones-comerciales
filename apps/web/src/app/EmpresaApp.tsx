@@ -17,7 +17,7 @@ import { canMutate } from '../lib/online'
 import type { CSSProperties } from 'react'
 import type { AsesorOpcion } from './DominioContext'
 
-const GEO_VACIO: GeoDefaults = { zonaId: null, departamentoId: null, municipioId: null, horaDefaultId: null }
+const GEO_VACIO: GeoDefaults = { horaDefaultId: null }
 
 export function EmpresaApp() {
   const [fuente, setFuente] = useState<FuenteDominio>('supabase')
