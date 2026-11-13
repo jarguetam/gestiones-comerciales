@@ -38,7 +38,7 @@ import {
   puedeEntrarSinConexion,
   renovarSinConexion,
 } from './lib/sesionSinConexion'
-import { borrarSesionGuardada, LIMITE_SALIDA_MS } from './lib/sesionBorrar'
+import { borrarSesionGuardada, cerrarSesionYBorrar, LIMITE_SALIDA_MS } from './lib/sesionBorrar'
 import { intentarConLimite } from './lib/conLimite'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
@@ -263,10 +263,12 @@ export default function App() {
   }, [perfil, colaLista, claveCola, errorCola])
 
   async function salirConErrorCola() {
-    // Si el disco no abre, cerrar la sesión local conserva la cola de su dueño.
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-    if (error) setErrorCola(error.message)
-    else setPerfil(null)
+    // Si el disco no abre, cerrar la sesión conserva la cola de su dueño. Sin señal, signOut solo no borra nada.
+    renovacionPausada.current = true
+    await cerrarSesionYBorrar(supabase, sesionStorage, CLAVE_SESION)
+    renovacionPausada.current = false
+    setSinConexion(false)
+    setPerfil(null)
   }
 
   return (
