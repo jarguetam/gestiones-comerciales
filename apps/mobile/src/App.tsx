@@ -37,6 +37,7 @@ import {
   puedeEntrarSinConexion,
   renovarSinConexion,
 } from './lib/sesionSinConexion'
+import { borrarSesionGuardada } from './lib/sesionBorrar'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
 import { clearCola, leerCola } from './lib/colaStore'
@@ -158,7 +159,10 @@ export default function App() {
         // Token vencido y sin señal: auth-js conserva la sesión pero la emite nula.
         try {
           const guardada = await leerSesionGuardada(sesionStorage, CLAVE_SESION)
-          if (guardada && puedeEntrarSinConexion(guardada, Date.now())) {
+          if (guardada && !puedeEntrarSinConexion(guardada, Date.now())) {
+            // Más de 7 días: sin la sesión guardada, auth-js no entra solo desde Login al volver la señal. La cola queda.
+            await borrarSesionGuardada(sesionStorage, CLAVE_SESION)
+          } else if (guardada) {
             const perfilLocal = await perfilSinConexion(guardada, abrirCacheCampo())
             if (perfilLocal) {
               if (!vigente()) return
@@ -169,7 +173,7 @@ export default function App() {
             }
           }
         } catch (e) {
-          console.warn('GC-AUTH-025: sesión guardada ilegible', e)
+          console.warn('GC-AUTH-032: no se pudo armar el perfil sin conexión', e)
         }
         if (!vigente()) return
         configurarPersistencia(null)
