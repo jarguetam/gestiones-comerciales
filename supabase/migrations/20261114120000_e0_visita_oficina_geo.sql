@@ -81,12 +81,10 @@ begin
   end if;
 
   -- 2. Zona (oficina).
+  select u.zona_id into v_zona from public.usuario u where u.id = auth.uid();
   v_zona := coalesce(
     p_zona_id,
-    (select z.id
-       from public.usuario u
-       join public.zona z on z.id = u.zona_id
-      where u.id = auth.uid() and z.tenant_id = v_tenant and z.activo),
+    v_zona,
     (select z.id
        from public.zona z
       where z.tenant_id = v_tenant and z.activo
