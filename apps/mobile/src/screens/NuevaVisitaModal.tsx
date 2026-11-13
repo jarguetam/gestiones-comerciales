@@ -81,7 +81,11 @@ export default function NuevaVisitaModal({
     setGuardadoEn(null)
     setUuid(Crypto.randomUUID())
     setCargando(true)
-    void cargarCatalogosCampo({ clave: claveParticionCola(perfil.tenantId, perfil.id), cache: abrirCacheCampo() })
+    void cargarCatalogosCampo({
+      clave: claveParticionCola(perfil.tenantId, perfil.id),
+      cache: abrirCacheCampo(),
+      cliente: supabase,
+    })
       .then((c) => {
         setCats(c)
         setHoraId(c.geo.horaDefaultId)
