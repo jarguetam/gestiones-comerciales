@@ -5,6 +5,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   Linking,
@@ -37,7 +38,8 @@ import {
   puedeEntrarSinConexion,
   renovarSinConexion,
 } from './lib/sesionSinConexion'
-import { borrarSesionGuardada } from './lib/sesionBorrar'
+import { borrarSesionGuardada, LIMITE_SALIDA_MS } from './lib/sesionBorrar'
+import { intentarConLimite } from './lib/conLimite'
 import { suscribirSesion } from './lib/sesion'
 import { logoutCleanupNativo } from './lib/logoutCleanupNativo'
 import { clearCola, leerCola } from './lib/colaStore'
@@ -332,6 +334,7 @@ function Shell({
   const refrescarCampoRef = useRef<(() => Promise<void>) | null>(null)
   // Desde que empieza el logout ninguna descarga en curso vuelve a escribir la caché.
   const saliendo = useRef(false)
+  const [cerrando, setCerrando] = useState(false)
   const { pendientes } = useCola()
   const marca = nombreComercial(perfil.branding, perfil.tenantNombre ?? perfil.nombre)
   const campoBloqueado = campo === 'blocked_location'
@@ -473,9 +476,15 @@ function Shell({
 
   async function cerrarSesion() {
     saliendo.current = true
+    setCerrando(true)
     onSaliendo(true)
     try {
-      await detenerRastreo(supabase)
+      // Sin señal, detenerRastreo puede esperar la renovación del token (~25 s): no frena el cierre.
+      await intentarConLimite(
+        () => detenerRastreo(supabase),
+        LIMITE_SALIDA_MS,
+        'GC-RAS-017: no se pudo detener el rastreo al salir',
+      )
       // Se recuenta justo antes de limpiar: mientras se detenía el rastreo pudo entrar un registro.
       const pendientesAhora = sinEnviar(leerCola())
       await logoutCleanupNativo(supabase, perfil, clearCola, pendientesAhora, (clave) =>
@@ -483,6 +492,7 @@ function Shell({
       )
     } catch (e) {
       saliendo.current = false
+      setCerrando(false)
       onSaliendo(false)
       throw e
     }
@@ -490,6 +500,7 @@ function Shell({
   }
 
   async function handleLogout() {
+    if (saliendo.current) return
     const n = sinEnviar(leerCola())
     if (n === 0) {
       await cerrarSesion()
@@ -563,12 +574,14 @@ function Shell({
           ) : null}
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.headerBtn, { borderColor: t.line }]}
+          style={[styles.headerBtn, { borderColor: t.line, opacity: cerrando ? 0.6 : 1 }]}
           onPress={() => void handleLogout()}
+          disabled={cerrando}
           accessibilityLabel="Salir"
           accessibilityRole="button"
+          accessibilityState={{ disabled: cerrando, busy: cerrando }}
         >
-          <Icono name="salir" color={t.ink} size={18} />
+          {cerrando ? <ActivityIndicator color={t.ink} size="small" /> : <Icono name="salir" color={t.ink} size={18} />}
           <Text style={[styles.headerBtnTexto, { color: t.ink }]}>Salir</Text>
         </TouchableOpacity>
       </View>
@@ -600,6 +613,7 @@ function Shell({
           <CampoBloqueadoScreen
             onSolicitarUbicacion={() => void mostrarAvisoUbicacion()}
             onLogout={() => void handleLogout()}
+            saliendo={cerrando}
           />
         ) : (
           <>
@@ -616,6 +630,7 @@ function Shell({
                 intervaloRastreoMin={intervaloRastreoMin}
                 onSolicitarUbicacion={() => void mostrarAvisoUbicacion()}
                 onLogout={() => void handleLogout()}
+                saliendo={cerrando}
                 onAbrirCola={() => setTab('sync')}
               />
             )}
@@ -698,8 +713,10 @@ function Shell({
                 setMas(false)
                 void handleLogout()
               }}
+              disabled={cerrando}
               accessibilityRole="button"
               accessibilityLabel="Salir"
+              accessibilityState={{ disabled: cerrando, busy: cerrando }}
             >
               <Icono name="salir" color={t.ink} size={20} />
               <Text style={[styles.masTexto, { color: t.ink }]}>Salir</Text>
