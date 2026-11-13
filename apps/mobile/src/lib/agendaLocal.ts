@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ItemCola } from './cola.ts'
+import { leerPaginado } from './paginar.ts'
+import { exigirSesion } from './sesionVigente.ts'
 import type { Visita } from './tipos.ts'
 
 /**
@@ -40,17 +42,29 @@ export function rangoAgenda(desde: string, dias: number): { desde: string; hasta
   return { desde, hasta }
 }
 
-/** Sin filtrar por usuario: la RLS da el alcance (propio, o equipo si es supervisor). */
+/**
+ * Sin filtrar por usuario: la RLS da el alcance (propio, o equipo si es supervisor).
+ * Por páginas y en orden de fecha: un equipo grande no debe perder las visitas de hoy
+ * por el tope `max_rows` de PostgREST. Sin sesión vigente no consulta (GC-NET-004):
+ * con la anon key la RLS devolvería una lista vacía que pisaría la copia guardada.
+ */
 export async function descargarAgenda(cliente: SupabaseClient, desde: string, dias = 7): Promise<Visita[]> {
+  await exigirSesion(cliente)
   const rango = rangoAgenda(desde, dias)
-  const res = await cliente
-    .from('visita')
-    .select('id, cliente_key, persona_nombre, direccion, fecha_visita, hora_inicio, estado, latitud, longitud, actividad(nombre)')
-    .gte('fecha_visita', rango.desde)
-    .lte('fecha_visita', rango.hasta)
-    .order('hora_inicio')
-  if (res.error) throw res.error
-  return ((res.data ?? []) as Array<Record<string, unknown>>).map(mapFilaVisita)
+  const filas = await leerPaginado(async (inicio, fin) => {
+    const res = await cliente
+      .from('visita')
+      .select('id, cliente_key, persona_nombre, direccion, fecha_visita, hora_inicio, estado, latitud, longitud, actividad(nombre)')
+      .gte('fecha_visita', rango.desde)
+      .lte('fecha_visita', rango.hasta)
+      .order('fecha_visita')
+      .order('hora_inicio')
+      .order('id')
+      .range(inicio, fin)
+    if (res.error) throw res.error
+    return (res.data ?? []) as Array<Record<string, unknown>>
+  })
+  return filas.map(mapFilaVisita)
 }
 
 function texto(v: unknown): string | null {

@@ -1,10 +1,39 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import { agendaConCola, descargarAgenda, mapFilaVisita, rangoAgenda } from '../src/lib/agendaLocal.ts'
+import { cacheMemoria } from '../src/lib/cacheCampo.ts'
 import type { ItemCola } from '../src/lib/cola.ts'
+import { conRespaldo } from '../src/lib/respaldo.ts'
 import type { Visita } from '../src/lib/tipos.ts'
 
 const FECHA = '2026-11-14'
+const conSesion = { getSession: async () => ({ data: { session: { access_token: 'jwt' } } }) }
+const sinSesion = { getSession: async () => ({ data: { session: null } }) }
+
+/** Cliente falso con una respuesta por página; registra cada llamada del constructor de consultas. */
+function clientePaginado(paginas: Array<{ data: unknown; error: unknown }>, auth = conSesion) {
+  const llamadas: unknown[][] = []
+  let n = 0
+  const cliente = {
+    auth,
+    from: (tabla: string) => {
+      llamadas.push(['from', tabla])
+      const res = paginas[n++] ?? { data: [], error: null }
+      const q: Record<string, unknown> = {}
+      for (const m of ['select', 'gte', 'lte', 'order', 'eq', 'range']) {
+        q[m] = (...a: unknown[]) => {
+          llamadas.push([m, ...a])
+          return q
+        }
+      }
+      q.then = (ok: (r: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(res).then(ok, ko)
+      return q
+    },
+  }
+  return { cliente: cliente as never, llamadas }
+}
+
+const fila = (i: number) => ({ id: i, cliente_key: `k${i}`, persona_nombre: 'X', fecha_visita: FECHA })
 
 function itemVisita(over: Partial<ItemCola> = {}, pay: Record<string, unknown> = {}): ItemCola {
   return {
@@ -172,14 +201,14 @@ test('descargarAgenda consulta el rango sin filtrar por usuario y lanza el error
   const llamadas: unknown[][] = []
   const mk = (res: { data: unknown; error: unknown }) => {
     const q: Record<string, unknown> = {}
-    for (const m of ['select', 'gte', 'lte', 'order', 'eq']) {
+    for (const m of ['select', 'gte', 'lte', 'order', 'eq', 'range']) {
       q[m] = (...a: unknown[]) => {
         llamadas.push([m, ...a])
         return q
       }
     }
     q.then = (ok: (r: unknown) => unknown) => ok(res)
-    return { from: () => q }
+    return { auth: conSesion, from: () => q }
   }
   const ok = await descargarAgenda(
     mk({ data: [{ id: 1, cliente_key: 'k', persona_nombre: 'X', fecha_visita: FECHA }], error: null }) as never,
@@ -213,4 +242,40 @@ test('agendaConCola: completar en error conserva estado local y lleva errorEnvio
 test('agendaConCola: ítem pendiente sin error no lleva errorEnvio', () => {
   const r = agendaConCola([], [itemVisita()], FECHA)
   assert.equal(r[0].errorEnvio, undefined)
+})
+
+test('descargarAgenda ordena por fecha, hora e id y pagina de a 500 hasta una página corta', async () => {
+  const p1 = { data: Array.from({ length: 500 }, (_, i) => fila(i + 1)), error: null }
+  const p2 = { data: [fila(501), fila(502), fila(503)], error: null }
+  const { cliente, llamadas } = clientePaginado([p1, p2])
+  const r = await descargarAgenda(cliente, '2026-11-30')
+  assert.equal(r.length, 503)
+  assert.equal(r[502].id, 503)
+  const ordenes = llamadas.filter((c) => c[0] === 'order').map((c) => c[1])
+  assert.deepEqual(ordenes.slice(0, 3), ['fecha_visita', 'hora_inicio', 'id'])
+  assert.deepEqual(
+    llamadas.filter((c) => c[0] === 'range').map((c) => [c[1], c[2]]),
+    [[0, 499], [500, 999]],
+  )
+  assert.equal(llamadas.filter((c) => c[0] === 'from').length, 2)
+})
+
+test('descargarAgenda sin sesión vigente lanza GC-NET-004 sin consultar', async () => {
+  const { cliente, llamadas } = clientePaginado([{ data: [fila(1)], error: null }], sinSesion)
+  await assert.rejects(descargarAgenda(cliente, FECHA), { message: 'GC-NET-004: sesión sin renovar (sin conexión)' })
+  assert.deepEqual(llamadas, [])
+})
+
+test('sin sesión vigente la agenda sale de la copia guardada y no la pisa con una lista vacía', async () => {
+  const cache = cacheMemoria()
+  await cache.guardar('t1:u1', 'agenda', [base()], new Date('2026-11-14T08:00:00Z'))
+  const { cliente } = clientePaginado([{ data: [], error: null }], sinSesion)
+  const r = await conRespaldo<Visita[]>({
+    cargar: () => descargarAgenda(cliente, FECHA),
+    leer: () => cache.leer<Visita[]>('t1:u1', 'agenda'),
+    guardar: (d) => cache.guardar('t1:u1', 'agenda', d),
+  })
+  assert.equal(r.origen, 'cache')
+  assert.equal(r.datos.length, 1)
+  assert.equal(r.guardadoEn, '2026-11-14T08:00:00.000Z')
 })
