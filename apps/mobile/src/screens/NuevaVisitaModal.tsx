@@ -22,7 +22,9 @@ import { mensajeDeError } from '../lib/mensajeError'
 import { claveParticionCola } from '../lib/colaParticion'
 import * as Crypto from 'expo-crypto'
 import { supabase, type Perfil } from '../lib/supabase'
-import { encolarYSync } from '../lib/colaStore'
+import { encolarEnFondo } from '../lib/colaStore'
+import type { ItemCola } from '../lib/cola'
+import { avisoCatalogosGuardados } from '../lib/avisoGuardado'
 import { ejecutarMutacion } from '../lib/sync'
 import { fechaLocalHoy, horaParaRpc, validarVisitaNueva, type BorradorVisita } from '../lib/visita'
 
@@ -35,11 +37,6 @@ interface Props {
   direccion?: string
   onCerrar: () => void
   onGuardada: () => void
-}
-
-function formatearGuardado(iso: string): string {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es')
 }
 
 export default function NuevaVisitaModal({
@@ -123,9 +120,10 @@ export default function NuevaVisitaModal({
       return
     }
     setGuardando(true)
+    let envio: Promise<ItemCola | undefined>
     try {
-      const claveItem = `visita:${uuid}`
-      const items = await encolarYSync(
+      // Se espera solo el guardado en el teléfono; el envío sigue en segundo plano.
+      const r = await encolarEnFondo(
         {
           tipo: 'visita',
           payload: {
@@ -140,24 +138,34 @@ export default function NuevaVisitaModal({
             ...(dir.trim() ? { direccion: dir.trim() } : {}),
             ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
           },
-          clienteKey: claveItem,
+          clienteKey: `visita:${uuid}`,
         },
         ejecutarMutacion(supabase),
         claveParticionCola(perfil.tenantId, perfil.id),
       )
-      // El servidor pudo rechazarla: el ítem queda en la cola (no se borra) y se avisa con su código GC-*.
-      const rechazado = items.find((i) => i.clienteKey === claveItem && i.estado === 'error')
-      onGuardada()
-      onCerrar()
-      if (rechazado?.ultimoError) {
-        Alert.alert('La visita no se pudo enviar', `${rechazado.ultimoError}
-Quedó en la cola de sincronización.`)
-      }
+      envio = r.envio
     } catch (e) {
       setError(mensajeDeError(e, 'No se pudo agendar'))
+      return
     } finally {
       setGuardando(false)
     }
+    onGuardada()
+    onCerrar()
+    // El servidor pudo rechazarla: el ítem queda en la cola (no se borra) y se avisa con su código GC-*.
+    envio.then(
+      (item) => {
+        if (item?.estado === 'error' && item.ultimoError) {
+          Alert.alert('La visita no se pudo enviar', `${item.ultimoError}\nQuedó en la cola de sincronización.`)
+        }
+      },
+      (e: unknown) => {
+        Alert.alert(
+          'La visita quedó guardada sin enviar',
+          `${mensajeDeError(e, 'GC-SYNC-002: no se pudo sincronizar la cola')}\nSe reintenta desde Sincronización.`,
+        )
+      },
+    )
   }
 
   return (
@@ -177,7 +185,7 @@ Quedó en la cola de sincronización.`)
           <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {guardadoEn !== null ? (
-              <Text style={styles.hint}>Catálogos guardados el {formatearGuardado(guardadoEn)}</Text>
+              <Text style={styles.hint}>{avisoCatalogosGuardados(guardadoEn)}</Text>
             ) : null}
 
             <Text style={styles.label}>Cliente / visitado *</Text>

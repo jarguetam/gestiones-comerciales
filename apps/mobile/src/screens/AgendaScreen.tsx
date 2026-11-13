@@ -1,7 +1,8 @@
 /**
  * M-02 Agenda del día + alta de visita (mismas validaciones GC-VIS que la web).
- * Check-in GPS directo (M-04) con aviso de geocerca; el rastreo por intervalo
- * vive en services/rastreoServicio y se activa desde App.
+ * La lista sale del servidor o, sin señal, de la copia guardada, más la cola local.
+ * Check-in GPS y cierre (M-04) se guardan en la cola y se envían en segundo plano;
+ * el rastreo por intervalo vive en services/rastreoServicio y se activa desde App.
  */
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import {
@@ -22,7 +23,9 @@ import { abrirCacheCampo } from '../lib/abrirCache'
 import { conRespaldo } from '../lib/respaldo'
 import { mensajeDeError } from '../lib/mensajeError'
 import { useCola } from '../lib/useCola'
-import { encolarYSync } from '../lib/colaStore'
+import { encolarEnFondo } from '../lib/colaStore'
+import type { ItemCola } from '../lib/cola'
+import { avisoAgendaGuardada, type EstadoAgendaGuardada } from '../lib/avisoGuardado'
 import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
 import { fechaLocalHoy } from '../lib/visita'
@@ -40,12 +43,6 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   anulada: 'Anulada',
 }
 
-function horaGuardada(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
-}
-
 export default function AgendaScreen({
   perfil,
   onAbrir,
@@ -55,7 +52,8 @@ export default function AgendaScreen({
 }) {
   const t = useTheme()
   const [base, setBase] = useState<Visita[]>([])
-  const [origen, setOrigen] = useState<'servidor' | 'cache'>('servidor')
+  // 'servidor' o, si se ve la copia guardada, por qué: refrescando, sin señal o tras un error.
+  const [fuente, setFuente] = useState<'servidor' | EstadoAgendaGuardada>('servidor')
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
@@ -66,6 +64,8 @@ export default function AgendaScreen({
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [version, setVersion] = useState(0)
   const tieneDatos = useRef(false)
+  // Solo la carga más reciente escribe estado: una anterior que responde tarde no la pisa.
+  const turno = useRef(0)
   const { items: cola, resumen } = useCola()
   const claveCola = claveParticionCola(perfil.tenantId, perfil.id)
 
@@ -76,38 +76,50 @@ export default function AgendaScreen({
   )
 
   const cargar = useCallback(async () => {
+    const mio = ++turno.current
+    const vigente = () => mio === turno.current
     const dia = fechaLocalHoy()
     const cache = abrirCacheCampo()
     const clave = claveParticionCola(perfil.tenantId, perfil.id)
     try {
       // Primero lo guardado, para no dejar la pantalla en blanco mientras responde la red.
       if (!tieneDatos.current) {
-        const previo = await cache.leer<Visita[]>(clave, 'agenda').catch(() => null)
-        if (previo && !tieneDatos.current) {
+        const previo = await cache.leer<Visita[]>(clave, 'agenda').catch((e: unknown) => {
+          // Es solo un adelanto: si la copia no se lee, se espera al servidor.
+          console.warn('GC-CACHE-002: no se pudo leer la agenda guardada', e)
+          return null
+        })
+        if (previo && vigente() && !tieneDatos.current) {
           tieneDatos.current = true
           setBase(previo.datos)
-          setOrigen('cache')
+          setFuente('actualizando')
           setGuardadoEn(previo.guardadoEn)
           setCargando(false)
         }
       }
+      // descargarAgenda exige sesión vigente (GC-NET-004): sin ella se usa la copia.
       const r = await conRespaldo<Visita[]>({
         cargar: () => descargarAgenda(supabase, dia),
         leer: () => cache.leer<Visita[]>(clave, 'agenda'),
         guardar: (datos) => cache.guardar(clave, 'agenda', datos),
       })
+      if (!vigente()) return
       tieneDatos.current = true
       setBase(r.datos)
-      setOrigen(r.origen)
+      setFuente(r.origen === 'cache' ? 'sin_conexion' : 'servidor')
       setGuardadoEn(r.guardadoEn ?? null)
       setError(null)
     } catch (e) {
-      // Un fallo no vacía la lista: se conserva lo que ya se ve.
+      if (!vigente()) return
+      // Un fallo no vacía la lista: se conserva lo que ya se ve, pero ya no se está actualizando.
       setError(mensajeDeError(e, 'No se pudo leer la agenda'))
+      setFuente((f) => (f === 'actualizando' ? 'error' : f))
     } finally {
-      setCargando(false)
-      setRefrescando(false)
-      setVersion((n) => n + 1)
+      if (vigente()) {
+        setCargando(false)
+        setRefrescando(false)
+        setVersion((n) => n + 1)
+      }
     }
   }, [perfil.tenantId, perfil.id])
 
@@ -132,10 +144,11 @@ export default function AgendaScreen({
     setMensaje(null)
     setMensajeEsError(false)
     setCheckinDe(visita.cliente_key)
+    let envio: Promise<ItemCola | undefined> | null = null
     try {
       const pos = await gps()
-      const claveItem = `${tipo}:${visita.cliente_key}`
-      const items = await encolarYSync(
+      // Se espera solo el guardado en el teléfono; el envío sigue en segundo plano.
+      const r = await encolarEnFondo(
         {
           tipo,
           payload: {
@@ -144,24 +157,32 @@ export default function AgendaScreen({
             latitud: pos.lat,
             longitud: pos.lng,
           },
-          clienteKey: claveItem,
+          clienteKey: `${tipo}:${visita.cliente_key}`,
         },
         ejecutarMutacion(supabase),
         claveCola,
       )
-      const rechazado = items.find((i) => i.clienteKey === claveItem && i.estado === 'error')
-      if (rechazado?.ultimoError) {
-        setMensajeEsError(true)
-        setMensaje(rechazado.ultimoError)
-      } else {
-        setMensaje(exito)
-      }
+      envio = r.envio
+      setMensaje(exito)
     } catch (e) {
       setMensajeEsError(true)
       setMensaje(mensajeDeError(e, fallo))
     } finally {
       setCheckinDe(null)
     }
+    // Si el servidor lo rechaza, se avisa con su código GC-* (la fila también lo muestra).
+    envio?.then(
+      (item) => {
+        if (item?.estado === 'error' && item.ultimoError) {
+          setMensajeEsError(true)
+          setMensaje(item.ultimoError)
+        }
+      },
+      (e: unknown) => {
+        setMensajeEsError(true)
+        setMensaje(mensajeDeError(e, 'GC-SYNC-002: no se pudo sincronizar la cola'))
+      },
+    )
   }
 
   function handleCheckin(visita: Visita) {
@@ -231,6 +252,8 @@ export default function AgendaScreen({
 
   const jornada = progresoJornada(visitas)
   const fechaHero = visitas[0]?.fecha_visita ?? fechaLocalHoy()
+  // Sin señal y sin copia: el aviso de arriba ya trae el código; la lista vacía no lo repite.
+  const sinAgendaGuardada = error?.startsWith('GC-NET-002') ?? false
 
   return (
     <View style={[styles.contenedor, { backgroundColor: t.canvas }]}>
@@ -239,10 +262,8 @@ export default function AgendaScreen({
           {error}
         </Text>
       ) : null}
-      {origen === 'cache' ? (
-        <Text style={[styles.aviso, { color: t.muted }]}>
-          Sin conexión · agenda guardada a las {horaGuardada(guardadoEn)}
-        </Text>
+      {fuente !== 'servidor' ? (
+        <Text style={[styles.aviso, { color: t.muted }]}>{avisoAgendaGuardada(fuente, guardadoEn)}</Text>
       ) : null}
       {mensaje && <Text style={[styles.mensaje, { color: mensajeEsError ? t.danger : t.success }]}>{mensaje}</Text>}
       <FlatList
@@ -267,8 +288,12 @@ export default function AgendaScreen({
         }
         ListEmptyComponent={
           <Vacio
-            titulo="Sin visitas programadas para hoy"
-            descripcion={error ?? 'Agendá una visita a un cliente de tu cartera o un prospecto.'}
+            titulo={sinAgendaGuardada ? 'Sin conexión y sin agenda guardada' : 'Sin visitas programadas para hoy'}
+            descripcion={
+              sinAgendaGuardada
+                ? 'Podés agendar visitas sin señal; se envían cuando vuelva la conexión.'
+                : (error ?? 'Agendá una visita a un cliente de tu cartera o un prospecto.')
+            }
           />
         }
         contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
