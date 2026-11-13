@@ -2,6 +2,8 @@
  * M-03 Persona (spec F1.11).
  * Cartera del asesor con búsqueda y alta de nuevos registros (texto libre
  * + documento único por tenant; el teléfono va en detalles, §8).
+ * Sin señal muestra los clientes guardados con los catálogos de campo, para
+ * poder abrir un cliente y agendarle una visita.
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import {
@@ -17,6 +19,10 @@ import { supabase, type Perfil } from '../lib/supabase'
 import { encolarYSync } from '../lib/colaStore'
 import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
+import { abrirCacheCampo } from '../lib/abrirCache'
+import { avisoCarteraGuardada } from '../lib/avisoGuardado'
+import { cargarCartera } from '../lib/catalogosCampo'
+import { mensajeDeError } from '../lib/mensajeError'
 import type { Persona } from '../lib/tipos'
 import { Cargando, Vacio } from '../components/ui'
 import { useTheme } from '../theme'
@@ -40,6 +46,9 @@ export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorLista, setErrorLista] = useState<string | null>(null)
+  // Fecha de la copia guardada cuando la lista no viene del servidor; null si viene.
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
 
   // alta inline
   const [nombre, setNombre] = useState('')
@@ -49,18 +58,25 @@ export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
   const [categoria, setCategoria] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('persona')
-      .select('id, nombre, documento, documento_tipo, direccion, categoria')
-      .eq('activo', true)
-      .order('nombre')
-      .limit(200)
-    if (!error && data) setPersonas(data as Persona[])
-    setCargando(false)
-  }, [])
+    try {
+      const r = await cargarCartera({
+        clave: claveParticionCola(perfil.tenantId, perfil.id),
+        cache: abrirCacheCampo(),
+        cliente: supabase,
+      })
+      setPersonas(r.datos)
+      setGuardadoEn(r.origen === 'cache' ? (r.guardadoEn ?? '') : null)
+      setErrorLista(null)
+    } catch (e) {
+      // Se conserva la lista que ya se ve; el error se muestra con su código.
+      setErrorLista(mensajeDeError(e, 'No se pudo leer la cartera'))
+    } finally {
+      setCargando(false)
+    }
+  }, [perfil.tenantId, perfil.id])
 
   useEffect(() => {
-    cargar()
+    void cargar()
   }, [cargar])
 
   const filtradas = personas.filter((p) => {
@@ -199,6 +215,18 @@ export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
         </View>
       )}
 
+      {errorLista ? (
+        <Text
+          style={[styles.errorLista, { backgroundColor: t.surface, borderColor: t.danger, color: t.danger }]}
+          accessibilityRole="alert"
+        >
+          {errorLista}
+        </Text>
+      ) : null}
+      {guardadoEn !== null ? (
+        <Text style={[styles.aviso, { color: t.muted }]}>{avisoCarteraGuardada(guardadoEn)}</Text>
+      ) : null}
+
       {cargando ? (
         <View style={styles.centro}>
           <ActivityIndicator size="large" color={t.primary} />
@@ -306,6 +334,16 @@ const styles = StyleSheet.create({
   chipTexto: { fontSize: 12, color: '#4B5563' },
   chipTextoActivo: { color: '#fff' },
   error: { color: '#DC2626', fontSize: 12, marginBottom: 8 },
+  errorLista: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  aviso: { marginHorizontal: 12, marginBottom: 8, fontSize: 13 },
   botonGuardar: {
     borderRadius: 10,
     paddingVertical: 12,
