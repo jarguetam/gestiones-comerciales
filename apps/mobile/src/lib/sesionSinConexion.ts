@@ -57,7 +57,8 @@ export async function leerSesionGuardada(
 }
 
 export function puedeEntrarSinConexion(g: SesionGuardada, ahoraMs: number): boolean {
-  if (g.expires_at == null) return true
+  // Sin vencimiento no se puede medir el plazo: a Login.
+  if (g.expires_at == null) return false
   return ahoraMs - g.expires_at * 1000 <= MAX_DIAS_SIN_CONEXION * 24 * 60 * 60 * 1000
 }
 

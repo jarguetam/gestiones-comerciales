@@ -65,12 +65,12 @@ test('leerSesionGuardada: error del storage no lanza', async () => {
   assert.deepEqual(avisos, ['GC-AUTH-025: sesión guardada ilegible'])
 })
 
-test('puedeEntrarSinConexion: 6 días sí, 8 días no, sin expires_at sí', () => {
+test('puedeEntrarSinConexion: 6 días sí, 8 días no, sin expires_at no', () => {
   const ahora = 1_800_000_000_000
   assert.equal(puedeEntrarSinConexion(sesion({ expires_at: (ahora - 6 * DIA) / 1000 }), ahora), true)
   assert.equal(puedeEntrarSinConexion(sesion({ expires_at: (ahora - 8 * DIA) / 1000 }), ahora), false)
   assert.equal(puedeEntrarSinConexion(sesion({ expires_at: (ahora - 7 * DIA) / 1000 }), ahora), true)
-  assert.equal(puedeEntrarSinConexion(sesion(), ahora), true)
+  assert.equal(puedeEntrarSinConexion(sesion(), ahora), false)
 })
 
 test('perfilSinConexion: usa el perfil guardado', async () => {
