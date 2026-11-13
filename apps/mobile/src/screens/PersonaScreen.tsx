@@ -95,7 +95,8 @@ export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
       setError('El nombre es requerido')
       return
     }
-    if (documento.trim()) {
+    // Sin señal la lista no trae documento: el duplicado lo rechaza el servidor (índice único).
+    if (documento.trim() && guardadoEn === null) {
       const duplicado = personas.find(
         (p) => (p.documento ?? '').toLowerCase() === documento.trim().toLowerCase(),
       )
@@ -143,7 +144,9 @@ export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
       <View style={styles.barraBusqueda}>
         <TextInput
           style={styles.inputBusqueda}
-          placeholder="Buscar por nombre, documento o categoría"
+          placeholder={
+            guardadoEn !== null ? 'Buscar por nombre o categoría' : 'Buscar por nombre, documento o categoría'
+          }
           placeholderTextColor="#9CA3AF"
           value={busqueda}
           onChangeText={setBusqueda}

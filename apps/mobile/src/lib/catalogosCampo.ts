@@ -16,6 +16,9 @@ export const LIMITE_CARTERA_EN_LINEA = 200
 
 const COLUMNAS_PERSONA = 'id, nombre, documento, documento_tipo, direccion, categoria'
 
+/** Lo que se guarda en el teléfono: sin documento (dato sensible), solo lo necesario para agendar. */
+export const COLUMNAS_PERSONA_CACHE = 'id, nombre, direccion, categoria'
+
 export interface PersonaOpcion {
   id: number
   nombre: string
@@ -46,7 +49,7 @@ async function cargarDesdeServidor(cliente: SupabaseClient): Promise<CatalogosCa
       async (desde, hasta) => {
         const res = await cliente
           .from('persona')
-          .select(COLUMNAS_PERSONA)
+          .select(COLUMNAS_PERSONA_CACHE)
           .eq('activo', true)
           .order('nombre')
           .order('id')

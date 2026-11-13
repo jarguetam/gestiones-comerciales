@@ -88,12 +88,22 @@ test('catálogos: clientes por páginas de 500 hasta el tope de campo', async ()
   assert.ok(!llamadas.some((c) => c[0] === 'limit' && c[1] === 'persona'))
 })
 
+test('la caché de clientes no incluye documento', async () => {
+  const { cliente, llamadas } = clienteFalso({ totalPersonas: 3 })
+  await cargarCatalogosCampo({ clave: CLAVE, cache: cacheMemoria(), cliente })
+  const selects = llamadas.filter((c) => c[0] === 'select' && c[1] === 'persona').map((c) => String(c[2]))
+  assert.ok(selects.length > 0)
+  for (const s of selects) {
+    assert.ok(!s.includes('documento'), s)
+    for (const col of ['id', 'nombre', 'direccion']) assert.ok(s.includes(col), s)
+  }
+})
+
 test('catálogos: una página corta de clientes termina la descarga', async () => {
   const { cliente, llamadas } = clienteFalso({ totalPersonas: 620 })
   const r = await cargarCatalogosCampo({ clave: CLAVE, cache: cacheMemoria(), cliente })
   assert.equal(r.personas.length, 620)
   assert.deepEqual(rangosPersona(llamadas), [[0, 499], [500, 999]])
-  assert.equal(r.personas[0].documento, 'D1')
 })
 
 test('catálogos: el error del servidor al leer clientes se propaga', async () => {
