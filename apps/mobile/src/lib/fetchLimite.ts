@@ -9,7 +9,7 @@ export function fetchConLimite(ms: number, base: typeof fetch = fetch): typeof f
       if (externa.aborted) control.abort(externa.reason)
       else externa.addEventListener('abort', alAbortarExterna, { once: true })
     }
-    const temporizador = setTimeout(() => control.abort(new Error('GC-NET-002: timeout de red')), ms)
+    const temporizador = setTimeout(() => control.abort(new Error('GC-NET-003: timeout de red')), ms)
     return base(input, { ...init, signal: control.signal }).finally(() => {
       clearTimeout(temporizador)
       externa?.removeEventListener('abort', alAbortarExterna)

@@ -32,3 +32,12 @@ test('devuelve la respuesta y limpia el temporizador', async () => {
   const r = await fetchConLimite(60_000, ok)('https://x')
   assert.equal(await r.text(), 'ok')
 })
+
+test('el vencimiento rechaza con GC-NET-003 y es transitorio', async () => {
+  const conMotivo: typeof fetch = (_u, init) =>
+    new Promise((_, rej) => init?.signal?.addEventListener('abort', () => rej(init.signal?.reason)))
+  await assert.rejects(fetchConLimite(10, conMotivo)('https://x'), (e) => {
+    assert.match((e as Error).message, /^GC-NET-003: timeout de red$/)
+    return esErrorTransitorio(e)
+  })
+})
