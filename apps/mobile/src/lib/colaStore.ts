@@ -1,4 +1,4 @@
-import { encolar, procesarCola, reintentables, type AltaCola, type ItemCola } from './cola.ts'
+import { encolar, procesarCola, reactivar, reintentables, type AltaCola, type ItemCola } from './cola.ts'
 import type { ColaPersist } from './colaPersistencia'
 
 interface ContextoCola {
@@ -83,6 +83,13 @@ export async function encolarMutacion(alta: AltaCola, clave?: string) {
     throw new Error('El almacenamiento no está listo para esta sesión (GC-CORE-001)')
   }
   return publicar(encolar(activo.items, alta))
+}
+
+export async function reactivarItem(id: string, clave?: string): Promise<void> {
+  if (!activo.persist || activo.clave !== clave) {
+    throw new Error('El almacenamiento no está listo para esta sesión (GC-CORE-001)')
+  }
+  return publicar(reactivar(activo.items, id))
 }
 
 export async function encolarYSync(

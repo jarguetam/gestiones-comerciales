@@ -3,6 +3,10 @@ import { test } from 'node:test'
 import {
   backoffMs,
   contarPendientes,
+  ESPERA_SIN_RED_MS,
+  marcarSinRed,
+  reactivar,
+  sinEnviar,
   demoCola,
   encolar,
   marcarEnviado,
@@ -115,4 +119,63 @@ test('demoCola tiene pendientes y al menos un error para M-09', () => {
   assert.ok(r.errores >= 1)
   assert.ok(demo.some((i) => i.tipo === 'visita_checkin'))
   assert.ok(demo.some((i) => i.tipo === 'formulario_enviar'))
+})
+
+test('error transitorio no consume intentos', async () => {
+  const items = encolar([], { tipo: 'visita', payload: {}, clienteKey: 'k1', id: 'i1' })
+  const r = await procesarCola(items, async () => { throw { message: 'Network request failed' } }, 1000)
+  assert.deepEqual(
+    [r[0].estado, r[0].intentos, r[0].ultimoError, r[0].proximoIntentoEn],
+    ['pendiente', 0, 'GC-NET-001: sin conexión', 1000 + ESPERA_SIN_RED_MS],
+  )
+})
+
+test('error del servidor sí consume intentos', async () => {
+  const items = encolar([], { tipo: 'visita', payload: {}, clienteKey: 'k1', id: 'i1' })
+  const r = await procesarCola(items, async () => { throw { code: 'P0001', message: 'GC-VIS-002: falta oficina' } }, 1000)
+  assert.equal(r[0].estado, 'error')
+  assert.equal(r[0].intentos, 1)
+  assert.equal(r[0].ultimoError, 'GC-VIS-002: falta oficina')
+})
+
+test('marcarSinRed conserva los intentos ya gastados', () => {
+  const r = marcarSinRed([item({ id: 'a', estado: 'error', intentos: 3 })], 'a', 500)
+  assert.deepEqual([r[0].estado, r[0].intentos], ['pendiente', 3])
+})
+
+test('reactivar deja listo un ítem agotado', () => {
+  const r = reactivar([item({ id: 'a', estado: 'error', intentos: 5, ultimoError: 'x', proximoIntentoEn: 9e12 })], 'a')
+  assert.deepEqual(
+    [r[0].estado, r[0].intentos, r[0].proximoIntentoEn, r[0].ultimoError],
+    ['pendiente', 0, 0, undefined],
+  )
+})
+
+test('reactivar un alta reactiva su check-in y su cierre', () => {
+  const agotado = { estado: 'error' as const, intentos: 5, ultimoError: 'GC-SYNC-001' }
+  const items = [
+    item({ id: 'v', tipo: 'visita', payload: { clienteKey: 'u1' }, clienteKey: 'visita:u1', ...agotado }),
+    item({ id: 'c', tipo: 'visita_checkin', payload: { visitaClienteKey: 'u1' }, clienteKey: 'ci:u1', ...agotado }),
+    item({ id: 'f', tipo: 'visita_completar', payload: { visitaClienteKey: 'u1' }, clienteKey: 'co:u1', ...agotado }),
+    item({ id: 'o', tipo: 'visita_checkin', payload: { visitaClienteKey: 'u2' }, clienteKey: 'ci:u2', ...agotado }),
+  ]
+  const r = reactivar(items, 'v')
+  assert.deepEqual(r.map((i) => i.estado), ['pendiente', 'pendiente', 'pendiente', 'error'])
+  assert.equal(r[1].intentos, 0)
+})
+
+test('sinEnviar cuenta pendientes y errores, no enviados', () => {
+  assert.equal(
+    sinEnviar([
+      item({ id: 'a' }),
+      item({ id: 'b', estado: 'error', intentos: 5 }),
+      item({ id: 'c', estado: 'enviado' }),
+    ]),
+    2,
+  )
+})
+
+test('mismo clienteKey no duplica la visita', () => {
+  const a = encolar([], { tipo: 'visita', payload: {}, clienteKey: 'visita:u1' })
+  assert.equal(encolar(a, { tipo: 'visita', payload: {}, clienteKey: 'visita:u1' }).length, 1)
 })

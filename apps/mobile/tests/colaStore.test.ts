@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { encolar, type ItemCola } from '../src/lib/cola.ts'
+import { encolar, reintentables, type ItemCola } from '../src/lib/cola.ts'
 import { persistenciaMemoria } from '../src/lib/colaPersistencia.ts'
 import * as store from '../src/lib/colaStore.ts'
 
@@ -128,4 +128,18 @@ test('una sincronización tardía de A no procesa la cola de B', async () => {
   await assert.rejects(store.sincronizarAhora(async () => { enviados++ }, Date.now(), 'tenant:a'), /GC-CORE-001/)
   assert.equal(enviados, 0)
   assert.equal(store.leerCola()[0].estado, 'pendiente')
+})
+
+test('reactivarItem deja el ítem listo para el próximo envío', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:r')
+  const agotado = { ...encolar([], alta('a'))[0], estado: 'error' as const, intentos: 5, proximoIntentoEn: 9e12 }
+  await store.hidratarCola([agotado])
+  assert.equal(reintentables(store.leerCola(), Date.now()).length, 0)
+  await store.reactivarItem('a', 'tenant:r')
+  assert.equal(reintentables(store.leerCola(), Date.now()).length, 1)
+})
+
+test('reactivarItem rechaza una clave de otra sesión', async () => {
+  store.configurarPersistencia(persistenciaMemoria(), 'tenant:r')
+  await assert.rejects(store.reactivarItem('a', 'tenant:x'), /GC-CORE-001/)
 })

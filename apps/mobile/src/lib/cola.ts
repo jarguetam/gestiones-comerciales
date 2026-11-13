@@ -1,3 +1,5 @@
+import { esErrorTransitorio } from './errorRed.ts'
+
 /** M-09 — cola local de mutaciones (pendiente | enviado | error) con backoff. */
 
 export type EstadoCola = 'pendiente' | 'enviado' | 'error'
@@ -34,6 +36,7 @@ export interface AltaCola {
 }
 
 const MAX_BACKOFF_MS = 60_000
+export const ESPERA_SIN_RED_MS = 15_000
 
 export function backoffMs(intentos: number): number {
   const n = Math.max(1, intentos)
@@ -93,6 +96,50 @@ export function marcarError(items: ItemCola[], id: string, error: string, ahora 
   })
 }
 
+/** Sin señal no es culpa del ítem: sigue pendiente y no gasta intentos. */
+export function marcarSinRed(items: ItemCola[], id: string, ahora = Date.now()): ItemCola[] {
+  return items.map((i) =>
+    i.id === id
+      ? { ...i, estado: 'pendiente' as const, ultimoError: 'GC-NET-001: sin conexión', proximoIntentoEn: ahora + ESPERA_SIN_RED_MS }
+      : i,
+  )
+}
+
+/** Deja listo un ítem agotado y los que dependen de él (check-in y cierre de una visita rechazada). */
+export function reactivar(items: ItemCola[], id: string): ItemCola[] {
+  const objetivo = items.find((i) => i.id === id)
+  if (!objetivo) return items
+  const visitaKey = objetivo.tipo === 'visita' ? objetivo.payload.clienteKey : undefined
+  const listo = (i: ItemCola): ItemCola => ({
+    ...i,
+    estado: 'pendiente',
+    intentos: 0,
+    proximoIntentoEn: 0,
+    ultimoError: undefined,
+  })
+  return items.map((i) => {
+    if (i.id === id) return listo(i)
+    if (
+      typeof visitaKey === 'string' &&
+      i.estado !== 'enviado' &&
+      i.payload.visitaClienteKey === visitaKey
+    ) {
+      return listo(i)
+    }
+    return i
+  })
+}
+
+export function sinEnviar(items: ItemCola[]): number {
+  return items.filter((i) => i.estado !== 'enviado').length
+}
+
+function mensajeDe(err: unknown): string {
+  if (err instanceof Error) return err.message
+  const m = (err as { message?: unknown } | null)?.message
+  return typeof m === 'string' && m ? m : 'error'
+}
+
 export async function procesarCola(
   items: ItemCola[],
   ejecutar: (item: ItemCola) => Promise<void>,
@@ -104,7 +151,9 @@ export async function procesarCola(
       await ejecutar(item)
       next = marcarEnviado(next, item.id)
     } catch (err) {
-      next = marcarError(next, item.id, err instanceof Error ? err.message : 'error', ahora)
+      next = esErrorTransitorio(err)
+        ? marcarSinRed(next, item.id, ahora)
+        : marcarError(next, item.id, mensajeDe(err), ahora)
     }
   }
   return next

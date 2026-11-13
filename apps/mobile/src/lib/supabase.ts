@@ -10,6 +10,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { brandingDeJson, nombreComercial } from './branding'
 import { claimsEmpresaDe, type Rol } from './claims'
 import { requireMobileEnv } from './env'
+import { fetchConLimite } from './fetchLimite'
 import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
 import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
@@ -26,6 +27,7 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
     persistSession: true,
     detectSessionInUrl: false,
   },
+  global: { fetch: fetchConLimite(15_000) },
 })
 
 /**
