@@ -63,6 +63,13 @@ sí existía en el environment de GitHub
 transfiere automáticamente al builder remoto. Tampoco se verificó la clave de
 servicio de Play en EAS. Los workflows de Android no están listos para correr.
 
+El 2026-11-13 se creó el environment de GitHub `eas-android`, sin reglas de
+rama porque `eas-preview.yml` corre en PR (los PR desde forks no reciben
+secrets). `EXPO_TOKEN` sigue pendiente: el propietario lo carga con
+`gh secret set EXPO_TOKEN --env eas-android`. El estado de EAS (variables
+`production` y Service Account Key) no se verificó: no había sesión de Expo
+en el equipo.
+
 `extra.eas.projectId` vive en `apps/mobile/app.json`. Desde `apps/mobile`,
 `eas project:info` debe resolver al proyecto anterior. No crear otro proyecto.
 
@@ -78,12 +85,56 @@ No poner credenciales ni claves de firma en documentos o mensajes del PR.
 2. Instalá el APK en emulador API 34 o dispositivo.
 3. Sin URL/anon key el runtime falla con `GC-CORE-001` (no hay demo).
 
-## AAB para prueba cerrada
+## Publicación en Google Play
 
-1. Tag `android-*` o `workflow_dispatch` → `eas-internal.yml`.
-2. `eas build --platform android --profile production --auto-submit --wait`;
-   EAS Submit recibe ese build, sin seleccionar otro `--latest` concurrente.
-3. Track: `alpha` (prueba cerrada). No hay `eas submit --platform ios`.
+`eas-internal.yml` («EAS Android → Google Play») compila el AAB `production`
+y lo envía con un perfil de submit explícito
+(`--auto-submit-with-profile`): EAS Submit recibe ese build y no otro
+`--latest` concurrente. No hay `eas submit --platform ios`.
+
+| Perfil de submit | Track de Play | Release | Uso |
+|---|---|---|---|
+| `internal` | prueba interna | borrador (`draft`) | primera subida, mientras la app está en borrador en Play |
+| `closed` | `alpha` (prueba cerrada) | completado | prueba cerrada de 12 testers / 14 días |
+
+Ningún perfil apunta al track `production`; `eas-config.test.ts` lo impide
+mientras no haya acceso a producción.
+
+Elección del perfil:
+
+- `workflow_dispatch`: input `submit_profile`.
+- Tag `android-*`: variable `ANDROID_SUBMIT_PROFILE` (del environment
+  `eas-android` o del repositorio). Sin variable usa `internal`.
+
+Secuencia de la primera publicación:
+
+1. Credenciales de la sección anterior: `EXPO_TOKEN` en `eas-android`,
+   variables EAS `production` y la Service Account Key cargada en EAS
+   (`eas credentials --platform android` → Google Service Account).
+2. App creada en Play Console con el paquete `com.gc.mobile` (queda fijo).
+3. Ejecutar el workflow con `internal`. El AAB queda como borrador en prueba
+   interna; revisarlo y desplegarlo desde Play Console. Si Play rechaza la
+   firma, la llave de subida registrada no es la de EAS: resolver antes de
+   seguir.
+4. Completar ficha, Data safety, clasificación de contenido, política,
+   declaración de ubicación en segundo plano y acceso del revisor
+   (borradores en `docs/releases/`).
+5. Crear la prueba cerrada con su lista de testers, promover a ella el release
+   de prueba interna y enviarlo a revisión.
+6. Tras la primera aprobación, fijar `ANDROID_SUBMIT_PROFILE=closed`. Desde
+   ahí cada tag sube a prueba cerrada:
+
+   ```bash
+   git tag android-1.0.1 && git push origin android-1.0.1
+   ```
+
+Mientras la app está en borrador, la API de Play solo acepta releases en
+borrador («Only releases with status draft may be created on draft app»);
+por eso `closed` se usa después de la primera aprobación.
+
+EAS incrementa `versionCode` (`appVersionSource: remote` + `autoIncrement`).
+El nombre del tag no cambia la versión visible: para eso, actualizar
+`version` en `app.json`.
 
 ## Checklist manual
 

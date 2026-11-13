@@ -1,7 +1,23 @@
-name: EAS Play Closed Testing
+name: EAS Android → Google Play
+
+# Compila el AAB `production` en EAS y lo envía a Google Play con un perfil
+# de submit explícito de apps/mobile/eas.json:
+#   internal → prueba interna, release en borrador (primera subida; la app
+#              sigue en borrador en Play Console).
+#   closed   → prueba cerrada (track alpha), para el requisito de 12 testers.
+# Con tag `android-*` usa la variable ANDROID_SUBMIT_PROFILE (por defecto
+# internal). Ver docs/runbooks/android-internal.md.
 
 on:
   workflow_dispatch:
+    inputs:
+      submit_profile:
+        description: 'Perfil de submit (internal = borrador en prueba interna, closed = prueba cerrada)'
+        type: choice
+        options:
+          - internal
+          - closed
+        default: internal
   push:
     tags:
       - 'android-*'
@@ -9,9 +25,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: eas-android-play
+  cancel-in-progress: false
+
 jobs:
-  closed:
-    name: Production AAB + prueba cerrada
+  play:
+    name: Production AAB + Google Play
     runs-on: ubuntu-latest
     environment: eas-android
     defaults:
@@ -19,6 +39,22 @@ jobs:
         working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v7
+      - name: Elegir perfil de submit
+        id: submit
+        env:
+          INPUT_PROFILE: ${{ inputs.submit_profile }}
+          VAR_PROFILE: ${{ vars.ANDROID_SUBMIT_PROFILE }}
+        run: |
+          profile="${INPUT_PROFILE:-${VAR_PROFILE:-internal}}"
+          case "$profile" in
+            internal|closed) ;;
+            *)
+              echo "::error::Perfil de submit no válido: '$profile' (usar internal o closed)"
+              exit 1
+              ;;
+          esac
+          echo "profile=$profile" >> "$GITHUB_OUTPUT"
+          echo "Perfil de submit a Google Play: \`$profile\`" >> "$GITHUB_STEP_SUMMARY"
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
@@ -31,7 +67,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
-            echo "::error::Falta EXPO_TOKEN para EAS en GitHub"
+            echo "::error::Falta EXPO_TOKEN en el environment eas-android de GitHub"
             exit 1
           fi
       - uses: expo/expo-github-action@v9
@@ -41,5 +77,7 @@ jobs:
       - name: Instalar dependencias
         working-directory: .
         run: pnpm install --frozen-lockfile
-      - name: EAS production AAB + Play Closed Testing
-        run: eas build --platform android --profile production --auto-submit --wait --non-interactive
+      - name: EAS production AAB + Google Play
+        env:
+          SUBMIT_PROFILE: ${{ steps.submit.outputs.profile }}
+        run: eas build --platform android --profile production --auto-submit-with-profile="$SUBMIT_PROFILE" --wait --non-interactive

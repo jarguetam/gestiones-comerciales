@@ -9,10 +9,20 @@ test('workflows EAS no hacen submit iOS', () => {
   assert.equal(preview.includes('eas submit --platform ios'), false)
   assert.equal(internal.includes('eas submit --platform ios'), false)
   assert.equal(/--platform\s+ios/.test(internal), false)
-  assert.match(internal, /eas build --platform android --profile production --auto-submit --wait --non-interactive/)
+  assert.match(
+    internal,
+    /eas build --platform android --profile production --auto-submit-with-profile="\$SUBMIT_PROFILE" --wait --non-interactive/,
+  )
+  assert.equal(/--auto-submit\s/.test(internal), false, 'usar un perfil de submit explícito')
   assert.equal(internal.includes('eas submit --latest'), false)
   assert.match(preview, /--platform android --profile preview/)
   assert.match(internal, /--platform android --profile production/)
+})
+
+test('el workflow de Play solo acepta los perfiles internal o closed', () => {
+  assert.match(internal, /ANDROID_SUBMIT_PROFILE/)
+  assert.match(internal, /internal\|closed\)/)
+  assert.match(internal, /options:\s*\n\s*- internal\s*\n\s*- closed/)
 })
 
 test('workflows EAS usan environment eas-android', () => {
