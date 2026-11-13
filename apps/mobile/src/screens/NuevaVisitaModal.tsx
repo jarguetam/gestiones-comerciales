@@ -19,8 +19,11 @@ import { cargarCatalogosCampo, type CatalogoActividad, type CatalogosCampo } fro
 import { abrirCacheCampo } from '../lib/abrirCache'
 import { mensajeDeError } from '../lib/mensajeError'
 import { claveParticionCola } from '../lib/colaParticion'
-import { persistirVisitaCampo, type Perfil } from '../lib/supabase'
-import { fechaLocalHoy, type BorradorVisita } from '../lib/visita'
+import * as Crypto from 'expo-crypto'
+import { supabase, type Perfil } from '../lib/supabase'
+import { encolarYSync } from '../lib/colaStore'
+import { ejecutarMutacion } from '../lib/sync'
+import { fechaLocalHoy, horaParaRpc, validarVisitaNueva, type BorradorVisita } from '../lib/visita'
 
 interface Props {
   visible: boolean
@@ -31,6 +34,11 @@ interface Props {
   direccion?: string
   onCerrar: () => void
   onGuardada: () => void
+}
+
+function formatearGuardado(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es')
 }
 
 export default function NuevaVisitaModal({
@@ -55,6 +63,9 @@ export default function NuevaVisitaModal({
   const [subId, setSubId] = useState<number | null>(null)
   const [horaId, setHoraId] = useState<number | null>(null)
   const [comentario, setComentario] = useState('')
+  // Una clave por apertura: un doble toque en Guardar encola un solo elemento.
+  const [uuid, setUuid] = useState(() => Crypto.randomUUID())
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
 
   useEffect(() => {
     if (!visible) return
@@ -66,11 +77,14 @@ export default function NuevaVisitaModal({
     setSubId(null)
     setComentario('')
     setError(null)
+    setGuardadoEn(null)
+    setUuid(Crypto.randomUUID())
     setCargando(true)
     void cargarCatalogosCampo({ clave: claveParticionCola(perfil.tenantId, perfil.id), cache: abrirCacheCampo() })
       .then((c) => {
         setCats(c)
         setHoraId(c.geo.horaDefaultId)
+        setGuardadoEn(c.origen === 'cache' ? (c.guardadoEn ?? '') : null)
         if (c.aviso) setError(c.aviso)
       })
       .catch((e) => {
@@ -98,9 +112,33 @@ export default function NuevaVisitaModal({
       direccion: dir,
       comentario,
     }
+    const invalido = validarVisitaNueva(borrador)
+    if (invalido) {
+      setError(invalido)
+      return
+    }
     setGuardando(true)
     try {
-      await persistirVisitaCampo(borrador)
+      await encolarYSync(
+        {
+          tipo: 'visita',
+          payload: {
+            clienteKey: uuid,
+            personaNombre: nombre.trim(),
+            ...(personaId != null ? { personaId } : {}),
+            actividadId,
+            subActividadId: subId,
+            actividadHoraId: horaId,
+            fecha,
+            horaInicio: horaParaRpc(hora),
+            ...(dir.trim() ? { direccion: dir.trim() } : {}),
+            ...(comentario.trim() ? { comentario: comentario.trim() } : {}),
+          },
+          clienteKey: `visita:${uuid}`,
+        },
+        ejecutarMutacion(supabase),
+        claveParticionCola(perfil.tenantId, perfil.id),
+      )
       onGuardada()
       onCerrar()
     } catch (e) {
@@ -126,6 +164,9 @@ export default function NuevaVisitaModal({
         ) : (
           <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
             {error ? <Text style={styles.error}>{error}</Text> : null}
+            {guardadoEn !== null ? (
+              <Text style={styles.hint}>Catálogos guardados el {formatearGuardado(guardadoEn)}</Text>
+            ) : null}
 
             <Text style={styles.label}>Cliente / visitado *</Text>
             <TextInput
@@ -199,10 +240,6 @@ export default function NuevaVisitaModal({
                 </Pressable>
               ))}
             </View>
-
-            {cats?.zonas[0] ? (
-              <Text style={styles.hint}>Zona {cats.zonas[0].nombre}</Text>
-            ) : null}
 
             <Text style={styles.label}>Comentario</Text>
             <TextInput

@@ -3,7 +3,7 @@
  * Check-in GPS directo (M-04) con aviso de geocerca; el rastreo por intervalo
  * vive en services/rastreoServicio y se activa desde App.
  */
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -17,11 +17,14 @@ import {
 import * as Location from 'expo-location'
 import { supabase, type Perfil } from '../lib/supabase'
 import type { Visita } from '../lib/tipos'
-import { mapFilaVisita } from '../lib/agendaLocal'
+import { agendaConCola, descargarAgenda } from '../lib/agendaLocal'
+import { abrirCacheCampo } from '../lib/abrirCache'
+import { conRespaldo } from '../lib/respaldo'
+import { mensajeDeError } from '../lib/mensajeError'
+import { useCola } from '../lib/useCola'
 import { encolarYSync } from '../lib/colaStore'
 import { claveParticionCola } from '../lib/colaParticion'
 import { ejecutarMutacion } from '../lib/sync'
-import { distanciaMetros, fueraDeRango } from '../lib/geocerca'
 import { fechaLocalHoy } from '../lib/visita'
 import NuevaVisitaModal from './NuevaVisitaModal'
 import ResumenHoy, { type DestinoResumen } from './ResumenHoy'
@@ -37,7 +40,11 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   anulada: 'Anulada',
 }
 
-const UMBRAL_GEOCERCA_M = 200
+function horaGuardada(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+}
 
 export default function AgendaScreen({
   perfil,
@@ -47,44 +54,66 @@ export default function AgendaScreen({
   onAbrir: (destino: DestinoResumen) => void
 }) {
   const t = useTheme()
-  const [visitas, setVisitas] = useState<Visita[]>([])
+  const [base, setBase] = useState<Visita[]>([])
+  const [origen, setOrigen] = useState<'servidor' | 'cache'>('servidor')
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
-  const [checkinDe, setCheckinDe] = useState<number | null>(null)
-  const [checkins, setCheckins] = useState<Set<number>>(new Set())
+  const [checkinDe, setCheckinDe] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [version, setVersion] = useState(0)
+  const tieneDatos = useRef(false)
+  const { items: cola, resumen } = useCola()
+  const claveCola = claveParticionCola(perfil.tenantId, perfil.id)
+
+  const hoy = fechaLocalHoy()
+  const visitas = useMemo(
+    () => agendaConCola(base.filter((v) => v.fecha_visita === hoy), cola, hoy),
+    [base, cola, hoy],
+  )
 
   const cargar = useCallback(async () => {
-    const hoy = fechaLocalHoy()
-    const rpc = await supabase.rpc('visitas_del_dia', { p_fecha: hoy })
-    if (!rpc.error && rpc.data) {
-      setVisitas((rpc.data as Array<Record<string, unknown>>).map(mapFilaVisita))
-      setError(null)
-    } else {
-      const q = await supabase
-        .from('visita')
-        .select('id, cliente_key, persona_nombre, direccion, fecha_visita, hora_inicio, estado, latitud, longitud, actividad(nombre)')
-        .eq('fecha_visita', hoy)
-        .order('hora_inicio')
-      if (q.error) {
-        setError(q.error.message || rpc.error?.message || 'No se pudo leer la agenda')
-        setVisitas([])
-      } else {
-        setVisitas(((q.data ?? []) as Array<Record<string, unknown>>).map(mapFilaVisita))
-        setError(null)
+    const dia = fechaLocalHoy()
+    const cache = abrirCacheCampo()
+    const clave = claveParticionCola(perfil.tenantId, perfil.id)
+    try {
+      // Primero lo guardado, para no dejar la pantalla en blanco mientras responde la red.
+      if (!tieneDatos.current) {
+        const previo = await cache.leer<Visita[]>(clave, 'agenda').catch(() => null)
+        if (previo && !tieneDatos.current) {
+          tieneDatos.current = true
+          setBase(previo.datos)
+          setOrigen('cache')
+          setGuardadoEn(previo.guardadoEn)
+          setCargando(false)
+        }
       }
+      const r = await conRespaldo<Visita[]>({
+        cargar: () => descargarAgenda(supabase, dia),
+        leer: () => cache.leer<Visita[]>(clave, 'agenda'),
+        guardar: (datos) => cache.guardar(clave, 'agenda', datos),
+      })
+      tieneDatos.current = true
+      setBase(r.datos)
+      setOrigen(r.origen)
+      setGuardadoEn(r.guardadoEn ?? null)
+      setError(null)
+    } catch (e) {
+      // Un fallo no vacía la lista: se conserva lo que ya se ve.
+      setError(mensajeDeError(e, 'No se pudo leer la agenda'))
+    } finally {
+      setCargando(false)
+      setRefrescando(false)
+      setVersion((n) => n + 1)
     }
-    setCargando(false)
-    setRefrescando(false)
-    setVersion((n) => n + 1)
-  }, [])
+  }, [perfil.tenantId, perfil.id])
 
+  // Al montar y cada vez que algo de la cola llega al servidor (App.tsx sincroniza cada 30 s).
   React.useEffect(() => {
     void cargar()
-  }, [cargar])
+  }, [cargar, resumen.enviados])
 
   async function gps(): Promise<{ lat: number; lng: number }> {
     const { status } = await Location.requestForegroundPermissionsAsync()
@@ -93,68 +122,49 @@ export default function AgendaScreen({
     return { lat: pos.coords.latitude, lng: pos.coords.longitude }
   }
 
-  function avisoGeocerca(visita: Visita, lat: number, lng: number): string | null {
-    if (visita.latitud == null || visita.longitud == null) return null
-    const d = distanciaMetros(lat, lng, visita.latitud, visita.longitud)
-    if (fueraDeRango(d, UMBRAL_GEOCERCA_M)) {
-      return `Check-in fuera de geocerca (${Math.round(d)} m). Se registra, no se bloquea.`
-    }
-    return null
-  }
-
-  async function handleCheckin(visita: Visita) {
-    if (visita.id == null) return // sin id de servidor: Task 8 lo reencamina por cliente_key
-    const visitaId = visita.id
+  async function registrar(
+    visita: Visita,
+    tipo: 'visita_checkin' | 'visita_completar',
+    exito: string,
+    fallo: string,
+  ) {
     setMensaje(null)
-    setCheckinDe(visitaId)
+    setCheckinDe(visita.cliente_key)
     try {
       const pos = await gps()
       await encolarYSync(
         {
-          tipo: 'visita_checkin',
-          payload: { visitaId, latitud: pos.lat, longitud: pos.lng },
-          clienteKey: `visita_checkin:${visitaId}`,
+          tipo,
+          payload: {
+            ...(visita.id != null ? { visitaId: visita.id } : {}),
+            visitaClienteKey: visita.cliente_key,
+            latitud: pos.lat,
+            longitud: pos.lng,
+          },
+          clienteKey: `${tipo}:${visita.cliente_key}`,
         },
         ejecutarMutacion(supabase),
-        claveParticionCola(perfil.tenantId, perfil.id),
+        claveCola,
       )
-      setCheckins((prev) => new Set(prev).add(visitaId))
-      setMensaje(avisoGeocerca(visita, pos.lat, pos.lng) ?? `Check-in en ${visita.persona_nombre}`)
-      await cargar()
+      setMensaje(exito)
     } catch (e) {
-      setMensaje(e instanceof Error ? e.message : 'No se pudo registrar el check-in')
+      setMensaje(mensajeDeError(e, fallo))
     } finally {
       setCheckinDe(null)
     }
   }
 
-  async function handleCompletar(visita: Visita) {
-    if (visita.id == null) return
-    const visitaId = visita.id
-    setMensaje(null)
-    setCheckinDe(visitaId)
-    try {
-      const pos = await gps()
-      await encolarYSync(
-        {
-          tipo: 'visita_completar',
-          payload: { visitaId, latitud: pos.lat, longitud: pos.lng },
-          clienteKey: `visita_completar:${visitaId}`,
-        },
-        ejecutarMutacion(supabase),
-        claveParticionCola(perfil.tenantId, perfil.id),
-      )
-      setVisitas((prev) => prev.map((v) => (v.id === visitaId ? { ...v, estado: 'completada' } : v)))
-      setMensaje(`Visita completada · ${visita.persona_nombre}`)
-      await cargar()
-    } catch (e) {
-      setMensaje(e instanceof Error ? e.message : 'No se pudo completar')
-    } finally {
-      setCheckinDe(null)
-    }
+  function handleCheckin(visita: Visita) {
+    return registrar(visita, 'visita_checkin', `Check-in en ${visita.persona_nombre}`, 'No se pudo registrar el check-in')
+  }
+
+  function handleCompletar(visita: Visita) {
+    return registrar(visita, 'visita_completar', `Visita completada · ${visita.persona_nombre}`, 'No se pudo completar')
   }
 
   function renderVisita({ item }: { item: Visita }) {
+    const conCheckin = item.latitud != null
+    const ocupado = checkinDe === item.cliente_key
     return (
       <View style={[styles.tarjeta, { borderColor: t.line, backgroundColor: t.surface }]}>
         <View style={styles.tarjetaFila}>
@@ -166,16 +176,17 @@ export default function AgendaScreen({
           </View>
           <BadgeEstado estado={ETIQUETA_ESTADO[item.estado] ?? item.estado} />
         </View>
-        {item.estado === 'programada' && !(item.id != null && item.id != null && checkins.has(item.id)) && (
+        {item.pendiente ? <Text style={[styles.direccion, { color: t.muted }]}>Pendiente de enviar</Text> : null}
+        {item.estado === 'programada' && !conCheckin && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => void handleCheckin(item)}
-            disabled={checkinDe === item.id}
+            disabled={ocupado}
             accessibilityRole="button"
             accessibilityLabel={`Check-in GPS de ${item.persona_nombre}`}
-            accessibilityState={{ disabled: checkinDe === item.id, busy: checkinDe === item.id }}
+            accessibilityState={{ disabled: ocupado, busy: ocupado }}
           >
-            {checkinDe === item.id ? (
+            {ocupado ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <View style={styles.checkinFila}>
@@ -185,11 +196,11 @@ export default function AgendaScreen({
             )}
           </TouchableOpacity>
         )}
-        {item.estado === 'programada' && item.id != null && checkins.has(item.id) && (
+        {item.estado === 'programada' && conCheckin && (
           <TouchableOpacity
             style={[styles.botonCheckin, { backgroundColor: t.primary }]}
             onPress={() => void handleCompletar(item)}
-            disabled={checkinDe === item.id}
+            disabled={ocupado}
             accessibilityRole="button"
             accessibilityLabel={`Completar visita de ${item.persona_nombre}`}
           >
@@ -214,10 +225,15 @@ export default function AgendaScreen({
           {error}
         </Text>
       ) : null}
+      {origen === 'cache' ? (
+        <Text style={[styles.aviso, { color: t.muted }]}>
+          Sin conexión · agenda guardada a las {horaGuardada(guardadoEn)}
+        </Text>
+      ) : null}
       {mensaje && <Text style={[styles.mensaje, { color: t.success }]}>{mensaje}</Text>}
       <FlatList
         data={visitas}
-        keyExtractor={(v) => v.cliente_key || String(v.id)}
+        keyExtractor={(v) => v.cliente_key}
         renderItem={renderVisita}
         refreshControl={
           <RefreshControl
@@ -238,7 +254,7 @@ export default function AgendaScreen({
         ListEmptyComponent={
           <Vacio
             titulo="Sin visitas programadas para hoy"
-            descripcion="Agendá una visita a un cliente de tu cartera o un prospecto."
+            descripcion={error ?? 'Agendá una visita a un cliente de tu cartera o un prospecto.'}
           />
         }
         contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
@@ -265,6 +281,7 @@ export default function AgendaScreen({
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
   mensaje: { marginHorizontal: 16, marginTop: 12, fontSize: 13, fontWeight: '600' },
+  aviso: { marginHorizontal: 16, marginTop: 12, fontSize: 13 },
   errorBanner: {
     margin: 16,
     marginBottom: 0,

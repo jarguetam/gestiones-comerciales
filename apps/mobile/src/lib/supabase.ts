@@ -14,7 +14,6 @@ import type { Perfil } from './perfil'
 import type { CacheCampo } from './cacheCampo'
 import { claveParticionCola } from './colaParticion.ts'
 import { resolverPerfil } from './perfilRespaldo.ts'
-import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
 
 export { claimsDe, type Rol } from './claims'
@@ -95,24 +94,4 @@ export async function cargarPerfil(
       return { usuario, tenant, modulos }
     },
   })
-}
-
-export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
-  const err = validarVisitaNueva(b)
-  if (err) throw new Error(err)
-  const { error } = await supabase.rpc('visita_crear', {
-    p_persona_nombre: b.personaNombre!.trim(),
-    p_actividad_id: b.actividadId,
-    p_sub_actividad_id: b.subActividadId,
-    p_actividad_hora_id: b.actividadHoraId,
-    p_zona_id: null,
-    p_departamento_id: null,
-    p_municipio_id: null,
-    p_fecha: b.fecha,
-    p_hora_inicio: horaParaRpc(b.horaInicio!),
-    p_persona_id: b.personaId ?? null,
-    p_direccion: b.direccion?.trim() || null,
-    p_comentario: b.comentario?.trim() || '',
-  })
-  if (error) throw error
 }
