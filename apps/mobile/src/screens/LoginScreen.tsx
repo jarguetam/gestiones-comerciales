@@ -3,6 +3,7 @@
  * Email + contraseña + TOTP si aal1→aal2. Sin modo demo.
  */
 import React, { useState } from 'react'
+import { abrirCacheCampo } from '../lib/abrirCache'
 import {
   KeyboardAvoidingView,
   Linking,
@@ -93,7 +94,7 @@ export default function LoginScreen({ onLogin, onRecuperar }: Props) {
   async function hidratarSesion(session: Session) {
     const claims = await resolverClaims(session)
     if (!claims) throw new Error('Usuario sin tenant asignado (GC-AUTH-021)')
-    const perfil = await cargarPerfil(session, claims)
+    const perfil = await cargarPerfil(session, claims, abrirCacheCampo())
     onLogin(perfil)
   }
 

@@ -267,6 +267,7 @@ export default function AgendaScreen({
         <Text style={styles.fabTexto}>Agendar</Text>
       </TouchableOpacity>
       <NuevaVisitaModal
+        perfil={perfil}
         visible={mostrarAlta}
         colorPrimario={t.primary}
         onCerrar={() => setMostrarAlta(false)}

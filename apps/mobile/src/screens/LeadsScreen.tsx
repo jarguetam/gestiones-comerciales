@@ -263,6 +263,7 @@ export default function LeadsScreen({ perfil }: Props) {
       </Modal>
 
       <NuevaVisitaModal
+        perfil={perfil}
         visible={!!agendarLead}
         colorPrimario={t.primary}
         personaNombre={agendarLead?.nombre}

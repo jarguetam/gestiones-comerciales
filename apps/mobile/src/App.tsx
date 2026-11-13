@@ -134,8 +134,14 @@ export default function App() {
       }
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         const claims = await resolverClaims(estado.session)
-        if (claims) setPerfil(await cargarPerfil(estado.session, claims))
-        else setPerfil(null)
+        if (claims) {
+          try {
+            setPerfil(await cargarPerfil(estado.session, claims, abrirCacheCampo()))
+          } catch {
+            // Error no transitorio (o sin copia guardada): igual que antes, sin perfil.
+            setPerfil(null)
+          }
+        } else setPerfil(null)
         setListo(true)
       }
     })

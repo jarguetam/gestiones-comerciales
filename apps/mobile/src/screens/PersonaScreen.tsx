@@ -232,6 +232,7 @@ export default function PersonaScreen({ perfil }: { perfil: Perfil }) {
       )}
 
       <NuevaVisitaModal
+        perfil={perfil}
         visible={!!visitaDe}
         colorPrimario={t.primary}
         personaId={visitaDe?.id}

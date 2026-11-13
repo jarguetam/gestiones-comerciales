@@ -16,12 +16,15 @@ import {
 } from 'react-native'
 import { ModalSeguro as Modal } from '../components/ui/ModalSeguro'
 import { cargarCatalogosCampo, type CatalogoActividad, type CatalogosCampo } from '../lib/catalogosCampo'
-import { persistirVisitaCampo } from '../lib/supabase'
+import { abrirCacheCampo } from '../lib/abrirCache'
+import { claveParticionCola } from '../lib/colaParticion'
+import { persistirVisitaCampo, type Perfil } from '../lib/supabase'
 import { fechaLocalHoy, type BorradorVisita } from '../lib/visita'
 
 interface Props {
   visible: boolean
   colorPrimario: string
+  perfil: Perfil
   personaNombre?: string
   personaId?: number
   direccion?: string
@@ -32,6 +35,7 @@ interface Props {
 export default function NuevaVisitaModal({
   visible,
   colorPrimario,
+  perfil,
   personaNombre,
   personaId,
   direccion,
@@ -62,7 +66,7 @@ export default function NuevaVisitaModal({
     setComentario('')
     setError(null)
     setCargando(true)
-    void cargarCatalogosCampo()
+    void cargarCatalogosCampo({ clave: claveParticionCola(perfil.tenantId, perfil.id), cache: abrirCacheCampo() })
       .then((c) => {
         setCats(c)
         setHoraId(c.geo.horaDefaultId)
@@ -70,7 +74,7 @@ export default function NuevaVisitaModal({
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar catálogos'))
       .finally(() => setCargando(false))
-  }, [visible, personaNombre, direccion, personaId])
+  }, [visible, personaNombre, direccion, personaId, perfil.tenantId, perfil.id])
 
   const actividad: CatalogoActividad | undefined = useMemo(
     () => cats?.actividades.find((a) => a.id === actividadId),
@@ -85,9 +89,6 @@ export default function NuevaVisitaModal({
       actividadId,
       subActividadId: subId,
       actividadHoraId: horaId,
-      zonaId: cats?.geo.zonaId,
-      departamentoId: cats?.geo.departamentoId,
-      municipioId: cats?.geo.municipioId,
       fecha,
       horaInicio: hora,
       direccion: dir,
@@ -196,10 +197,7 @@ export default function NuevaVisitaModal({
             </View>
 
             {cats?.zonas[0] ? (
-              <Text style={styles.hint}>
-                Zona {cats.zonas[0].nombre}
-                {cats.geo.zonaId ? ' · se usa la zona y geografía del tenant' : ''}
-              </Text>
+              <Text style={styles.hint}>Zona {cats.zonas[0].nombre}</Text>
             ) : null}
 
             <Text style={styles.label}>Comentario</Text>

@@ -12,6 +12,9 @@ import { claimsEmpresaDe, type Rol } from './claims'
 import { requireMobileEnv } from './env'
 import { fetchConLimite } from './fetchLimite'
 import { modulosDeFilas, perfilDesdeFuentes, type Perfil } from './perfil'
+import type { CacheCampo } from './cacheCampo'
+import { claveParticionCola } from './colaParticion.ts'
+import { conRespaldo } from './respaldo.ts'
 import { horaParaRpc, validarVisitaNueva, type BorradorVisita } from './visita'
 import { sesionStorage } from './sesionStorage'
 
@@ -70,24 +73,39 @@ export async function resolverClaims(session: Session): Promise<{ tenantId: stri
  * usuario propio si RLS lo deja ver. Un embed o .single() vacío ya no
  * bloquea el ingreso (GC-AUTH-022).
  */
-export async function cargarPerfil(session: Session, claims: { tenantId: string; rol: Rol }): Promise<Perfil> {
+export async function cargarPerfil(
+  session: Session,
+  claims: { tenantId: string; rol: Rol },
+  cache: CacheCampo,
+): Promise<Perfil> {
   const userId = session.user.id
-  const [usuarioRes, tenantRes, modsRes] = await Promise.all([
-    supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
-    supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
-    supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
-  ])
-  const branding = brandingDeJson(tenantRes.data?.branding)
-  return perfilDesdeFuentes({
-    userId,
-    claims,
-    usuario: usuarioRes.data as { id: string; nombre: string } | null,
-    tenantNombre: nombreComercial(branding, (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales'),
-    branding,
-    modulos: modulosDeFilas(modsRes.data as Parameters<typeof modulosDeFilas>[0]),
-    email: session.user.email,
-    userMetadata: session.user.user_metadata,
+  const clave = claveParticionCola(claims.tenantId, userId)
+  const { datos } = await conRespaldo<Perfil>({
+    cargar: async () => {
+      const [usuarioRes, tenantRes, modsRes] = await Promise.all([
+        supabase.from('usuario').select('id, nombre').eq('id', userId).maybeSingle(),
+        supabase.from('tenant').select('id, nombre, branding').eq('id', claims.tenantId).maybeSingle(),
+        supabase.from('tenant_modulo').select('activo, modulo(codigo)').eq('activo', true),
+      ])
+      for (const res of [usuarioRes, tenantRes, modsRes]) {
+        if (res.error) throw res.error
+      }
+      const branding = brandingDeJson(tenantRes.data?.branding)
+      return perfilDesdeFuentes({
+        userId,
+        claims,
+        usuario: usuarioRes.data as { id: string; nombre: string } | null,
+        tenantNombre: nombreComercial(branding, (tenantRes.data as { nombre?: string } | null)?.nombre ?? 'Gestiones Comerciales'),
+        branding,
+        modulos: modulosDeFilas(modsRes.data as Parameters<typeof modulosDeFilas>[0]),
+        email: session.user.email,
+        userMetadata: session.user.user_metadata,
+      })
+    },
+    leer: () => cache.leer<Perfil>(clave, 'perfil'),
+    guardar: (perfil) => cache.guardar(clave, 'perfil', perfil),
   })
+  return datos
 }
 
 export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
@@ -98,9 +116,9 @@ export async function persistirVisitaCampo(b: BorradorVisita): Promise<void> {
     p_actividad_id: b.actividadId,
     p_sub_actividad_id: b.subActividadId,
     p_actividad_hora_id: b.actividadHoraId,
-    p_zona_id: b.zonaId,
-    p_departamento_id: b.departamentoId,
-    p_municipio_id: b.municipioId,
+    p_zona_id: null,
+    p_departamento_id: null,
+    p_municipio_id: null,
     p_fecha: b.fecha,
     p_hora_inicio: horaParaRpc(b.horaInicio!),
     p_persona_id: b.personaId ?? null,
