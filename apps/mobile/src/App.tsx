@@ -30,6 +30,7 @@ import AjustesScreen from './screens/AjustesScreen'
 import CampoBloqueadoScreen from './screens/CampoBloqueadoScreen'
 import NotificacionesScreen from './screens/NotificacionesScreen'
 import SyncScreen from './screens/SyncScreen'
+import CambioClaveScreen from './screens/CambioClaveScreen'
 import { supabase, CLAVE_SESION, type Perfil, cargarPerfil, resolverClaims } from './lib/supabase'
 import { sesionStorage } from './lib/sesionStorage'
 import {
@@ -294,6 +295,12 @@ export default function App() {
             </View>
           ) : colaLista !== claveCola ? (
             <Cargando etiqueta="Cargando datos locales…" />
+          ) : perfil.debeCambiarClave ? (
+            <CambioClaveScreen
+              sinConexion={sinConexion}
+              onListo={() => setPerfil({ ...perfil, debeCambiarClave: false })}
+              onSalir={() => void salirConErrorCola()}
+            />
           ) : (
             <Shell
               perfil={perfil}

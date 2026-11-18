@@ -14,6 +14,8 @@ export interface Perfil {
   tenantNombre?: string
   modulos: string[]
   branding: BrandingTenant
+  /** Sale siempre de la sesión (app_metadata.debe_cambiar_clave), nunca de la copia guardada. */
+  debeCambiarClave: boolean
 }
 
 function texto(valor: unknown): string | undefined {
@@ -55,5 +57,6 @@ export function perfilDesdeFuentes(input: {
     tenantNombre: input.tenantNombre ?? 'Gestiones Comerciales',
     modulos: input.modulos ?? [],
     branding: input.branding ?? {},
+    debeCambiarClave: false,
   }
 }

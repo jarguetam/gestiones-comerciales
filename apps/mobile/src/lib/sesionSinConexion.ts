@@ -4,6 +4,7 @@
  * emite como nula: aquí se lee, se valida su antigüedad y se arma el perfil desde la copia local.
  */
 import type { CacheCampo } from './cacheCampo.ts'
+import { debeCambiarClave } from './cambioClave.ts'
 import { claimsEmpresaDe } from './claims.ts'
 import { claveParticionCola } from './colaParticion.ts'
 import { esErrorTransitorio } from './errorRed.ts'
@@ -69,7 +70,7 @@ export async function perfilSinConexion(
 ): Promise<Perfil | null> {
   const claims = claimsEmpresaDe({ accessToken: g.access_token, appMetadata: g.user.app_metadata })
   if (!claims) return null
-  return resolverPerfil({
+  const perfil = await resolverPerfil({
     userId: g.user.id,
     email: g.user.email,
     userMetadata: g.user.user_metadata,
@@ -81,6 +82,8 @@ export async function perfilSinConexion(
     },
     advertir,
   })
+  // La marca sale de la sesión guardada: la copia del perfil puede ser de otra versión o de otro momento.
+  return { ...perfil, debeCambiarClave: debeCambiarClave(g.user) }
 }
 
 export type DecisionRenovar = 'normal' | 'seguir' | 'login'
