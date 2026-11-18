@@ -39,7 +39,13 @@
     }
   },
   "submit": {
-    "production": {
+    "internal": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "closed": {
       "android": {
         "track": "alpha"
       }
