@@ -190,6 +190,7 @@ Deno.test("invita en el tenant del request y conserva jefe_id y zona_id", async 
     email: "persona@example.com",
     password: "password-seguro",
     metadata: { nombre: "Persona" },
+    appMetadata: { debe_cambiar_clave: true },
   });
   assertEquals(profileInput, {
     authUserId: "auth-new",
@@ -361,4 +362,26 @@ Deno.test("un error PostgREST no catalogado se responde y registra sin PII", asy
   }]);
   assertEquals(JSON.stringify(logs).includes(providerMessage), false);
   assertEquals(JSON.stringify(logs).includes("Persona@Example.com"), false);
+});
+
+Deno.test("marca debe_cambiar_clave al crear el usuario", async () => {
+  for (const password of ["Clave-Temporal-1", undefined]) {
+    let createInput: Parameters<InviteDeps["createUser"]>[0] | undefined;
+    const body = password === undefined
+      ? validBody
+      : { ...validBody, password };
+
+    const res = await invitarUsuario(
+      deps({
+        createUser: async (input) => {
+          createInput = input;
+          return { id: "auth-new" };
+        },
+      }),
+      request(body),
+    );
+
+    assertEquals(res.status, 200);
+    assertEquals(createInput?.appMetadata, { debe_cambiar_clave: true });
+  }
 });

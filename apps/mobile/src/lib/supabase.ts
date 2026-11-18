@@ -7,6 +7,7 @@
  * Sin URL/anon key reales el arranque falla con GC-CORE-001.
  */
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
+import { debeCambiarClave } from './cambioClave.ts'
 import { claimsEmpresaDe, type Rol } from './claims'
 import { requireMobileEnv } from './env'
 import { fetchConLimite } from './fetchLimite'
@@ -84,7 +85,7 @@ export async function cargarPerfil(
   cache: CacheCampo,
 ): Promise<Perfil> {
   const userId = session.user.id
-  return resolverPerfil({
+  const perfil = await resolverPerfil({
     userId,
     email: session.user.email,
     userMetadata: session.user.user_metadata,
@@ -103,4 +104,6 @@ export async function cargarPerfil(
       return { usuario, tenant, modulos }
     },
   })
+  // La marca sale de la sesión, nunca de la copia guardada del perfil.
+  return { ...perfil, debeCambiarClave: debeCambiarClave(session.user) }
 }

@@ -36,6 +36,7 @@ export type InviteDeps = {
     email: string;
     password: string;
     metadata: Record<string, string>;
+    appMetadata: Record<string, unknown>;
   }) => Promise<{ id: string }>;
   inviteProfile: (input: {
     authUserId: string;
@@ -266,6 +267,7 @@ export async function invitarUsuario(
         email,
         password,
         metadata: { nombre },
+        appMetadata: { debe_cambiar_clave: true },
       });
     } catch (error) {
       safeLog(deps, {
