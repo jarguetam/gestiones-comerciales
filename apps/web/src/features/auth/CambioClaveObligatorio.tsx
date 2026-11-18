@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { nombreComercial, varsDeBranding } from '../../lib/branding'
 import { brandingPreLogin } from '../../lib/brandingPreLogin'
@@ -8,12 +9,14 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Field'
 import { Alert } from '../../components/ui/Alert'
 import { mensajeToast } from '../../lib/erroresUi'
-import { decidirCambioClave, mensajeErrorCambioClave, validarClaveNueva } from './cambioClave'
+import {
+  MSG_CAMBIO_HECHO_SIN_CONFIRMAR,
+  decidirCambioClave,
+  mensajeErrorCambioClave,
+  validarClaveNueva,
+} from './cambioClave'
 
 type Fase = 'comprobando' | 'formulario' | 'reintentar'
-
-const MSG_SIN_RED = 'GC-AUTH-037: sin conexión; no se pudo cambiar la contraseña'
-const MSG_GENERICO = 'GC-AUTH-038: no se pudo cambiar la contraseña'
 
 function textoError(mensaje: string): string {
   const t = mensajeToast(mensaje)
@@ -26,6 +29,7 @@ function textoError(mensaje: string): string {
  * `useAuth` recibe la sesión nueva y `RequireAuth` deja de renderizarla.
  */
 export function CambioClaveObligatorio() {
+  const navigate = useNavigate()
   const [fase, setFase] = useState<Fase>('comprobando')
   const [nueva, setNueva] = useState('')
   const [confirmar, setConfirmar] = useState('')
@@ -60,21 +64,24 @@ export function CambioClaveObligatorio() {
     })()
   }, [])
 
+  // Solo corre tras un `updateUser` exitoso (o desde «Reintentar» en esa misma ruta):
+  // la contraseña ya cambió, así que todo fallo aquí es GC-AUTH-039.
   async function refrescar() {
     setError(null)
     setOcupado(true)
     try {
       const { data, error: errRefresco } = await supabase.auth.refreshSession()
       if (errRefresco) {
-        setError(textoError(MSG_SIN_RED))
+        setError(textoError(MSG_CAMBIO_HECHO_SIN_CONFIRMAR))
         setFase('reintentar')
         return
       }
       if (data.user && decidirCambioClave(data.user) === 'liberar') return
-      setError(textoError(MSG_GENERICO))
+      console.warn('El servidor no quitó debe_cambiar_clave tras el cambio de contraseña: ¿falta el trigger trg_borrar_marca_cambio_clave?')
+      setError(textoError(MSG_CAMBIO_HECHO_SIN_CONFIRMAR))
       setFase('reintentar')
     } catch {
-      setError(textoError(MSG_SIN_RED))
+      setError(textoError(MSG_CAMBIO_HECHO_SIN_CONFIRMAR))
       setFase('reintentar')
     } finally {
       setOcupado(false)
@@ -107,11 +114,10 @@ export function CambioClaveObligatorio() {
   }
 
   async function salir() {
-    try {
-      await supabase.auth.signOut()
-    } catch {
-      // useAuth reacciona a SIGNED_OUT; si falla, el usuario puede volver a pulsar «Salir».
-    }
+    // signOut() devuelve { error } y no lanza; igual que AppShell, se sale siempre.
+    const { error: errSalida } = await supabase.auth.signOut()
+    if (errSalida) console.warn('No se pudo cerrar la sesión en el servidor', errSalida)
+    navigate('/login', { replace: true })
   }
 
   return (

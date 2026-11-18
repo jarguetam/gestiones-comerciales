@@ -7,11 +7,11 @@ Los marcados con † no están confirmados.
 
 El formulario pide email, nombre, rol, supervisor (solo para asesores) y contraseña inicial.
 No tiene campo de oficina ni de jefe para supervisores: eso se asigna después con
-`06-usuarios-oficina-jefe.sql`.
+`07-usuarios-oficina-jefe.sql`.
 
 | # | Nombre | Email | Rol | Supervisor (en el formulario) | Oficina (por SQL) | Jefe (por SQL) |
 |---|---|---|---|---|---|---|
-| — | Luis Martinez | luis.martinez@habitat.com (ya existe; ¿cambiar a @habitathn.org?) | gerente | — | — | — |
+| — | Luis Martinez | luis.martinez@habitathn.org (ya existe; `06-luis-correo.sql` ya lo pasó a @habitathn.org) | gerente | — | — | — |
 | 1 | Ana Medina | ana.medina@habitathn.org † | admin | — | — | — |
 | 2 | Maricela Lendos | maricela.lendos@habitathn.org | supervisor | — | Santa Rosa (SRC) | Luis |
 | 3 | Luis López | luis.lopez@habitathn.org | supervisor | — | San Pedro Sula (SPS) | Luis |
@@ -35,4 +35,5 @@ No tiene campo de oficina ni de jefe para supervisores: eso se asigna después c
 
 - Amílcar y Marlon cubren dos oficinas; se les asigna la primera (roadmap §6). Sus asesores quedan en la oficina correcta.
 - «Merlon» en La Ceiba se toma como Marlon Reyes.
+- `08-marcar-cambio-clave.sql` marca a los usuarios activos de Hábitat (sin admin2) para que cambien la contraseña temporal en su primer ingreso; se corre una sola vez, justo después del despliegue a producción y antes de cualquier invitación nueva.
 - Las contraseñas iniciales las escribe Josue y las entrega en privado a cada persona, nunca en grupo.

@@ -7,14 +7,16 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native'
 import { supabase } from '../lib/supabase'
-import { decidirCambioClave, mensajeErrorCambioClave, validarClaveNueva } from '../lib/cambioClave'
+import {
+  MSG_CAMBIO_HECHO_SIN_CONFIRMAR,
+  decidirCambioClave,
+  mensajeErrorCambioClave,
+  validarClaveNueva,
+} from '../lib/cambioClave'
 import { Boton, Campo, Card } from '../components/ui'
 import { useTheme } from '../theme'
 
 type Fase = 'comprobando' | 'formulario' | 'reintentar'
-
-const MSG_SIN_RED = 'GC-AUTH-037: sin conexión; no se pudo cambiar la contraseña'
-const MSG_GENERICO = 'GC-AUTH-038: no se pudo cambiar la contraseña'
 
 interface Props {
   sinConexion: boolean
@@ -29,7 +31,9 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
   const [confirmar, setConfirmar] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  const [saliendo, setSaliendo] = useState(false)
   const comprobado = useRef(false)
+  const saliendoRef = useRef(false)
   // Tras «Salir» (o al desmontar) un refresco en vuelo no puede llamar a onListo.
   const vivo = useRef(true)
   useEffect(() => {
@@ -58,6 +62,8 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
     })()
   }, [sinConexion])
 
+  // Solo corre tras un `updateUser` exitoso (o desde «Reintentar» en esa misma ruta):
+  // la contraseña ya cambió, así que todo fallo aquí es GC-AUTH-039.
   async function refrescar() {
     setError(null)
     setOcupado(true)
@@ -65,7 +71,7 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
       const { data, error: errRefresco } = await supabase.auth.refreshSession()
       if (!vivo.current) return
       if (errRefresco) {
-        setError(MSG_SIN_RED)
+        setError(MSG_CAMBIO_HECHO_SIN_CONFIRMAR)
         setFase('reintentar')
         return
       }
@@ -73,10 +79,11 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
         onListo()
         return
       }
-      setError(MSG_GENERICO)
+      console.warn('El servidor no quitó debe_cambiar_clave tras el cambio de contraseña: ¿falta el trigger trg_borrar_marca_cambio_clave?')
+      setError(MSG_CAMBIO_HECHO_SIN_CONFIRMAR)
       setFase('reintentar')
     } catch {
-      setError(MSG_SIN_RED)
+      setError(MSG_CAMBIO_HECHO_SIN_CONFIRMAR)
       setFase('reintentar')
     } finally {
       setOcupado(false)
@@ -84,6 +91,7 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
   }
 
   async function guardar() {
+    if (ocupado) return
     const invalida = validarClaveNueva(nueva, confirmar)
     if (invalida) {
       setError(invalida)
@@ -108,6 +116,9 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
   }
 
   function salir() {
+    if (saliendoRef.current) return
+    saliendoRef.current = true
+    setSaliendo(true)
     vivo.current = false
     onSalir()
   }
@@ -164,7 +175,7 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
             </>
           )}
 
-          <Boton etiqueta="Salir" variante="ghost" onPress={salir} />
+          <Boton etiqueta="Salir" variante="ghost" onPress={salir} disabled={saliendo} />
         </Card>
       </ScrollView>
     </KeyboardAvoidingView>

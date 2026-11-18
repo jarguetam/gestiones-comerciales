@@ -23,6 +23,7 @@
   - `GC-AUTH-036: la contraseña nueva debe ser distinta de la temporal`
   - `GC-AUTH-037: sin conexión; no se pudo cambiar la contraseña`
   - `GC-AUTH-038: no se pudo cambiar la contraseña`
+  - `GC-AUTH-039: tu contraseña ya se cambió, pero no se pudo confirmar la sesión; revisa la conexión y pulsa Reintentar` (solo en la ruta posterior a un `updateUser` exitoso: fallo del refresco, excepción o usuario refrescado que aún lleva la marca; 037/038 quedan solo para fallos de `updateUser`)
 - Textos de la pantalla, exactos, iguales en web y app:
   - título «Cambia tu contraseña»
   - texto «Entraste con una contraseña temporal. Elige una nueva para continuar.»
@@ -36,7 +37,7 @@
 ## Review Focus
 
 1. **La sesión guardada trae la marca vieja** (recargar la web o reabrir la app después de cambiar la clave en otro lado). supabase-js no relee el usuario al cargar, así que la pantalla, al abrirse, refresca la sesión una vez. Si la marca ya no está, deja pasar. Lo prueba `decidirCambioClave` (Tasks 3 y 4).
-2. **El cambio funciona pero el refresco falla por red.** No se vuelve a pedir la contraseña: se muestra GC-AUTH-037 y «Reintentar» solo vuelve a refrescar. Si se pidiera de nuevo, el usuario recibiría `same_password`.
+2. **El cambio funciona pero el refresco falla por red.** No se vuelve a pedir la contraseña: se muestra GC-AUTH-039 y «Reintentar» solo vuelve a refrescar. Si se pidiera de nuevo, el usuario recibiría `same_password`.
 3. **GoTrue vuelve a escribir `app_metadata` después del `UPDATE` y la marca reaparece.** Se comprueba contra GoTrue real en la Task 5; si pasa, se detiene y se reporta.
 4. **Clave igual a la temporal o rechazada por la política de GoTrue** (`same_password`, `weak_password`). Se traducen a GC-AUTH-036 y GC-AUTH-034 (`mensajeErrorCambioClave`, Tasks 3 y 4).
 5. **Usuarios existentes de otras empresas sin la marca, o con `"true"` en texto.** No ven la pantalla (`debeCambiarClave`, Tasks 3 y 4).
@@ -109,7 +110,7 @@
 - [ ] **Step 4: `CambioClaveObligatorio.tsx`**, con los componentes y estilos de `Login.tsx`. Tiene cuatro estados:
   1. Al montar, «Comprobando tu sesión…» y una sola llamada a `supabase.auth.refreshSession()`. Si el usuario devuelto da `'liberar'`, no hace nada más: `useAuth` recibe la sesión nueva y `RequireAuth` deja pasar. Si da `'pedir'` o el refresco falla, muestra el formulario.
   2. Al guardar, `validarClaveNueva`. Si pasa, `supabase.auth.updateUser({ password })`; si falla, `mensajeErrorCambioClave`.
-  3. Si `updateUser` funcionó, `refreshSession()`. Si el refresco falla, muestra GC-AUTH-037 y un botón «Reintentar» que solo vuelve a llamar a `refreshSession()`. No vuelve a pedir la contraseña.
+  3. Si `updateUser` funcionó, `refreshSession()`. Si el refresco falla, muestra GC-AUTH-039 y un botón «Reintentar» que solo vuelve a llamar a `refreshSession()`. No vuelve a pedir la contraseña.
   4. «Salir» siempre visible: `supabase.auth.signOut()`.
 - [ ] **Step 5: `RequireAuth`**: con sesión y `debeCambiarClave(session.user)`, renderiza `<CambioClaveObligatorio />` en vez de `children`.
 - [ ] **Step 6: Ver que pasa.** `pnpm --filter @gc/web test`, `pnpm --filter @gc/web typecheck`, `pnpm --filter @gc/web lint`. Expected: todo verde, sin errores de lint nuevos.

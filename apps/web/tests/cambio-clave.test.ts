@@ -5,6 +5,12 @@ import {
   decidirCambioClave,
   mensajeErrorCambioClave,
   validarClaveNueva,
+  MSG_CLAVE_CORTA,
+  MSG_CLAVES_NO_COINCIDEN,
+  MSG_CLAVE_IGUAL,
+  MSG_CAMBIO_SIN_RED,
+  MSG_CAMBIO_GENERICO,
+  MSG_CAMBIO_HECHO_SIN_CONFIRMAR,
 } from '../src/features/auth/cambioClave.ts'
 
 test('debeCambiarClave solo con boolean true', () => {
@@ -34,6 +40,18 @@ test('mensajeErrorCambioClave', () => {
   assert.equal(mensajeErrorCambioClave(new TypeError('Failed to fetch')), 'GC-AUTH-037: sin conexión; no se pudo cambiar la contraseña')
   assert.equal(mensajeErrorCambioClave({ message: 'x' }), 'GC-AUTH-038: no se pudo cambiar la contraseña')
   assert.equal(mensajeErrorCambioClave(null), 'GC-AUTH-038: no se pudo cambiar la contraseña')
+})
+
+test('constantes de mensaje GC-AUTH-034 a 039', () => {
+  assert.equal(MSG_CLAVE_CORTA, 'GC-AUTH-034: la contraseña debe tener al menos 8 caracteres')
+  assert.equal(MSG_CLAVES_NO_COINCIDEN, 'GC-AUTH-035: las contraseñas no coinciden')
+  assert.equal(MSG_CLAVE_IGUAL, 'GC-AUTH-036: la contraseña nueva debe ser distinta de la temporal')
+  assert.equal(MSG_CAMBIO_SIN_RED, 'GC-AUTH-037: sin conexión; no se pudo cambiar la contraseña')
+  assert.equal(MSG_CAMBIO_GENERICO, 'GC-AUTH-038: no se pudo cambiar la contraseña')
+  assert.equal(
+    MSG_CAMBIO_HECHO_SIN_CONFIRMAR,
+    'GC-AUTH-039: tu contraseña ya se cambió, pero no se pudo confirmar la sesión; revisa la conexión y pulsa Reintentar',
+  )
 })
 
 test('decidirCambioClave', () => {

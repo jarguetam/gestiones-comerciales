@@ -17,6 +17,7 @@
   "GC-AUTH-036": "La contraseña nueva debe ser distinta de la temporal.",
   "GC-AUTH-037": "Sin conexión; no se pudo cambiar la contraseña.",
   "GC-AUTH-038": "No se pudo cambiar la contraseña.",
+  "GC-AUTH-039": "Tu contraseña ya se cambió, pero no se pudo confirmar la sesión. Revisa la conexión y pulsa Reintentar.",
   "GC-AUTH-040": "Demasiados intentos. Probá de nuevo en unos minutos.",
   "GC-PER-001": "No hay permiso para registrar el cliente (RLS).",
   "GC-PER-002": "No se pudo vincular el cliente a tu usuario.",
