@@ -88,12 +88,13 @@ serveEdge("invitar-usuario", async (req) => {
       }
       return data !== null;
     },
-    createUser: async ({ email, password, metadata }) => {
+    createUser: async ({ email, password, metadata, appMetadata }) => {
       const { data, error } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
         user_metadata: metadata,
+        app_metadata: appMetadata,
       });
       if (error || !data.user) {
         throw new InviteError(
