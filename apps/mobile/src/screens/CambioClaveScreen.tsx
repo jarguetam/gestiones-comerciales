@@ -30,6 +30,14 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const comprobado = useRef(false)
+  // Tras «Salir» (o al desmontar) un refresco en vuelo no puede llamar a onListo.
+  const vivo = useRef(true)
+  useEffect(() => {
+    vivo.current = true
+    return () => {
+      vivo.current = false
+    }
+  }, [])
 
   // Una sola comprobación por montaje, y nunca sin conexión.
   useEffect(() => {
@@ -38,6 +46,7 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
     void (async () => {
       try {
         const { data, error: errRefresco } = await supabase.auth.refreshSession()
+        if (!vivo.current) return
         if (!errRefresco && data.user && decidirCambioClave(data.user) === 'liberar') {
           onListo()
           return
@@ -54,6 +63,7 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
     setOcupado(true)
     try {
       const { data, error: errRefresco } = await supabase.auth.refreshSession()
+      if (!vivo.current) return
       if (errRefresco) {
         setError(MSG_SIN_RED)
         setFase('reintentar')
@@ -95,6 +105,11 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
     }
     setOcupado(false)
     await refrescar()
+  }
+
+  function salir() {
+    vivo.current = false
+    onSalir()
   }
 
   return (
@@ -149,7 +164,7 @@ export default function CambioClaveScreen({ sinConexion, onListo, onSalir }: Pro
             </>
           )}
 
-          <Boton etiqueta="Salir" variante="ghost" onPress={onSalir} />
+          <Boton etiqueta="Salir" variante="ghost" onPress={salir} />
         </Card>
       </ScrollView>
     </KeyboardAvoidingView>

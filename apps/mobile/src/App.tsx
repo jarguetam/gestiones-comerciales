@@ -241,7 +241,8 @@ export default function App() {
   }, [sinConexion])
 
   useEffect(() => {
-    if (!perfil || colaLista !== claveCola || errorCola) return
+    // Con la pantalla de cambio de contraseña no se sincroniza: se reanuda al limpiarse la marca.
+    if (!perfil || perfil.debeCambiarClave || colaLista !== claveCola || errorCola) return
     let vigente = true
     const sync = () => {
       void sincronizarAhora(ejecutarMutacion(supabase), Date.now(), claveCola ?? undefined).catch((error: unknown) => {
@@ -261,7 +262,7 @@ export default function App() {
       clearInterval(t)
       sub.remove()
     }
-  }, [perfil, colaLista, claveCola, errorCola])
+  }, [perfil, perfil?.debeCambiarClave, colaLista, claveCola, errorCola])
 
   async function salirConErrorCola() {
     // Si el disco no abre, cerrar la sesión conserva la cola de su dueño. Sin señal, signOut solo no borra nada.
@@ -298,7 +299,7 @@ export default function App() {
           ) : perfil.debeCambiarClave ? (
             <CambioClaveScreen
               sinConexion={sinConexion}
-              onListo={() => setPerfil({ ...perfil, debeCambiarClave: false })}
+              onListo={() => setPerfil((p) => (p ? { ...p, debeCambiarClave: false } : p))}
               onSalir={() => void salirConErrorCola()}
             />
           ) : (
