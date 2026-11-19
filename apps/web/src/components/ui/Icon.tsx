@@ -12,6 +12,7 @@ export type IconName =
   | 'plus'
   | 'vacio'
   | 'checkin'
+  | 'ayuda'
 
 const stroke: Pick<SVGProps<SVGSVGElement>, 'fill' | 'stroke' | 'strokeWidth' | 'strokeLinecap' | 'strokeLinejoin'> = {
   fill: 'none',
@@ -109,6 +110,14 @@ export function Icon({ name, size = 20, className }: { name: IconName; size?: nu
         <Svg size={size} className={className}>
           <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21Z" />
           <circle cx="12" cy="10" r="2.2" />
+        </Svg>
+      )
+    case 'ayuda':
+      return (
+        <Svg size={size} className={className}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9" />
+          <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
         </Svg>
       )
   }

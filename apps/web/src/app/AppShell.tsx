@@ -10,11 +10,15 @@ import { Alert } from '../components/ui/Alert'
 import { Icon, type IconName } from '../components/ui/Icon'
 import { cn } from '../lib/cn'
 import type { BrandingTenant } from '../lib/branding'
-import { nombreComercial } from '../lib/branding'
+import { colorCssValido, nombreComercial } from '../lib/branding'
 import { etiquetaVocab } from '../lib/vocabulario'
 import { canMutate, useOnline } from '../lib/online'
+import { useRecorrido } from '../features/recorrido/useRecorrido'
 
 type NavItem = { to: string; label: string; end?: boolean; codigo?: string; icon?: IconName }
+
+/** Ancla del recorrido guiado: `/` → inicio, `/visitas` → visitas. */
+const anclaNav = (to: string) => to.replace(/^\//, '') || 'inicio'
 
 interface AppShellProps {
   tenantNombre: string
@@ -47,6 +51,16 @@ export function AppShell({
   const email = session?.user?.email ?? '—'
   const marca = nombreComercial(branding, tenantNombre)
   const noLeidas = inbox.pendientes
+  const recorrido = useRecorrido({
+    usuarioId: session?.user?.id,
+    empresa: marca,
+    rol,
+    etiquetaVisitas: etiquetaVocab(branding, 'visita', 'Visitas'),
+    etiquetaPersonas: etiquetaVocab(branding, 'persona', 'Personas'),
+    etiquetaJornada: etiquetaVocab(branding, 'visita', 'Jornada'),
+    etiquetaCartera: etiquetaVocab(branding, 'persona', 'Cartera'),
+    colorPrimario: colorCssValido(branding.color_primario),
+  })
 
   const campoNav: NavItem[] = [
     { to: '/', label: 'Hoy', end: true, icon: 'hoy' },
@@ -116,9 +130,9 @@ export function AppShell({
             <p className="mt-0.5 truncate text-xs text-muted">{marca}</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-0.5 px-2 py-3" aria-label="Principal">
+        <nav className="flex-1 space-y-0.5 px-2 py-3" aria-label="Principal" data-tour="menu">
           {desktopNav.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={desktopLink}>
+            <NavLink key={item.to} to={item.to} end={item.end} className={desktopLink} data-tour={`nav-${anclaNav(item.to)}`}>
               {item.label}
             </NavLink>
           ))}
@@ -143,6 +157,7 @@ export function AppShell({
                 aria-label={`Notificaciones${noLeidas ? `, ${noLeidas} sin leer` : ''}`}
                 aria-expanded={campanaAbierta}
                 aria-haspopup="dialog"
+                data-tour="campana"
                 onClick={abrirCampana}
               >
                 <Icon name="campana" size={16} />
@@ -178,7 +193,24 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <Button size="sm" className="hidden min-h-11 sm:inline-flex" onClick={onNuevaVisita} disabled={!mutar}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-11"
+              onClick={() => void recorrido.iniciar()}
+              aria-label="Ver recorrido guiado"
+              data-tour="recorrido"
+            >
+              <Icon name="ayuda" size={16} />
+              <span className="hidden sm:inline">Recorrido</span>
+            </Button>
+            <Button
+              size="sm"
+              className="hidden min-h-11 sm:inline-flex"
+              onClick={onNuevaVisita}
+              disabled={!mutar}
+              data-tour="nueva-visita"
+            >
               <Icon name="plus" size={14} />
               Nueva visita
             </Button>
@@ -208,9 +240,10 @@ export function AppShell({
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 flex min-h-14 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_6px_rgba(17,17,17,0.04)] md:hidden"
         aria-label="Campo"
+        data-tour="menu-campo"
       >
         {campoNav.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className={campoLink}>
+          <NavLink key={item.to} to={item.to} end={item.end} className={campoLink} data-tour={`campo-${anclaNav(item.to)}`}>
             {({ isActive }) => (
               <>
                 <span
@@ -231,6 +264,7 @@ export function AppShell({
           )}
           aria-expanded={masAbierto}
           aria-controls="nav-mas"
+          data-tour="campo-mas"
           onClick={() => setMasAbierto((v) => !v)}
         >
           <span
@@ -280,6 +314,7 @@ export function AppShell({
         disabled={!mutar}
         className="fixed bottom-[4.75rem] right-3 z-40 inline-flex min-h-14 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-sm disabled:opacity-50 md:hidden"
         aria-label="Nueva visita"
+        data-tour="nueva-visita-fab"
       >
         <Icon name="plus" size={18} />
         Nueva visita

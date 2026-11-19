@@ -59,3 +59,105 @@
 ::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--gc-primary) 45%, transparent);
 }
+
+/* Recorrido guiado (Driver.js). El popover vive en body: el color del tenant llega por
+   --gc-primary en el wrapper (useRecorrido). */
+.driver-popover.gc-recorrido {
+  --driver-popover-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  min-width: 260px;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 18px 18px 16px;
+  border: 1px solid var(--gc-border);
+  border-radius: 12px;
+  background-color: var(--gc-surface);
+  color: var(--gc-ink);
+  box-shadow: 0 16px 40px -16px rgba(17, 17, 17, 0.35);
+}
+
+.driver-popover.gc-recorrido .driver-popover-title {
+  padding-right: 36px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.driver-popover.gc-recorrido .driver-popover-description {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--gc-muted);
+}
+
+.driver-popover.gc-recorrido .driver-popover-close-btn {
+  top: 4px;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 22px;
+  color: var(--gc-muted);
+}
+
+/* Driver enfoca el × al abrir; el anillo queda dentro del popover. */
+.driver-popover.gc-recorrido .driver-popover-close-btn:focus-visible {
+  outline: 2px solid var(--gc-primary);
+  outline-offset: -6px;
+}
+
+.driver-popover.gc-recorrido .driver-popover-close-btn:hover,
+.driver-popover.gc-recorrido .driver-popover-close-btn:focus-visible {
+  color: var(--gc-ink);
+}
+
+.driver-popover.gc-recorrido .driver-popover-footer {
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.driver-popover.gc-recorrido .driver-popover-progress-text {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gc-muted);
+}
+
+.driver-popover.gc-recorrido .driver-popover-navigation-btns {
+  gap: 8px;
+}
+
+.driver-popover.gc-recorrido .driver-popover-navigation-btns button + button {
+  margin-left: 0;
+}
+
+.driver-popover.gc-recorrido .driver-popover-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--gc-border);
+  border-radius: 8px;
+  background-color: var(--gc-surface);
+  color: var(--gc-ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: none;
+  transition: background-color var(--gc-ease);
+}
+
+.driver-popover.gc-recorrido .driver-popover-footer-btn:hover {
+  background-color: var(--gc-canvas);
+}
+
+.driver-popover.gc-recorrido .driver-popover-footer-btn:focus-visible {
+  outline: 2px solid var(--gc-primary);
+  outline-offset: 2px;
+}
+
+.driver-popover.gc-recorrido .driver-popover-next-btn {
+  border-color: var(--gc-primary);
+  background-color: var(--gc-primary);
+  color: #ffffff;
+}
+
+.driver-popover.gc-recorrido .driver-popover-next-btn:hover {
+  background-color: color-mix(in srgb, var(--gc-primary) 88%, #000000);
+}
